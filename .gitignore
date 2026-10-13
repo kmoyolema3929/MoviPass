@@ -6,7 +6,20 @@
 *.key
 
 # Dependencias
-node_modules/
+# Java / Maven
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+HELP.md
+
+# IDEs
+*.iml
+.classpath
+.project
+.settings/
+.factorypath
+.sts4-cache/
 
 # Compilados, logs y pruebas
 dist/
