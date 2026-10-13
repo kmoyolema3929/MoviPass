@@ -20,7 +20,7 @@ MoviPass permite a las cooperativas de transporte administrar sus buses, frecuen
 | Capa | Tecnología |
 |---|---|
 | Frontend | HTML5, CSS3, JavaScript, Bootstrap 5 |
-| Backend | Java 21, Spring Boot 3, Maven |
+| Backend | Java 21, Spring Boot 4, Maven |
 | Base de datos | PostgreSQL |
 | Autenticación | Spring Security, JWT (jjwt) y BCrypt |
 | Migraciones | Flyway |

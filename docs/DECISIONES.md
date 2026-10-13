@@ -12,7 +12,7 @@ Aquí se documentan las decisiones importantes del proyecto, con su motivo y las
 El proyecto necesita roles de usuario (administrador, cooperativa, oficinista, cliente y bus), venta de asientos sin duplicados, validaciones de datos, subida de comprobantes, correos y tareas programadas (eliminar reservas sin comprobante a las 3 horas).
 
 ### Decisión
-Usar Java 21 con Spring Boot 3 y Maven para el backend. PostgreSQL como base de datos, con migraciones versionadas en Flyway. El frontend se mantiene en HTML, CSS, JavaScript y Bootstrap 5.
+Usar Java 21 con Spring Boot 4 y Maven para el backend. PostgreSQL como base de datos, con migraciones versionadas en Flyway. El frontend se mantiene en HTML, CSS, JavaScript y Bootstrap 5.
 
 ### Motivos
 - Spring Security resuelve la autorización por rol de forma integrada.
