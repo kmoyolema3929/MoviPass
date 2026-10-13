@@ -11,3 +11,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Licencia GPL v3 y archivo de citación (CITATION.cff).
 - Plantillas de issues y pull requests, y archivo CODEOWNERS.
 - Documentos del flujo de Git y del control de cambios.
+
+### Cambiado
+- El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security).
+- Se actualizan el README, `.env.example` y `.gitignore` para el nuevo stack.
