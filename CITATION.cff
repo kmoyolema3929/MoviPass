@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "Si utilizas este software, cítalo con estos datos."
+title: "MoviPass: aplicación web para gestión y venta de pasajes interprovinciales"
+type: software
+license: GPL-3.0-only
+repository-code: "https://github.com/kmoyolema3929/MoviPass"
+authors:
+  - family-names: "Moyolema"
+    given-names: "Katherine"
+  - family-names: "Paredes"
+    given-names: "Alisson"
+  - family-names: "Molina"
+    given-names: "Anahi"
+  - family-names: "Ortiz"
+    given-names: "Alina"
+  - family-names: "Herrera"
+    given-names: "Mateo"
+  - family-names: "Zurita"
+    given-names: "Julio"
+keywords:
+  - transporte interprovincial
+  - venta de pasajes
+  - gestión de la configuración
