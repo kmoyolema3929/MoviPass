@@ -10,9 +10,9 @@ Ver reglas de uso diario en [CONTRIBUTING.md](../CONTRIBUTING.md).
 |---|---|---|---|
 | `main` | n/a | n/a | Permanente. Solo versiones estables |
 | `develop` | `main` | n/a | Permanente. Integración del trabajo |
-| `feature/*` | `develop` | `develop` | Se borra al fusionar |
-| `release/*` | `develop` | `main` y `develop` | Se borra al fusionar |
-| `hotfix/*` | `main` | `main` y `develop` | Se borra al fusionar |
+| `feature/*` | `develop` | `develop` | Se conserva tras fusionar |
+| `release/*` | `develop` | `main` y `develop` | Se conserva tras fusionar |
+| `hotfix/*` | `main` | `main` y `develop` | Se conserva tras fusionar |
 
 ## Diagrama
 
@@ -32,7 +32,7 @@ feature              ●──●
 
 1. **Desarrollo:** se crea `feature/*` desde `develop`, se hacen commits y se abre un PR hacia `develop`.
 2. **Revisión:** el revisor asignado según la revisión rotativa aprueba el PR. Nadie aprueba su propio PR.
-3. **Integración:** el PR se fusiona a `develop` con *Create a merge commit* y la rama se borra.
+3. **Integración:** una vez aprobado el PR y resueltas las conversaciones, el **autor** lo fusiona a develop con *Create a merge commit*. La rama no se borra, se conserva como evidencia.
 4. **Versión:** cuando `develop` tiene lo necesario, se crea `release/vX.Y.Z`, se corrigen detalles finales y se fusiona a `main` y de vuelta a `develop`.
 5. **Etiqueta:** en `main` se crea la etiqueta de la versión (por ejemplo `v0.1.0`).
 6. **Emergencia:** un fallo crítico en `main` se corrige en `hotfix/*`, que se fusiona a `main` y a `develop`.

@@ -46,7 +46,9 @@ En la Fase 2 se agrega el ticket al final: `fix: corregir generación del QR (CA
 - Requieren **1 aprobación**. Nadie aprueba su propio PR.
 - Deben usar la plantilla y enlazar el issue.
 - Resuelve los comentarios antes de fusionar.
-- La fusión la hace quien aprobó, usando **Create a merge commit**, para conservar el historial de commits.
+- La fusión la hace el **autor del PR**, después de responder los comentarios del revisor y de recibir la aprobación, usando **Create a merge commit**, para conservar el historial de commits.
+- **Las ramas no se borran** al fusionar: se conservan como evidencia del trabajo.
+- Cada revisión debe dejar al menos un comentario o sugerencia, y el autor debe responderlo.
 - Los PRs hacia `main` (release y hotfix) solo pueden ser aprobados por Katherine Moyolema o Alisson Paredes. Si una de las dos abre el PR, lo aprueba la otra.
 
 ### Revisión rotativa
@@ -64,8 +66,9 @@ Los PRs hacia `develop` se revisan en círculo, de forma ordenada. Cada persona 
 Cómo se aplica:
 1. Al abrir el PR, el autor asigna a su revisor en *Reviewers*.
 2. El revisor tiene **24 horas** para revisar. Si no responde, lo reemplaza la líder o un miembro del comité.
-3. Quien revisa y aprueba, fusiona.
-4. Si la revisión se hace en conjunto, el PR se aprueba igual con una sola aprobación formal, y el resto de comentarios se dejan en el PR.
+3. El revisor deja comentarios o sugerencias y, si todo está bien, aprueba. No fusiona.
+4. El autor responde cada comentario, aplica los cambios, resuelve las conversaciones y fusiona.
+5. Si la revisión se hace en conjunto, el PR se aprueba igual con una sola aprobación formal, y el resto de comentarios se dejan en el PR.
 
 ### Antes de abrir un PR
 - [ ] Mi rama parte de `develop` y sigue la convención de nombres.
