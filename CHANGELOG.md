@@ -11,3 +11,6 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Licencia GPL v3 y archivo de citación (CITATION.cff).
 - Plantillas de issues y pull requests, y archivo CODEOWNERS.
 - Documentos del flujo de Git y del control de cambios.
+
+### Cambiado
+- El autor del PR fusiona tras la aprobación y las ramas ya no se borran al fusionar.
