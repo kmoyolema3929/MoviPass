@@ -1,0 +1,29 @@
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencias
+node_modules/
+
+# Compilados, logs y pruebas
+dist/
+build/
+coverage/
+*.log
+
+# Archivos subidos por usuarios (comprobantes y fotos de buses)
+uploads/
+
+# Copias de la base de datos
+*.dump
+*.backup
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
