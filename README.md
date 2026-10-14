@@ -20,16 +20,18 @@ MoviPass permite a las cooperativas de transporte administrar sus buses, frecuen
 | Capa | Tecnología |
 |---|---|
 | Frontend | HTML5, CSS3, JavaScript, Bootstrap 5 |
-| Backend | Node.js, Express |
+| Backend | Java 21, Spring Boot 4, Maven |
 | Base de datos | PostgreSQL |
-| Autenticación | JWT y bcrypt |
-| Archivos subidos (comprobantes y fotos de buses) | Multer |
-| Código QR | qrcode |
-| Correos | Nodemailer |
-| Tareas programadas | node-cron |
+| Autenticación | Spring Security, JWT (jjwt) y BCrypt |
+| Migraciones | Flyway |
+| Archivos subidos (comprobantes y fotos de buses) | MultipartFile |
+| Código QR | ZXing |
+| Correos | Spring Mail |
+| Tareas programadas | @Scheduled |
+| Validaciones | Bean Validation |
 
 ## Requisitos previos
-- Node.js (versión LTS)
+- JDK 21
 - PostgreSQL
 - Git
 
@@ -42,12 +44,11 @@ git checkout develop
 # Variables de entorno
 cp .env.example .env     # completa los valores en .env
 
-# Backend
+# Backend (Spring Boot)
 cd backend
-npm install
-npm start
+./mvnw spring-boot:run   # en Windows: mvnw.cmd spring-boot:run
 ```
-Las instrucciones de la base de datos estarán en `database/`.
+La aplicación queda disponible en `http://localhost:8080`. Las instrucciones de la base de datos estarán en `database/`.
 
 ## Estructura del repositorio
 ```

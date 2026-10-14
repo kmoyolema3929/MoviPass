@@ -13,4 +13,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Documentos del flujo de Git y del control de cambios.
 
 ### Cambiado
+- El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security).
+- Se actualizan el README, `.env.example` y `.gitignore` para el nuevo stack.
 - El autor del PR fusiona tras la aprobación y las ramas ya no se borran al fusionar.
+
