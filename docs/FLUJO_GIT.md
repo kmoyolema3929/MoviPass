@@ -66,6 +66,8 @@ Se usa [Versionado Semántico](https://semver.org/lang/es/).
 
 En `main`, solo Katherine Moyolema y Alisson Paredes pueden aprobar. En `develop`, aprueba quien corresponda según la revisión rotativa.
 
+Al fusionar en `main`, Netlify publica automáticamente la nueva versión del frontend.
+
 ## Método de fusión
 
 Se usa **Create a merge commit**. Así se conserva el historial completo de commits de cada persona. No se usan *Squash and merge* ni *Rebase and merge*.

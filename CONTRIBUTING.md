@@ -75,6 +75,12 @@ Cómo se aplica:
 - [ ] Probé los cambios en mi computador.
 - [ ] No incluyo `.env`, contraseñas ni archivos subidos por usuarios.
 - [ ] Actualicé la documentación y el `CHANGELOG.md` si hizo falta.
+- [ ] Si cambié la base de datos, incluí su migración.
+
+## Cambios en la base de datos
+- Todo cambio de tablas, políticas o funciones se hace con un archivo de migración en `supabase/migrations/`. Nunca desde el panel web de Supabase.
+- Las migraciones se crean con `npx supabase migration new nombre_corto`. No se editan una vez fusionadas: si hay un error, se agrega una migración nueva.
+- Las claves (`service_role`, `config.js`, `.env`) nunca se suben al repositorio.
 
 ## Control de cambios
 Desde la Fase 2, toda modificación pasa por una solicitud de cambio. Ver [docs/CONTROL_DE_CAMBIOS.md](docs/CONTROL_DE_CAMBIOS.md).
