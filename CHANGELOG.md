@@ -19,6 +19,9 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Decisiones D-004 (issues de GitHub para la gestión de cambios), D-005 (rama predeterminada y aprobación por comité) y D-006 (organización de issues y Pull Requests para la auditoría) en `docs/DECISIONES.md`.
 - Etiquetas de prioridad (`prioridad: baja`, `media`, `alta` y `crítica`) y de módulo (`módulo: base`, `autenticación`, `cooperativas y buses`, `frecuencias y rutas`, `búsqueda y asientos`, `compra y pago`, `oficinista y configuración` y `documentación`) para los reportes de auditoría (decisión D-006).
 - Sección de títulos y etiquetas en `docs/CONTROL_DE_CAMBIOS.md`, con la fórmula `[TIPO] Módulo: verbo y qué se hace` (decisión D-006).
+- Sitio publicado en `https://movipass.netlify.app` y enlace agregado al README (issue #5).
+- Variables `SUPABASE_URL` y `SUPABASE_ANON_KEY` cargadas en el panel de Netlify (issue #5).
+- Se documentan las opciones de seguridad elegidas al crear el proyecto de Supabase (Data API, exposición automática de tablas y RLS automático) en `docs/DECISIONES.md` (decisión D-009).
 
 ### Cambiado
 - El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security) (PR #2, decisión D-001).
@@ -36,6 +39,8 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - La plantilla de Pull Request agrega casillas para `Closes #n`, etiquetas, milestone y responsable iguales a los del issue, y migraciones (decisión D-006).
 - Los issues #1 a #13 se reescriben con títulos y etiquetas normalizados, y los del Sprint 0 (#5 a #12) se adaptan a Supabase y se reparten entre los seis integrantes (decisión D-006).
 - Las descripciones de las etiquetas existentes pasan a español.
+- Netlify solo publica desde la rama `main` y se desactivan los Deploy Previews y los Branch deploys, para cuidar los créditos del plan gratuito (decisión D-008).
+- La decisión D-003 pasa a estado "Reemplazada por D-008" en `docs/DECISIONES.md`.
 
 ### Eliminado
 - Carpetas vacías del backend de Node.js.
