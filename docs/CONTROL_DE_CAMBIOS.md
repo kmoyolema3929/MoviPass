@@ -8,9 +8,8 @@ Proceso inspirado en ITIL. Las solicitudes de cambio se gestionan como tickets e
 
 | Miembro | Rol en el comité |
 |---|---|
-| Alisson Paredes | Miembro del comité |
+| Katherine Moyolema | Miembro del comité |
 | Anahi Molina | Miembro del comité |
-| Katherine Moyolema | Líder del proyecto: voto de desempate y autoridad sobre el repositorio (no es miembro votante) |
 
 ### Funciones del comité
 1. **Evaluar** cada solicitud de cambio recibida.

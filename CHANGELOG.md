@@ -15,13 +15,23 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Carpeta `supabase/migrations/` para versionar los cambios de la base de datos.
 - Configuración de Netlify (`netlify.toml` y `scripts/generar-config.sh`) para publicar el frontend.
 - Archivo `frontend/js/config.example.js` con la configuración de Supabase para el frontend.
+- Excepción de la líder: puede subir directamente a `develop` los cambios de la documentación inicial, sin rama ni Pull Request.
 
 ### Cambiado
 - El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security) (PR #2, decisión D-001).
 - El backend pasa de Java con Spring Boot a Supabase (PostgreSQL, Auth y Storage) (decisión D-002).
 - Se ajusta el proceso de revisión de Pull Requests: el autor fusiona tras la aprobación, se exige comentar la revisión y las ramas se conservan tras fusionar (PR #4).
 - Se actualizan el README, `.env.example`, `.gitignore` y `SECURITY.md` con cada cambio de stack.
+- La rama predeterminada del repositorio pasa a ser `develop`, para que los issues se cierren al fusionar los Pull Requests. `main` queda solo para versiones estables.
+- La aprobación de los Pull Requests la da el comité de control de cambios (Katherine Moyolema y Anahi Molina), con una aprobación requerida, revisión de code owners y descarte de aprobaciones al subir commits nuevos. Reemplaza a la revisión rotativa.
+- Se redefinen los roles de gestión del equipo en el README.
+- Se completa en D-002 el motivo por el que se descartó Spring Boot.
+- Se actualizan `docs/FLUJO_GIT.md`, `CONTRIBUTING.md` y `CODEOWNERS` con el nuevo proceso de aprobación.
+- Las ramas se conservan tras fusionar solo en el trabajo de código (`feature/*`, `release/*` y `hotfix/*`); la documentación inicial no lleva rama propia.
 
 ### Eliminado
 - Carpetas vacías del backend de Node.js.
 - Carpeta `database/`, reemplazada por `supabase/`.
+- Revisión rotativa de Pull Requests.
+- Tabla de versiones previstas de `docs/FLUJO_GIT.md`.
+- Ramas ya fusionadas en `develop`: `feature/ajuste-revision-prs`, `feature/cambio-stack-spring-boot` y `feature/cambio-stack-supabase`.

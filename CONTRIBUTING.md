@@ -49,26 +49,27 @@ En la Fase 2 se agrega el ticket al final: `fix: corregir generación del QR (CA
 - La fusión la hace el **autor del PR**, después de responder los comentarios del revisor y de recibir la aprobación, usando **Create a merge commit**, para conservar el historial de commits.
 - **Las ramas no se borran** al fusionar: se conservan como evidencia del trabajo.
 - Cada revisión debe dejar al menos un comentario o sugerencia, y el autor debe responderlo.
-- Los PRs hacia `main` (release y hotfix) solo pueden ser aprobados por Katherine Moyolema o Alisson Paredes. Si una de las dos abre el PR, lo aprueba la otra.
+- Los PRs hacia `main` (release y hotfix) solo pueden ser aprobados por Katherine Moyolema o ANAHI Molina. Si una de las dos abre el PR, lo aprueba la otra.
 
-### Revisión rotativa
-Los PRs hacia `develop` se revisan en círculo, de forma ordenada. Cada persona revisa a la siguiente de la lista, y la última cierra el círculo:
+### Aprobación de Pull Requests
+Los PRs hacia `develop` y hacia `main` los aprueba el **comité de control de cambios**, formado por Katherine Moyolema y Anahi Molina. Basta la aprobación de una de las dos. Nadie aprueba su propio PR:
 
-| Autor del PR | Lo revisa |
+| Autor del PR | Lo aprueba |
 |---|---|
-| Katherine Moyolema | Alisson Paredes |
-| Alisson Paredes | Anahi Molina |
-| Anahi Molina | Alina Ortiz |
-| Alina Ortiz | Mateo Herrera |
-| Mateo Herrera | Julio Zurita |
-| Julio Zurita | Katherine Moyolema |
+| Alisson Paredes, Alina Ortiz, Mateo Herrera o Julio Zurita | Katherine Moyolema o Anahi Molina |
+| Katherine Moyolema | Anahi Molina |
+| Anahi Molina | Katherine Moyolema |
 
 Cómo se aplica:
-1. Al abrir el PR, el autor asigna a su revisor en *Reviewers*.
-2. El revisor tiene **24 horas** para revisar. Si no responde, lo reemplaza la líder o un miembro del comité.
-3. El revisor deja comentarios o sugerencias y, si todo está bien, aprueba. No fusiona.
-4. El autor responde cada comentario, aplica los cambios, resuelve las conversaciones y fusiona.
-5. Si la revisión se hace en conjunto, el PR se aprueba igual con una sola aprobación formal, y el resto de comentarios se dejan en el PR.
+1. Al abrir el PR, GitHub solicita la revisión al comité automáticamente (por el archivo `CODEOWNERS`). El autor indica en la descripción el issue que resuelve, con `Closes #n`.
+2. El comité tiene **24 horas** para revisar. Si la persona a quien le tocó no responde, lo revisa la otra. Si ninguna está disponible, el autor avisa al equipo y espera; no se fusiona sin aprobación.
+3. Quien revisa deja comentarios o sugerencias y, si todo está bien, aprueba. No fusiona.
+4. El autor responde cada comentario, aplica los cambios y resuelve las conversaciones. Si sube commits nuevos después de aprobado, la aprobación se descarta y hay que pedirla otra vez.
+5. Con el PR aprobado, el autor lo fusiona con *Create a merge commit*. El issue vinculado se cierra solo.
+6. Quien revisa deja un comentario en el PR con lo que revisó, aunque no tenga observaciones, como evidencia del control de cambios.
+
+### Excepción de la líder
+La líder del proyecto puede subir directamente a `develop`, sin rama ni Pull Request, los cambios de la **documentación inicial** del repositorio. Todo lo demás (código, migraciones y pantallas) entra por Pull Request con la aprobación del comité.
 
 ### Antes de abrir un PR
 - [ ] Mi rama parte de `develop` y sigue la convención de nombres.

@@ -49,7 +49,7 @@ Usar Supabase (PostgreSQL, Auth y Storage) como backend, con un frontend en HTML
 
 ### Alternativas descartadas
 - **Node.js con Express:** obliga a construir manualmente la seguridad por roles, las validaciones y las migraciones.
-- **Java con Spring Boot (D-001):** _(completa con el motivo real por el que el equipo la descartó)_.
+- **Java con Spring Boot (D-001):** válida técnicamente, pero obliga a programar, configurar y mantener un servidor propio.
 
 ### Consecuencias
 - Ningún cambio de esquema se hace desde el panel web de Supabase.

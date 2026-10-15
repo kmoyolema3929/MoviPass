@@ -74,11 +74,11 @@ Usamos **Gitflow** y control de cambios formal. Ver [CONTRIBUTING.md](CONTRIBUTI
 ## Equipo
 | Integrante | Rol de gestión |
 |---|---|
-| Katherine Moyolema | Líder - Desarrollo |
-| Alisson Paredes | Comité de control de cambios - Desarrollo |
-| Anahi Molina | Comité de control de cambios - Desarrollo |
-| Alina Ortiz | Desarrollo |
-| Mateo Herrera | Desarrollo |
+| Katherine Moyolema | Líder - Desarrollo - Comité de cambios |
+| Anahi Molina | Desarrollo - Comité de cambios |
+| Alisson Paredes | Documentación - Desarrollo |
+| Alina Ortiz | Documentación - Desarrollo |
+| Mateo Herrera | Documentación - Desarrollo |
 | Julio Zurita | Documentación - Desarrollo |
 
 ## Soporte
