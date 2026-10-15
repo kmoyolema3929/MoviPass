@@ -26,7 +26,7 @@ Nombres: `feature/crud-buses`, `feature/manual-usuario`, `hotfix/login-caido`.
 7. Espera la revisión. No fusiones sin aprobación.
 
 ## Formato de commits
-`tipo: descripción corta en minúsculas`
+Seguimos **Conventional Commits**: `tipo(ámbito): descripción corta en minúsculas`.
 
 | Tipo | Uso |
 |---|---|
@@ -35,9 +35,28 @@ Nombres: `feature/crud-buses`, `feature/manual-usuario`, `hotfix/login-caido`.
 | `docs` | Documentación |
 | `refactor` | Cambio de código sin cambiar comportamiento |
 | `test` | Pruebas |
-| `chore` | Tareas de mantenimiento |
+| `chore` | Tareas de mantenimiento y configuración |
 
-Ejemplo: `feat: agregar selección de asientos`
+El **ámbito** es el módulo o el documento que cambia, en minúsculas y sin tildes:
+
+| Ámbito | Se usa para |
+|---|---|
+| `base` | Proyecto, conexión, migraciones iniciales y plantilla del frontend |
+| `auth` | Autenticación y roles |
+| `cooperativas` | Cooperativas y buses |
+| `frecuencias` | Frecuencias y hoja de ruta |
+| `busqueda` | Búsqueda y asientos |
+| `compra` | Compra, pago y boleto |
+| `oficinista` | Oficinista, configuración y notificaciones |
+| `docs` | Documentación general |
+| `readme`, `changelog`, `decisiones`, `contributing` | Un documento concreto |
+
+Ejemplos:
+- `feat(compra): agregar selección de asientos`
+- `fix(auth): corregir cierre de sesión`
+- `docs(readme): actualizar roles del equipo`
+
+Cuando el commit resuelve un issue, se indica en el pie del mensaje: `Closes #n`. Los títulos de los Pull Requests usan el mismo formato.
 
 ## Pull Requests
 - Siempre hacia `develop` (excepto release, hotfix y la sincronización de `develop` a `main`).
