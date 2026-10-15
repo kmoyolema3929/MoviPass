@@ -135,3 +135,58 @@ Los issues no se cerraban solos porque los Pull Requests se fusionan en `develop
 - Se actualizan `README.md`, `CONTRIBUTING.md`, `docs/FLUJO_GIT.md`, `docs/CONTROL_DE_CAMBIOS.md`, `CODEOWNERS` y `CHANGELOG.md`.
 - Se eliminan las ramas `feature/ajuste-revision-prs`, `feature/cambio-stack-spring-boot` y `feature/cambio-stack-supabase`, ya fusionadas en `develop`.
 - Se documentó la excepción de la líder en `CONTRIBUTING.md` y `docs/FLUJO_GIT.md`.
+
+## D-006: Organización de issues y Pull Requests para la auditoría
+
+- **Fecha:** 15 de octubre de 2026
+- **Estado:** Aprobada
+- **Decidida por:** equipo de desarrollo, con la indicación del profesor
+
+### Contexto
+El profesor pidió generar reportes que verifiquen el trabajo realizado conforme a las peticiones de cambio, para simular una auditoría de gestión de la configuración. Con issues de GitHub como herramienta única (D-004), los reportes solo son fiables si todos los issues y Pull Requests se registran con el mismo formato.
+
+### Decisión
+- Todo issue y todo Pull Request lleva **una etiqueta de tipo** (`feature`, `docs`, `chore`, `bug` o `cambio`), **una de prioridad** (`prioridad: baja`, `media`, `alta` o `crítica`) y **una de módulo** (`módulo: base`, `autenticación`, `cooperativas y buses`, `frecuencias y rutas`, `búsqueda y asientos`, `compra y pago`, `oficinista y configuración` o `documentación`), además de milestone y responsable.
+- Los títulos de los issues siguen la fórmula `[TIPO] Módulo: verbo en infinitivo y qué se hace`, y el tipo y el módulo coinciden con las etiquetas. Los títulos de los Pull Requests usan `tipo: descripción`.
+- Cada Pull Request lleva `Closes #n` en su descripción y las mismas etiquetas, milestone y responsable que su issue. Esto se hace **a mano**.
+- Los issues se cierran como *Completed* con un comentario que apunta al Pull Request, o como *Not planned* con el motivo.
+- Se eliminan las etiquetas que el proyecto no usa (`accessibility`, `good first issue`, `help wanted` y `question`) y las descripciones de las demás pasan a español.
+
+### Motivos
+- Los reportes por tipo, módulo, prioridad y responsable solo funcionan si todos los registros tienen los mismos datos.
+- Un título que no coincide con su etiqueta es una inconsistencia que una auditoría marcaría.
+- El vínculo entre issue y Pull Request da la trazabilidad pedida: solicitud, cambio y verificación.
+
+### Alternativas descartadas
+- **Automatizar con GitHub Actions** (copiar etiquetas y verificar `Closes #n`): útil, pero agrega un archivo más que mantener. Con seis integrantes y pocos Pull Requests, el equipo prefirió hacerlo a mano, con una casilla en la plantilla de Pull Request. Puede reconsiderarse si el trabajo crece.
+- **Un milestone aparte para la documentación:** el milestone indica cuándo se hace el trabajo y la etiqueta indica qué es, así que la documentación va en el mismo milestone que lo demás.
+
+### Consecuencias
+- Se reescribe `docs/CONTROL_DE_CAMBIOS.md` con la sección de títulos y etiquetas, y se actualiza la plantilla de Pull Request.
+- Se reescriben los issues del Sprint 0 (#1 a #13) para el nuevo stack, con títulos y etiquetas normalizados.
+- Se reparten los issues del Sprint 0 entre los seis integrantes.
+- Los Pull Requests ya fusionados (#2, #4 y #14) reciben las mismas etiquetas que sus issues.
+
+## D-007: Conventional Commits con ámbito
+
+- **Fecha:** 15 de octubre de 2026
+- **Estado:** Aprobada
+- **Decidida por:** equipo de desarrollo, con la indicación del profesor
+
+### Contexto
+El profesor pidió que los commits sigan Conventional Commits, con tipo, ámbito y descripción corta, para que el historial sirva en la auditoría de gestión de la configuración.
+
+### Decisión
+Todos los commits y los títulos de los Pull Requests usan el formato `tipo(ámbito): descripción`, con los tipos `feat`, `fix`, `docs`, `refactor`, `test` y `chore`. El ámbito es el módulo o el documento que cambia. El `Closes #n` va en el pie del commit.
+
+### Motivos
+- El historial se lee igual que las etiquetas de los issues (tipo y módulo).
+- Cada cambio se puede ubicar por módulo sin abrir el commit.
+
+### Alternativas descartadas
+- **Formato sin ámbito (`tipo: descripción`):** no permite filtrar el historial por módulo.
+- **Validación automática con `commitlint`:** más herramientas que mantener; el equipo prefirió comprobarlo en la plantilla de Pull Request.
+
+### Consecuencias
+- Se actualizan `CONTRIBUTING.md` y la plantilla de Pull Request.
+- Los commits anteriores no se reescriben.
