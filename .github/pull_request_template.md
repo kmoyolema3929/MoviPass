@@ -3,7 +3,6 @@
 
 ## Issue o ticket relacionado
 Closes #
-Ticket Jira (Fase 2): CAM-
 
 ## Tipo de cambio
 - [ ] Nueva funcionalidad

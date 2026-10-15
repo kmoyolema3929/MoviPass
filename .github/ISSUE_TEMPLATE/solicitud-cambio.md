@@ -1,12 +1,9 @@
 ---
 name: Solicitud de cambio
-about: Pedir un cambio formal sobre algo existente (Fase 2)
+about: Pedir un cambio formal sobre algo existente
 title: "[CAMBIO] "
 labels: cambio
 ---
-
-## Ticket en Jira
-CAM-
 
 ## Solicitante
 
@@ -50,7 +47,7 @@ Fecha:
 Justificación de la decisión:
 
 ## Implementación
-- Rama: `feature/CAM-`
+- Rama: `feature/`
 - Pull Request: #
 
 ## Verificación (comité)

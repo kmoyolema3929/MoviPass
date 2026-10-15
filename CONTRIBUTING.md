@@ -3,18 +3,18 @@
 Gracias por colaborar en MoviPass. Lee esta guía antes de tu primer cambio.
 
 ## Regla principal
-**Ningún cambio se implementa sin un issue (Fase 1) o un ticket aprobado por el comité (Fase 2).** Nadie hace push directo a `main` ni a `develop`.
+**Ningún cambio se implementa sin un issue.** El código y las migraciones entran siempre por Pull Request. La única excepción es la de la líder para la documentación inicial (ver [Excepción de la líder](#excepción-de-la-líder)).
 
 ## Flujo de ramas (Gitflow)
 | Rama | Uso |
 |---|---|
-| `main` | Versión estable. Solo recibe fusiones desde `release/*` y `hotfix/*` |
-| `develop` | Integración del trabajo |
+| `main` | Versión estable. Recibe fusiones desde `release/*` y `hotfix/*`, y sincronizaciones desde `develop` aprobadas por el comité |
+| `develop` | Rama predeterminada. Integración del trabajo |
 | `feature/*` | Una rama por tarea: funcionalidad, documentación, configuración o corrección de errores |
 | `release/*` | Preparación de una versión. Al terminar se fusiona a `main` y de vuelta a `develop` |
 | `hotfix/*` | Corrección urgente sobre `main`. Al terminar se fusiona a `main` y a `develop` |
 
-Nombres: `feature/crud-buses`, `feature/manual-usuario`. En la Fase 2 se agrega el ticket: `feature/CAM-12-qr-boleto`, `hotfix/CAM-15-login-caido`.
+Nombres: `feature/crud-buses`, `feature/manual-usuario`, `hotfix/login-caido`.
 
 ## Ciclo de trabajo
 1. Toma un issue asignado a ti.
@@ -22,8 +22,8 @@ Nombres: `feature/crud-buses`, `feature/manual-usuario`. En la Fase 2 se agrega 
 3. Crea tu rama: `git checkout -b feature/nombre-corto`.
 4. Haz commits pequeños y claros.
 5. Sube la rama: `git push -u origin feature/nombre-corto`.
-6. Abre un Pull Request hacia `develop` con `Closes #N` y asigna a tu revisor según el orden de rotación.
-7. Espera la revisión. No fusiones tu propio PR.
+6. Abre un Pull Request hacia `develop` con `Closes #N`. GitHub pedirá la revisión al comité automáticamente.
+7. Espera la revisión. No fusiones sin aprobación.
 
 ## Formato de commits
 `tipo: descripción corta en minúsculas`
@@ -39,17 +39,13 @@ Nombres: `feature/crud-buses`, `feature/manual-usuario`. En la Fase 2 se agrega 
 
 Ejemplo: `feat: agregar selección de asientos`
 
-En la Fase 2 se agrega el ticket al final: `fix: corregir generación del QR (CAM-12)`.
-
 ## Pull Requests
-- Siempre hacia `develop` (excepto release y hotfix).
-- Requieren **1 aprobación**. Nadie aprueba su propio PR.
-- Deben usar la plantilla y enlazar el issue.
+- Siempre hacia `develop` (excepto release, hotfix y la sincronización de `develop` a `main`).
+- Requieren **1 aprobación** del comité de control de cambios. Nadie aprueba su propio PR.
+- Deben usar la plantilla y enlazar el issue con `Closes #N`.
 - Resuelve los comentarios antes de fusionar.
-- La fusión la hace el **autor del PR**, después de responder los comentarios del revisor y de recibir la aprobación, usando **Create a merge commit**, para conservar el historial de commits.
-- **Las ramas no se borran** al fusionar: se conservan como evidencia del trabajo.
-- Cada revisión debe dejar al menos un comentario o sugerencia, y el autor debe responderlo.
-- Los PRs hacia `main` (release y hotfix) solo pueden ser aprobados por Katherine Moyolema o ANAHI Molina. Si una de las dos abre el PR, lo aprueba la otra.
+- La fusión la hace el **autor del PR**, después de responder los comentarios y de recibir la aprobación, usando **Create a merge commit**, para conservar el historial de commits.
+- **Las ramas `feature/*`, `release/*` y `hotfix/*` no se borran** al fusionar: se conservan como evidencia del trabajo.
 
 ### Aprobación de Pull Requests
 Los PRs hacia `develop` y hacia `main` los aprueba el **comité de control de cambios**, formado por Katherine Moyolema y Anahi Molina. Basta la aprobación de una de las dos. Nadie aprueba su propio PR:
@@ -84,7 +80,7 @@ La líder del proyecto puede subir directamente a `develop`, sin rama ni Pull Re
 - Las claves (`service_role`, `config.js`, `.env`) nunca se suben al repositorio.
 
 ## Control de cambios
-Desde la Fase 2, toda modificación pasa por una solicitud de cambio. Ver [docs/CONTROL_DE_CAMBIOS.md](docs/CONTROL_DE_CAMBIOS.md).
+Las modificaciones sobre algo ya existente se piden con un issue de la plantilla **Solicitud de cambio**, que el comité evalúa, aprueba o rechaza antes de implementarse. Ver [docs/CONTROL_DE_CAMBIOS.md](docs/CONTROL_DE_CAMBIOS.md).
 
 ## Código de conducta
 Al participar aceptas el [Código de Conducta](CODE_OF_CONDUCT.md).

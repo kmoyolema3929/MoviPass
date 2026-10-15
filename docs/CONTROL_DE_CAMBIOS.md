@@ -1,6 +1,6 @@
 # Proceso de control de cambios
 
-Proceso inspirado en ITIL. Las solicitudes de cambio se gestionan como tickets en Jira (código `CAM-n`) y el código se trabaja en GitHub.
+Proceso inspirado en ITIL. Las solicitudes de cambio se gestionan como issues de GitHub y el código se trabaja en GitHub. Cada Pull Request indica `Closes #n` para vincularse a su issue.
 
 **Vigencia:** este proceso se aplica desde el 4 de noviembre de 2026 (Fase 2). Durante la Fase 1 el trabajo se organiza con issues de GitHub, según [CONTRIBUTING.md](../CONTRIBUTING.md).
 
