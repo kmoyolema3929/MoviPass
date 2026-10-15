@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio - MoviPass</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+
+    <!-- Barra de Navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary-color);">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="index.html">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Iniciar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenedor Principal (Inicio) -->
+    <main class="container my-5">
+        
+        <!-- Título de bienvenida -->
+        <div class="row justify-content-center text-center mb-5">
+            <div class="col-md-8">
+                <h1 class="fw-bold text-primary" style="color: var(--primary-color) !important;">Bienvenido a MoviPass</h1>
+                <p class="lead text-muted">Encuentra, reserva y compra tus pasajes de bus al mejor precio y sin filas.</p>
+            </div>
+        </div>
+
+        <!-- Tarjeta del buscador de viajes -->
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow border-0 rounded-4">
+                    <div class="card-body p-4">
+                        <form class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Origen</label>
+                                <select class="form-select">
+                                    <option selected>¿De dónde sales?</option>
+                                    <option value="1">Ambato</option>
+                                    <option value="2">Quito</option>
+                                    <option value="3">Guayaquil</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Destino</label>
+                                <select class="form-select">
+                                    <option selected>¿A dónde vas?</option>
+                                    <option value="1">Ambato</option>
+                                    <option value="2">Quito</option>
+                                    <option value="3">Guayaquil</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Fecha de viaje</label>
+                                <input type="date" class="form-control">
+                            </div>
+                            <div class="col-md-1 d-grid">
+                                <button type="button" class="btn btn-primary" style="background-color: var(--primary-color); border: none;">
+                                    Buscar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Pie de Página -->
+    <footer class="text-white text-center py-3 mt-auto" style="background-color: var(--secondary-color);">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
