@@ -28,6 +28,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Se completa en D-002 el motivo por el que se descartó Spring Boot.
 - Se actualizan `docs/FLUJO_GIT.md`, `CONTRIBUTING.md` y `CODEOWNERS` con el nuevo proceso de aprobación.
 - Las ramas se conservan tras fusionar solo en el trabajo de código (`feature/*`, `release/*` y `hotfix/*`); la documentación inicial no lleva rama propia.
+- La gestión de cambios y de errores se hace con issues de GitHub. Se actualizan las plantillas de issues y de pull requests, `CONTRIBUTING.md` y `docs/CONTROL_DE_CAMBIOS.md`.
 
 ### Eliminado
 - Carpetas vacías del backend de Node.js.
@@ -35,3 +36,5 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Revisión rotativa de Pull Requests.
 - Tabla de versiones previstas de `docs/FLUJO_GIT.md`.
 - Ramas ya fusionadas en `develop`: `feature/ajuste-revision-prs`, `feature/cambio-stack-spring-boot` y `feature/cambio-stack-supabase`.
+- Campos y referencias a Jira (`CAM-n`) de las plantillas y de la guía de contribución.
+- Carpeta `docs/capturas/jira/`.
