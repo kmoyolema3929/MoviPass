@@ -5,17 +5,24 @@
 *.pem
 *.key
 
+# Configuración del frontend con las claves de Supabase (se versiona solo config.example.js)
+frontend/js/config.js
+
 # Dependencias
 node_modules/
+
+# Archivos temporales de la CLI de Supabase
+supabase/.temp/
+supabase/.branches/
+
+# Archivos locales de la CLI de Netlify
+.netlify/
 
 # Compilados, logs y pruebas
 dist/
 build/
 coverage/
 *.log
-
-# Archivos subidos por usuarios (comprobantes y fotos de buses)
-uploads/
 
 # Copias de la base de datos
 *.dump
@@ -24,6 +31,7 @@ uploads/
 # Editores y sistema
 .vscode/
 .idea/
+*.iml
 .DS_Store
 Thumbs.db
 desktop.ini

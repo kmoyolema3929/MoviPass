@@ -20,18 +20,23 @@ MoviPass permite a las cooperativas de transporte administrar sus buses, frecuen
 | Capa | Tecnología |
 |---|---|
 | Frontend | HTML5, CSS3, JavaScript, Bootstrap 5 |
-| Backend | Node.js, Express |
-| Base de datos | PostgreSQL |
-| Autenticación | JWT y bcrypt |
-| Archivos subidos (comprobantes y fotos de buses) | Multer |
-| Código QR | qrcode |
-| Correos | Nodemailer |
-| Tareas programadas | node-cron |
+| Backend como servicio | Supabase (PostgreSQL, Auth, Storage) |
+| Acceso a datos | supabase-js |
+| Migraciones | Supabase CLI |
+| Autenticación | Supabase Auth |
+| Archivos subidos (comprobantes y fotos de buses) | Supabase Storage |
+| Código QR | Librería JS qrcode |
+| Notificaciones | Tabla de notificaciones en la app y correos de Supabase |
+| Tareas programadas | pg_cron (Supabase) |
+| Publicación del frontend | Netlify |
+
+Las decisiones técnicas están registradas en [docs/DECISIONES.md](docs/DECISIONES.md).
 
 ## Requisitos previos
-- Node.js (versión LTS)
-- PostgreSQL
 - Git
+- Node.js (solo para ejecutar la Supabase CLI con `npx`)
+- VS Code con la extensión Live Server
+- Acceso al proyecto de Supabase del equipo
 
 ## Instalación y ejecución
 ```bash
@@ -39,21 +44,26 @@ git clone https://github.com/kmoyolema3929/MoviPass.git
 cd MoviPass
 git checkout develop
 
-# Variables de entorno
-cp .env.example .env     # completa los valores en .env
+# Configuración del frontend
+cp frontend/js/config.example.js frontend/js/config.js   # completa SUPABASE_URL y SUPABASE_ANON_KEY
 
-# Backend
-cd backend
-npm install
-npm start
+# Solo para quien aplica migraciones a Supabase
+cp .env.example .env     # completa los valores en .env
 ```
-Las instrucciones de la base de datos estarán en `database/`.
+Las claves del proyecto las entrega el equipo por un canal privado. **Nunca se suben al repositorio.**
+
+Para ejecutar la aplicación, abre la carpeta `frontend/` en VS Code, haz clic derecho sobre una página de `frontend/pages/` y elige **Open with Live Server**. Se abrirá en `http://127.0.0.1:5500`.
+
+La guía completa, con solución de problemas, está en [docs/GUIA_INSTALACION.md](docs/GUIA_INSTALACION.md).
+
+## Aplicación publicada
+Dirección en Netlify: _(se completa al publicar el sitio)_
 
 ## Estructura del repositorio
 ```
-backend/    API, reglas de negocio y acceso a datos
 frontend/   Pantallas (HTML, CSS, JavaScript, Bootstrap)
-database/   Migraciones y datos de prueba (SQL)
+supabase/   Migraciones y datos de prueba (SQL)
+scripts/    Scripts de despliegue
 docs/       Documentación y capturas
 .github/    Plantillas de issues y pull requests
 ```
@@ -64,11 +74,11 @@ Usamos **Gitflow** y control de cambios formal. Ver [CONTRIBUTING.md](CONTRIBUTI
 ## Equipo
 | Integrante | Rol de gestión |
 |---|---|
-| Katherine Moyolema | Líder - Desarrollo |
-| Alisson Paredes | Comité de control de cambios - Desarrollo |
-| Anahi Molina | Comité de control de cambios - Desarrollo |
-| Alina Ortiz | Desarrollo |
-| Mateo Herrera | Desarrollo |
+| Katherine Moyolema | Líder - Desarrollo - Comité de cambios |
+| Anahi Molina | Desarrollo - Comité de cambios |
+| Alisson Paredes | Documentación - Desarrollo |
+| Alina Ortiz | Documentación - Desarrollo |
+| Mateo Herrera | Documentación - Desarrollo |
 | Julio Zurita | Documentación - Desarrollo |
 
 ## Soporte

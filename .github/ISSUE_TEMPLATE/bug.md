@@ -8,7 +8,7 @@ labels: bug
 ## Descripción del error
 
 ## Módulo afectado
-Autenticación / Cooperativas y buses / Frecuencias y rutas / Búsqueda / Compra y pago / Oficinista y configuración / Otro
+Base técnica / Autenticación / Cooperativas y buses / Frecuencias y rutas / Búsqueda / Compra y pago / Oficinista y configuración / Otro
 
 ## Pasos para reproducirlo
 1.
@@ -24,12 +24,10 @@ Autenticación / Cooperativas y buses / Frecuencias y rutas / Búsqueda / Compra
 ## Entorno
 - Navegador / sistema:
 - Rol de usuario:
+- Rama o versión (por ejemplo `develop` o `v0.1.0`):
 
 ## Prioridad
 - [ ] Baja
 - [ ] Media
 - [ ] Alta
 - [ ] Crítica
-
-## Ticket de Jira (Fase 2)
-CAM-

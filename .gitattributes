@@ -1,0 +1,4 @@
+# Normaliza los saltos de línea para evitar archivos "modificados" entre Windows y Linux
+* text=auto
+# Los scripts de shell deben usar siempre saltos de línea de Linux
+*.sh text eol=lf
