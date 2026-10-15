@@ -60,7 +60,7 @@ Usar Supabase (PostgreSQL, Auth y Storage) como backend, con un frontend en HTML
 ## D-003: Netlify para publicar el frontend
 
 - **Fecha:** 14 de octubre de 2026
-- **Estado:** Aprobada
+- **Estado:** Reemplazada por D-008 (15 de octubre de 2026)
 - **Decidida por:** equipo de desarrollo
 
 ### Contexto
@@ -190,3 +190,55 @@ Todos los commits y los títulos de los Pull Requests usan el formato `tipo(ámb
 ### Consecuencias
 - Se actualizan `CONTRIBUTING.md` y la plantilla de Pull Request.
 - Los commits anteriores no se reescriben.
+
+## D-008: Configuración de Netlify para cuidar los créditos
+
+- **Fecha:** 15 de octubre de 2026
+- **Estado:** Aprobada
+- **Decidida por:** equipo de desarrollo
+- **Reemplaza a:** D-003
+
+### Contexto
+El plan gratuito de Netlify asigna una cantidad limitada de créditos mensuales. La configuración inicial de D-003 generaba un despliegue por cada Pull Request (Deploy Preview) y por cada rama, lo que consumía créditos con el trabajo diario en `develop`. Como el equipo trabaja sobre `develop` y solo publica versiones estables en `main` (D-005), no tiene sentido desplegar cada cambio intermedio.
+
+### Decisión
+Mantener el sitio de Netlify conectado al repositorio, con la rama `main` como única rama de producción, y restringir los despliegues automáticos:
+- **Branch deploys:** solo la rama de producción (`main`).
+- **Deploy Previews:** desactivados (`Don't deploy pull requests`).
+
+Las variables `SUPABASE_URL` y `SUPABASE_ANON_KEY` quedan cargadas en el panel de Netlify, con la opción "Contains secret values" activada para la clave anónima.
+
+### Motivos
+- Solo se publica cuando se fusiona algo estable en `main`, que es el flujo definido en D-005.
+- Se evita gastar créditos en despliegues de ramas de trabajo que no se revisan visualmente.
+- Las variables de entorno siguen fuera del repositorio, como exige D-002.
+
+### Alternativas descartadas
+- **Mantener Deploy Previews activos (D-003):** permitía revisar visualmente cada Pull Request, pero consumía créditos de forma innecesaria para un equipo que revisa el código directamente en GitHub.
+- **Dejar Branch deploys activos:** generaba un sitio por rama, sin uso real dentro del flujo del equipo.
+
+### Consecuencias
+- El sitio publicado es `https://movipass.netlify.app` y se actualiza solo al fusionar en `main`.
+- La dirección del sitio queda registrada en el `README.md` (Issue #5).
+- Si en el futuro se necesita revisar visualmente un Pull Request, se puede volver a activar Deploy Previews de forma puntual.
+
+## D-009: Opciones de seguridad de Supabase
+
+- **Fecha:** 15 de octubre de 2026
+- **Estado:** Aprobada
+- **Decidida por:** Katherine Moyolema (responsable del Issue #5)
+
+### Decisión
+Al crear el proyecto de Supabase se eligieron las siguientes opciones de seguridad:
+- **Data API:** habilitada (necesaria para que el frontend consulte la base).
+- **Exposición automática de tablas:** deshabilitada (las tablas se exponen solo cuando la migración lo indica explícitamente, para evitar filtraciones por descuido).
+- **RLS automático:** habilitado (toda tabla nueva nace con Row Level Security activado).
+
+### Motivos
+- La Data API es la vía por la que el frontend habla con Supabase.
+- Desactivar la exposición automática obliga a decidir conscientemente qué se publica.
+- Activar RLS automático evita que una tabla quede sin protección por olvido, como exige D-002 y el Issue #10.
+
+### Consecuencias
+- Toda migración que cree una tabla debe declarar explícitamente su exposición y sus políticas RLS.
+- Documentado en `docs/MODELO_DATOS.md` (#10).
