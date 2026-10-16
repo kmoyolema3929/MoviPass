@@ -139,8 +139,10 @@ Los issues no se cerraban solos porque los Pull Requests se fusionan en `develop
 ## D-006: Organización de issues y Pull Requests para la auditoría
 
 - **Fecha:** 15 de octubre de 2026
-- **Estado:** Aprobada
+- **Estado:** - Ajustada por D-007 (15 de octubre de 2026)
 - **Decidida por:** equipo de desarrollo, con la indicación del profesor
+
+**Ajusta a:** D-006 (en el formato de títulos de Pull Requests)
 
 ### Contexto
 El profesor pidió generar reportes que verifiquen el trabajo realizado conforme a las peticiones de cambio, para simular una auditoría de gestión de la configuración. Con issues de GitHub como herramienta única (D-004), los reportes solo son fiables si todos los issues y Pull Requests se registran con el mismo formato.
