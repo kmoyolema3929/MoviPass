@@ -1,0 +1,19 @@
+/* Definición de variables CSS para colores principales */
+:root {
+  --primary-color: #0d6efd; /* Azul corporativo MoviPass */
+  --secondary-color: #6c757d; /* Gris secundario */
+  --bg-light: #f8f9fa; /* Fondo claro */
+  --text-dark: #212529; /* Texto principal */
+}
+
+body {
+  background-color: var(--bg-light);
+  color: var(--text-dark);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1; /* Permite que el footer se quede siempre abajo */
+}
