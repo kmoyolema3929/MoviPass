@@ -3,7 +3,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // Datos enviados por la líder (con la URL corregida)
 const supabaseUrl = 'https://tvfexoehpenfkqfcitck.supabase.co';
-const supabaseKey = 'sb_publishable_O_tY_ULAjwOIK6JSYyXcrg_cEntlEtG';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2ZmV4b2VocGVuZmtxZmNpdGNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNDEwNzMsImV4cCI6MjEwNzYxNzA3M30.zodVu8037ctJ-iIoUEint4y6F8lL6j4pUMPc1PyQjKI';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Seleccionar el formulario
@@ -50,7 +50,7 @@ formRegistro.addEventListener('submit', async (e) => {
         }
     } else {
         // Criterio de aceptación: Mensaje de éxito
-        alert('¡Registro exitoso! Tu perfil ha sido creado.');
+        alert('¡Registro exitoso! Por favor, revisa tu bandeja de entrada para confirmar tu correo electrónico.');
         window.location.href = 'login.html'; // Redirigir al login
     }
 
