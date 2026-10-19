@@ -14,6 +14,10 @@
                 <h2>Gestión de Frecuencias</h2>
                 <p class="text-muted mb-0">Módulo de Frecuencias y hojas de ruta</p>
             </div>
+            <!-- Botón para Nueva Frecuencia -->
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalFrecuencia">
+                + Nueva Frecuencia
+            </button>
         </div>
 
         <!-- Tabla de Frecuencias -->
@@ -56,6 +60,38 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal / Formulario para Crear y Editar Frecuencias -->
+    <div class="modal fade" id="modalFrecuencia" tabindex="-1" aria-labelledby="modalFrecuenciaLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalFrecuenciaLabel">Registrar Nueva Frecuencia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formFrecuencia">
+                        <div class="mb-3">
+                            <label for="origen" class="form-label">Ciudad de Origen</label>
+                            <input type="text" class="form-control" id="origen" placeholder="Ej. Ambato" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="destino" class="form-label">Ciudad de Destino</label>
+                            <input type="text" class="form-control" id="destino" placeholder="Ej. Quito" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="hora" class="form-label">Hora de Salida</label>
+                            <input type="time" class="form-control" id="hora" required>
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-success">Guardar Frecuencia</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
