@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - MoviPass</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+
+    <!-- Barra de Navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary-color);">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="login.html">Iniciar Sesión</a></li>
+                </ul>
+            </div>
+            
+        </div>
+    </nav>
+
+    <!-- Contenedor Principal (Login) -->
+    <main class="container my-5 d-flex align-items-center justify-content-center" style="flex: 1;">
+        <div class="row w-100 justify-content-center">
+            <div class="col-12 col-md-6 col-lg-4">
+                
+                <!-- Tarjeta de Login -->
+                <div class="card shadow border-0 rounded-4">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <h2 class="fw-bold" style="color: var(--primary-color);">Bienvenido de nuevo</h2>
+                            <p class="text-muted">Ingresa a tu cuenta de MoviPass</p>
+                        </div>
+
+                        <form>
+                            <!-- Campo de Correo -->
+                            <div class="mb-3">
+                                <label for="emailInput" class="form-label fw-bold">Correo electrónico</label>
+                                <input type="email" class="form-control form-control-lg" id="emailInput" placeholder="ejemplo@correo.com" required>
+                            </div>
+                            
+                            <!-- Campo de Contraseña -->
+                            <div class="mb-4">
+                                <label for="passwordInput" class="form-label fw-bold">Contraseña</label>
+                                <input type="password" class="form-control form-control-lg" id="passwordInput" placeholder="********" required>
+                            </div>
+
+                            <!-- Botón de Iniciar Sesión -->
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" style="background-color: var(--primary-color); border: none;">
+                                    Iniciar Sesión
+                                </button>
+                            </div>
+
+                            <!-- Link a registro -->
+                            <div class="text-center mt-4">
+                                <span class="text-muted">¿No tienes una cuenta? <a href="registro.html" style="color: var(--primary-color);">Regístrate aquí</a></span>
+                            </div>
+                        </form>
+                        
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Pie de Página -->
+    <footer class="text-white text-center py-3 mt-auto" style="background-color: var(--secondary-color);">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
