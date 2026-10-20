@@ -128,5 +128,51 @@
     </div>
   </main>
 
+  <script>
+    // --- Configuración (luego puede venir del backend) ---
+    const PRECIO_ASIENTO = 12.5;
+    const FILAS = 10;
+    const COLUMNAS = ['A', 'B', null, 'C', 'D']; // null = pasillo
+    const OCUPADOS = new Set(['1A', '2C', '2D', '4B', '5A', '5B', '7C', '8D', '9A', '10B']);
+
+    const mapa = document.getElementById('mapaAsientos');
+    document.getElementById('precioUnitario').textContent = PRECIO_ASIENTO.toFixed(2);
+
+    function construirMapa() {
+      for (let fila = 1; fila <= FILAS; fila++) {
+        const filaEl = document.createElement('div');
+        filaEl.className = 'seat-row';
+
+        COLUMNAS.forEach(col => {
+          if (col === null) {
+            const pasillo = document.createElement('div');
+            pasillo.className = 'aisle';
+            pasillo.textContent = fila;
+            filaEl.appendChild(pasillo);
+            return;
+          }
+
+          const id = `${fila}${col}`;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'seat';
+          btn.textContent = id;
+          btn.dataset.id = id;
+
+          if (OCUPADOS.has(id)) {
+            btn.disabled = true;
+            btn.setAttribute('aria-label', `Asiento ${id} ocupado`);
+          } else {
+            btn.setAttribute('aria-label', `Asiento ${id} disponible`);
+          }
+          filaEl.appendChild(btn);
+        });
+
+        mapa.appendChild(filaEl);
+      }
+    }
+
+    construirMapa();
+  </script>
 </body>
 </html>
