@@ -6,6 +6,27 @@ const supabaseUrl = 'https://tvfexoehpenfkqfcitck.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2ZmV4b2VocGVuZmtxZmNpdGNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNDEwNzMsImV4cCI6MjEwNzYxNzA3M30.zodVu8037ctJ-iIoUEint4y6F8lL6j4pUMPc1PyQjKI'; // Pega tu clave larga real aquí
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Verificar si la sesión ya está activa al cargar la página
+async function verificarSesion() {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+        // Si hay sesión, buscamos su rol y lo redirigimos directo
+        const { data: perfil } = await supabase
+            .from('perfiles')
+            .select('rol')
+            .eq('id', session.user.id)
+            .single();
+            
+        if (perfil) {
+            window.location.href = `${perfil.rol}/index.html`;
+        }
+    }
+}
+
+// Ejecutar la verificación inmediatamente
+verificarSesion();
+
 // Seleccionar el formulario de login
 const formLogin = document.getElementById('formLogin');
 
