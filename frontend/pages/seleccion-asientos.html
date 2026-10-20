@@ -135,6 +135,8 @@
     const COLUMNAS = ['A', 'B', null, 'C', 'D']; // null = pasillo
     const OCUPADOS = new Set(['1A', '2C', '2D', '4B', '5A', '5B', '7C', '8D', '9A', '10B']);
 
+    const seleccionados = new Set();
+
     const mapa = document.getElementById('mapaAsientos');
     document.getElementById('precioUnitario').textContent = PRECIO_ASIENTO.toFixed(2);
 
@@ -164,11 +166,25 @@
             btn.setAttribute('aria-label', `Asiento ${id} ocupado`);
           } else {
             btn.setAttribute('aria-label', `Asiento ${id} disponible`);
+            btn.setAttribute('aria-pressed', 'false');
+            btn.addEventListener('click', () => alternarAsiento(id, btn));
           }
           filaEl.appendChild(btn);
         });
 
         mapa.appendChild(filaEl);
+      }
+    }
+
+    function alternarAsiento(id, btn) {
+      if (seleccionados.has(id)) {
+        seleccionados.delete(id);
+        btn.classList.remove('selected');
+        btn.setAttribute('aria-pressed', 'false');
+      } else {
+        seleccionados.add(id);
+        btn.classList.add('selected');
+        btn.setAttribute('aria-pressed', 'true');
       }
     }
 
