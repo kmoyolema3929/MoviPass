@@ -118,10 +118,24 @@
 
       <!-- Resumen -->
       <div class="col-12 col-lg-5">
-        <div class="card shadow-sm">
+        <div class="card shadow-sm sticky-lg-top" style="top: 1rem;">
           <div class="card-header fw-semibold">Resumen de tu compra</div>
           <div class="card-body">
-            <p class="text-secondary mb-0">Aún no has seleccionado asientos.</p>
+            <p class="text-secondary mb-2" id="sinSeleccion">Aún no has seleccionado asientos.</p>
+            <ul class="list-group list-group-flush mb-3" id="listaSeleccion"></ul>
+
+            <div class="d-flex justify-content-between mb-1">
+              <span>Asientos seleccionados</span>
+              <strong id="cantidad">0</strong>
+            </div>
+            <div class="d-flex justify-content-between fs-5">
+              <span>Total a pagar</span>
+              <strong class="text-primary" id="total">$0.00</strong>
+            </div>
+          </div>
+          <div class="card-footer d-grid gap-2">
+            <button type="button" class="btn btn-primary" id="btnContinuar" disabled>Continuar al pago</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLimpiar" disabled>Limpiar selección</button>
           </div>
         </div>
       </div>
@@ -138,6 +152,13 @@
     const seleccionados = new Set();
 
     const mapa = document.getElementById('mapaAsientos');
+    const lista = document.getElementById('listaSeleccion');
+    const sinSeleccion = document.getElementById('sinSeleccion');
+    const cantidadEl = document.getElementById('cantidad');
+    const totalEl = document.getElementById('total');
+    const btnContinuar = document.getElementById('btnContinuar');
+    const btnLimpiar = document.getElementById('btnLimpiar');
+
     document.getElementById('precioUnitario').textContent = PRECIO_ASIENTO.toFixed(2);
 
     function construirMapa() {
@@ -186,9 +207,49 @@
         btn.classList.add('selected');
         btn.setAttribute('aria-pressed', 'true');
       }
+      actualizarResumen();
     }
 
+    function ordenarAsientos(a, b) {
+      const na = parseInt(a, 10), nb = parseInt(b, 10);
+      return na - nb || a.localeCompare(b);
+    }
+
+    function actualizarResumen() {
+      const asientos = [...seleccionados].sort(ordenarAsientos);
+
+      lista.innerHTML = '';
+      asientos.forEach(id => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between px-0';
+        li.innerHTML = `<span>Asiento ${id}</span><span>$${PRECIO_ASIENTO.toFixed(2)}</span>`;
+        lista.appendChild(li);
+      });
+
+      sinSeleccion.classList.toggle('d-none', asientos.length > 0);
+      cantidadEl.textContent = asientos.length;
+      totalEl.textContent = '$' + (asientos.length * PRECIO_ASIENTO).toFixed(2);
+      btnContinuar.disabled = asientos.length === 0;
+      btnLimpiar.disabled = asientos.length === 0;
+    }
+
+    btnLimpiar.addEventListener('click', () => {
+      seleccionados.clear();
+      document.querySelectorAll('.seat.selected').forEach(b => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      actualizarResumen();
+    });
+
+    btnContinuar.addEventListener('click', () => {
+      // Aquí se conectará con el módulo de pago (siguiente issue).
+      const asientos = [...seleccionados].sort(ordenarAsientos);
+      console.log('Asientos para pago:', asientos);
+    });
+
     construirMapa();
+    actualizarResumen();
   </script>
 </body>
 </html>
