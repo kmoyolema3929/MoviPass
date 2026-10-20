@@ -46,10 +46,31 @@ if (formLogin) {
                 console.error('Error al obtener el rol:', perfilError);
                 alert('Inicio de sesión exitoso, pero hubo un error al cargar tu perfil.');
             } else {
-                // Guardamos el rol temporalmente en consola para probar
-                console.log('El rol del usuario es:', perfilData.rol);
-                alert(`¡Bienvenido! Tu rol es: ${perfilData.rol}`);
-                // En el siguiente paso haremos el switch para redirigir
+                // Redirigir al usuario según su rol exacto
+                const rol = perfilData.rol;
+                
+                switch (rol) {
+                    case 'administrador':
+                        window.location.href = 'administrador/index.html';
+                        break;
+                    case 'cooperativa':
+                        window.location.href = 'cooperativa/index.html';
+                        break;
+                    case 'oficinista':
+                        window.location.href = 'oficinista/index.html';
+                        break;
+                    case 'cliente':
+                        window.location.href = 'cliente/index.html';
+                        break;
+                    case 'bus':
+                        window.location.href = 'bus/index.html';
+                        break;
+                    default:
+                        alert('Error: Tu rol no tiene una pantalla asignada.');
+                        // Cerramos sesión por seguridad si el rol es inválido
+                        await supabase.auth.signOut();
+                        break;
+                }
             }
 
         } catch (error) {
