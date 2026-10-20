@@ -22,17 +22,36 @@ if (formLogin) {
         btn.disabled = true;
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            // 1. Iniciar sesión con correo y contraseña
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password
             });
 
-            if (error) {
-                alert('Error al iniciar sesión: Revisa tus credenciales.');
-            } else {
-                alert('¡Inicio de sesión exitoso!');
-                // Aquí irá la lógica de roles más adelante
+            if (authError) {
+                alert('Error al iniciar sesión: Correo o contraseña incorrectos.');
+                return; // Detenemos la ejecución aquí si hay error
             }
+
+            // 2. Si el login es exitoso, buscamos el rol en la tabla perfiles
+            const userId = authData.user.id;
+            
+            const { data: perfilData, error: perfilError } = await supabase
+                .from('perfiles')
+                .select('rol')
+                .eq('id', userId)
+                .single();
+
+            if (perfilError) {
+                console.error('Error al obtener el rol:', perfilError);
+                alert('Inicio de sesión exitoso, pero hubo un error al cargar tu perfil.');
+            } else {
+                // Guardamos el rol temporalmente en consola para probar
+                console.log('El rol del usuario es:', perfilData.rol);
+                alert(`¡Bienvenido! Tu rol es: ${perfilData.rol}`);
+                // En el siguiente paso haremos el switch para redirigir
+            }
+
         } catch (error) {
             console.error('Error inesperado:', error);
         } finally {
