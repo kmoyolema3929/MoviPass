@@ -101,4 +101,22 @@ if (formLogin) {
             btn.disabled = false;
         }
     });
+
+    // ==============================================================
+    // Lógica para mostrar/ocultar contraseña en el login
+    // ==============================================================
+    const btnTogglePass = document.getElementById('btnTogglePass');
+    const passwordInput = document.getElementById('passwordInput');
+
+    if (btnTogglePass && passwordInput) {
+        btnTogglePass.addEventListener('click', () => {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                btnTogglePass.textContent = '🙈'; // Ojo cerrado
+            } else {
+                passwordInput.type = 'password';
+                btnTogglePass.textContent = '👁️'; // Ojo abierto
+            }
+        });
+    }
 }
