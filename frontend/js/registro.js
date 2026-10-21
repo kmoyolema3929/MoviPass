@@ -1,10 +1,12 @@
 // Importar Supabase directamente desde el CDN para usarlo en el navegador
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-// Datos enviados por la líder (con la URL corregida)
-const supabaseUrl = 'https://tvfexoehpenfkqfcitck.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2ZmV4b2VocGVuZmtxZmNpdGNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNDEwNzMsImV4cCI6MjEwNzYxNzA3M30.zodVu8037ctJ-iIoUEint4y6F8lL6j4pUMPc1PyQjKI';
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Importar credenciales seguras
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+
+// Inicializar cliente
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 
 // Seleccionar el formulario
 const formRegistro = document.querySelector('form');
