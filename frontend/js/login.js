@@ -1,10 +1,11 @@
 // Importar Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-// Configuración de Supabase
-const supabaseUrl = 'https://tvfexoehpenfkqfcitck.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2ZmV4b2VocGVuZmtxZmNpdGNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNDEwNzMsImV4cCI6MjEwNzYxNzA3M30.zodVu8037ctJ-iIoUEint4y6F8lL6j4pUMPc1PyQjKI'; // Pega tu clave larga real aquí
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Importar credenciales seguras
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+
+// Inicializar cliente
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Verificar si la sesión ya está activa al cargar la página
 async function verificarSesion() {
