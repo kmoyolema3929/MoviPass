@@ -113,3 +113,24 @@ document.getElementById('formFrecuencia').addEventListener('submit', async funct
         btnGuardar.disabled = false;
     }
 });
+
+// Función para Eliminar Frecuencia (DELETE)
+async function eliminarFrecuencia(id) {
+    if (!confirm('¿Está seguro de que desea eliminar esta frecuencia?')) {
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('frecuencias')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        // Recargar la tabla tras eliminar
+        await cargarFrecuencias();
+    } catch (err) {
+        console.error('Error al eliminar frecuencia:', err.message);
+    }
+}
