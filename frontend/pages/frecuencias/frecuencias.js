@@ -3,6 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarFrecuencias();
 });
 
+// Función de escape para prevenir XSS
+function sanitizarHTML(cadena) {
+    const div = document.createElement('div');
+    div.textContent = cadena;
+    return div.innerHTML;
+}
+
 // Función para Listar / Leer Frecuencias desde Supabase
 async function cargarFrecuencias() {
     const tbody = document.getElementById('tablaFrecuencias');
@@ -21,14 +28,18 @@ async function cargarFrecuencias() {
 
         tbody.innerHTML = '';
         data.forEach((item, index) => {
+            const origenClean = sanitizarHTML(item.origen);
+            const destinoClean = sanitizarHTML(item.destino);
+            const horaClean = sanitizarHTML(item.hora);
+
             tbody.innerHTML += `
                 <tr>
                     <td>${index + 1}</td>
-                    <td>${item.origen}</td>
-                    <td>${item.destino}</td>
-                    <td>${item.hora}</td>
+                    <td>${origenClean}</td>
+                    <td>${destinoClean}</td>
+                    <td>${horaClean}</td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-outline-warning me-1" onclick="prepararEditar(${item.id}, '${item.origen}', '${item.destino}', '${item.hora}')">Editar</button>
+                        <button class="btn btn-sm btn-outline-warning me-1" onclick="prepararEditar(${item.id}, '${origenClean}', '${destinoClean}', '${horaClean}')">Editar</button>
                         <button class="btn btn-sm btn-outline-danger" onclick="eliminarFrecuencia(${item.id})">Eliminar</button>
                     </td>
                 </tr>
@@ -36,7 +47,7 @@ async function cargarFrecuencias() {
         });
     } catch (err) {
         console.error('Error al cargar frecuencias:', err.message);
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Error al cargar datos de Supabase.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Error al conectar con Supabase.</td></tr>`;
     }
 }
 
@@ -78,7 +89,9 @@ document.getElementById('formFrecuencia').addEventListener('submit', async funct
     const hora = document.getElementById('hora').value;
 
     const btnGuardar = document.getElementById('btnGuardar');
+    const textoOriginal = btnGuardar.textContent;
     btnGuardar.disabled = true;
+    btnGuardar.textContent = 'Guardando...';
 
     try {
         if (id) {
@@ -111,6 +124,7 @@ document.getElementById('formFrecuencia').addEventListener('submit', async funct
         console.error('Error al guardar frecuencia:', err.message);
     } finally {
         btnGuardar.disabled = false;
+        btnGuardar.textContent = textoOriginal;
     }
 });
 
