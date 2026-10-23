@@ -143,14 +143,16 @@
   </main>
 
   <script>
-    // --- Configuración (luego puede venir del backend) ---
+        // --- Configuración ---
     const PRECIO_ASIENTO = 12.5;
     const FILAS = 10;
     const COLUMNAS = ['A', 'B', null, 'C', 'D']; // null = pasillo
     const OCUPADOS = new Set(['1A', '2C', '2D', '4B', '5A', '5B', '7C', '8D', '9A', '10B']);
+    
+    // --- Estado de la compra ---
+    const seleccionados = new Set(); 
 
-    const seleccionados = new Set();
-
+    // --- Elementos del DOM ---
     const mapa = document.getElementById('mapaAsientos');
     const lista = document.getElementById('listaSeleccion');
     const sinSeleccion = document.getElementById('sinSeleccion');
@@ -160,96 +162,6 @@
     const btnLimpiar = document.getElementById('btnLimpiar');
 
     document.getElementById('precioUnitario').textContent = PRECIO_ASIENTO.toFixed(2);
-
-    function construirMapa() {
-      for (let fila = 1; fila <= FILAS; fila++) {
-        const filaEl = document.createElement('div');
-        filaEl.className = 'seat-row';
-
-        COLUMNAS.forEach(col => {
-          if (col === null) {
-            const pasillo = document.createElement('div');
-            pasillo.className = 'aisle';
-            pasillo.textContent = fila;
-            filaEl.appendChild(pasillo);
-            return;
-          }
-
-          const id = `${fila}${col}`;
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'seat';
-          btn.textContent = id;
-          btn.dataset.id = id;
-
-          if (OCUPADOS.has(id)) {
-            btn.disabled = true;
-            btn.setAttribute('aria-label', `Asiento ${id} ocupado`);
-          } else {
-            btn.setAttribute('aria-label', `Asiento ${id} disponible`);
-            btn.setAttribute('aria-pressed', 'false');
-            btn.addEventListener('click', () => alternarAsiento(id, btn));
-          }
-          filaEl.appendChild(btn);
-        });
-
-        mapa.appendChild(filaEl);
-      }
-    }
-
-    function alternarAsiento(id, btn) {
-      if (seleccionados.has(id)) {
-        seleccionados.delete(id);
-        btn.classList.remove('selected');
-        btn.setAttribute('aria-pressed', 'false');
-      } else {
-        seleccionados.add(id);
-        btn.classList.add('selected');
-        btn.setAttribute('aria-pressed', 'true');
-      }
-      actualizarResumen();
-    }
-
-    function ordenarAsientos(a, b) {
-      const na = parseInt(a, 10), nb = parseInt(b, 10);
-      return na - nb || a.localeCompare(b);
-    }
-
-    function actualizarResumen() {
-      const asientos = [...seleccionados].sort(ordenarAsientos);
-
-      lista.innerHTML = '';
-      asientos.forEach(id => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item d-flex justify-content-between px-0';
-        li.innerHTML = `<span>Asiento ${id}</span><span>$${PRECIO_ASIENTO.toFixed(2)}</span>`;
-        lista.appendChild(li);
-      });
-
-      sinSeleccion.classList.toggle('d-none', asientos.length > 0);
-      cantidadEl.textContent = asientos.length;
-      totalEl.textContent = '$' + (asientos.length * PRECIO_ASIENTO).toFixed(2);
-      btnContinuar.disabled = asientos.length === 0;
-      btnLimpiar.disabled = asientos.length === 0;
-    }
-
-    btnLimpiar.addEventListener('click', () => {
-      seleccionados.clear();
-      document.querySelectorAll('.seat.selected').forEach(b => {
-        b.classList.remove('selected');
-        b.setAttribute('aria-pressed', 'false');
-      });
-      actualizarResumen();
-    });
-
-    btnContinuar.addEventListener('click', () => {
-      // Aquí se conectará con el módulo de pago (siguiente issue).
-      const asientos = [...seleccionados].sort(ordenarAsientos);
-      console.log('Asientos para pago:', asientos);
-    });
-
-    construirMapa();
-    actualizarResumen();
   </script>
 </body>
 </html>
