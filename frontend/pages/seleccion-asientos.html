@@ -233,6 +233,22 @@
       btnContinuar.disabled = asientos.length === 0;
       btnLimpiar.disabled = asientos.length === 0;
     }
+        btnLimpiar.addEventListener('click', () => {
+      seleccionados.clear();
+      document.querySelectorAll('.seat.selected').forEach(b => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      actualizarResumen();
+    });
+
+    btnContinuar.addEventListener('click', () => {
+      const asientos = [...seleccionados].sort(ordenarAsientos);
+      console.log('Asientos listos para pago:', asientos);
+    });
+
+    construirMapa();
+    actualizarResumen();
   </script>
 </body>
 </html>
