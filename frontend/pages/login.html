@@ -42,7 +42,7 @@
                             <p class="text-muted">Ingresa a tu cuenta de MoviPass</p>
                         </div>
 
-                        <form>
+                        <form id="formLogin">
                             <!-- Campo de Correo -->
                             <div class="mb-3">
                                 <label for="emailInput" class="form-label fw-bold">Correo electrónico</label>
@@ -52,7 +52,12 @@
                             <!-- Campo de Contraseña -->
                             <div class="mb-4">
                                 <label for="passwordInput" class="form-label fw-bold">Contraseña</label>
-                                <input type="password" class="form-control form-control-lg" id="passwordInput" placeholder="********" required>
+                                <div class="input-group">
+                                    <input type="password" class="form-control form-control-lg" id="passwordInput" placeholder="********" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="btnTogglePass">
+                                        👁️
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Botón de Iniciar Sesión -->
@@ -84,5 +89,8 @@
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Lógica de Supabase para el Login -->
+    <script type="module" src="../js/login.js"></script>
 </body>
 </html>
