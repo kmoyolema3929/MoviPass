@@ -110,7 +110,7 @@
                 <span>Frente del bus</span>
                 <div class="driver" title="Conductor">&#128652;</div>
               </div>
-              <div id="mapaAsientos" aria-label="Mapa de asientos del bus"></div>
+             <div id="mapaAsientos" role="group" aria-label="Mapa de asientos del bus"></div>
             </div>
           </div>
         </div>
@@ -143,14 +143,16 @@
   </main>
 
   <script>
-    // --- Configuración (luego puede venir del backend) ---
+    // --- Configuración ---
     const PRECIO_ASIENTO = 12.5;
     const FILAS = 10;
     const COLUMNAS = ['A', 'B', null, 'C', 'D']; // null = pasillo
     const OCUPADOS = new Set(['1A', '2C', '2D', '4B', '5A', '5B', '7C', '8D', '9A', '10B']);
+    
+    // --- Estado de la compra ---
+    const seleccionados = new Set(); 
 
-    const seleccionados = new Set();
-
+    // --- Elementos del DOM ---
     const mapa = document.getElementById('mapaAsientos');
     const lista = document.getElementById('listaSeleccion');
     const sinSeleccion = document.getElementById('sinSeleccion');
@@ -182,27 +184,32 @@
           btn.textContent = id;
           btn.dataset.id = id;
 
+          // CRITERIO 2: Validar que no estén ocupados
           if (OCUPADOS.has(id)) {
             btn.disabled = true;
             btn.setAttribute('aria-label', `Asiento ${id} ocupado`);
+            btn.setAttribute('aria-disabled', 'true'); // <-- Mejora del líder
           } else {
             btn.setAttribute('aria-label', `Asiento ${id} disponible`);
             btn.setAttribute('aria-pressed', 'false');
+            // CRITERIO 1 y 4: Evento de clic
             btn.addEventListener('click', () => alternarAsiento(id, btn));
           }
           filaEl.appendChild(btn);
         });
-
         mapa.appendChild(filaEl);
       }
     }
 
+    // CRITERIO 1 y 4: Lógica para seleccionar y deseleccionar
     function alternarAsiento(id, btn) {
       if (seleccionados.has(id)) {
+        // Se deselecciona
         seleccionados.delete(id);
         btn.classList.remove('selected');
         btn.setAttribute('aria-pressed', 'false');
       } else {
+        // Se selecciona
         seleccionados.add(id);
         btn.classList.add('selected');
         btn.setAttribute('aria-pressed', 'true');
@@ -215,9 +222,11 @@
       return na - nb || a.localeCompare(b);
     }
 
+    // CRITERIO 3: Mostrar contador y resumen de compra
     function actualizarResumen() {
       const asientos = [...seleccionados].sort(ordenarAsientos);
-
+      
+      // Actualizar la lista visual
       lista.innerHTML = '';
       asientos.forEach(id => {
         const li = document.createElement('li');
@@ -226,13 +235,19 @@
         lista.appendChild(li);
       });
 
+      // Ocultar/Mostrar el mensaje de "Aún no has seleccionado"
       sinSeleccion.classList.toggle('d-none', asientos.length > 0);
+      
+      // Actualizar el contador y el total
       cantidadEl.textContent = asientos.length;
       totalEl.textContent = '$' + (asientos.length * PRECIO_ASIENTO).toFixed(2);
+      
+      // Habilitar/Deshabilitar botones
       btnContinuar.disabled = asientos.length === 0;
       btnLimpiar.disabled = asientos.length === 0;
     }
 
+    // Botón Limpiar
     btnLimpiar.addEventListener('click', () => {
       seleccionados.clear();
       document.querySelectorAll('.seat.selected').forEach(b => {
@@ -242,12 +257,13 @@
       actualizarResumen();
     });
 
+    // Botón Continuar
     btnContinuar.addEventListener('click', () => {
-      // Aquí se conectará con el módulo de pago (siguiente issue).
       const asientos = [...seleccionados].sort(ordenarAsientos);
-      console.log('Asientos para pago:', asientos);
+      console.log('Asientos listos para pago:', asientos);
     });
 
+    // Inicializar todo al cargar la página
     construirMapa();
     actualizarResumen();
   </script>
