@@ -162,6 +162,43 @@
     const btnLimpiar = document.getElementById('btnLimpiar');
 
     document.getElementById('precioUnitario').textContent = PRECIO_ASIENTO.toFixed(2);
+
+        function construirMapa() {
+      for (let fila = 1; fila <= FILAS; fila++) {
+        const filaEl = document.createElement('div');
+        filaEl.className = 'seat-row';
+
+        COLUMNAS.forEach(col => {
+          if (col === null) {
+            const pasillo = document.createElement('div');
+            pasillo.className = 'aisle';
+            pasillo.textContent = fila;
+            filaEl.appendChild(pasillo);
+            return;
+          }
+
+          const id = `${fila}${col}`;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'seat';
+          btn.textContent = id;
+          btn.dataset.id = id;
+
+          // CRITERIO 2: Validar que no estén ocupados
+          if (OCUPADOS.has(id)) {
+            btn.disabled = true;
+            btn.setAttribute('aria-label', `Asiento ${id} ocupado`);
+            btn.setAttribute('aria-disabled', 'true'); // Sugerencia del líder
+          } else {
+            btn.setAttribute('aria-label', `Asiento ${id} disponible`);
+            btn.setAttribute('aria-pressed', 'false');
+            btn.addEventListener('click', () => alternarAsiento(id, btn));
+          }
+          filaEl.appendChild(btn);
+        });
+        mapa.appendChild(filaEl);
+      }
+    }
   </script>
 </body>
 </html>
