@@ -216,6 +216,23 @@
       const na = parseInt(a, 10), nb = parseInt(b, 10);
       return na - nb || a.localeCompare(b);
     }
+        function actualizarResumen() {
+      const asientos = [...seleccionados].sort(ordenarAsientos);
+      
+      lista.innerHTML = '';
+      asientos.forEach(id => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between px-0';
+        li.innerHTML = `<span>Asiento ${id}</span><span>$${PRECIO_ASIENTO.toFixed(2)}</span>`;
+        lista.appendChild(li);
+      });
+
+      sinSeleccion.classList.toggle('d-none', asientos.length > 0);
+      cantidadEl.textContent = asientos.length;
+      totalEl.textContent = '$' + (asientos.length * PRECIO_ASIENTO).toFixed(2);
+      btnContinuar.disabled = asientos.length === 0;
+      btnLimpiar.disabled = asientos.length === 0;
+    }
   </script>
 </body>
 </html>
