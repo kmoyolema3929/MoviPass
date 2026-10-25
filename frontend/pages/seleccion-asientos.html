@@ -218,7 +218,8 @@
     }
 
     function ordenarAsientos(a, b) {
-      const na = parseInt(a, 10), nb = parseInt(b, 10);
+      const na = parseInt(a, 10);
+      const nb = parseInt(b, 10);
       return na - nb || a.localeCompare(b);
     }
 
