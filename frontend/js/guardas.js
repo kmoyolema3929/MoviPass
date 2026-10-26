@@ -17,8 +17,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  */
 export async function exigirRoles(
   rolesPermitidos,
-  rutaLogin = '/pages/login.html',
-  rutaSinAcceso = '/pages/sin-acceso.html'
+  rutaLogin = '/frontend/pages/login.html',
+  rutaSinAcceso = '/frontend/pages/sin-acceso.html'
 ) {
   const sesion = await obtenerSesion();
 
@@ -37,7 +37,7 @@ export async function exigirRoles(
 // Cierre de sesión y limpieza de credenciales
 export async function cerrarSesion() {
     await supabase.auth.signOut();
-    window.location.href = '../login.html'; // Ajusta la ruta si es necesario según la carpeta
+    window.location.href = '/frontend/pages/login.html'; // Ajusta la ruta si es necesario según la carpeta
 }
 
 // Escuchador global para cualquier botón que tenga el id "btnCerrarSesion"
