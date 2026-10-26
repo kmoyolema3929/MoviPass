@@ -37,3 +37,44 @@ function renderizarParadas() {
         `;
     });
 }
+
+// Manejar el envío del formulario para agregar una parada
+document.getElementById('formParada').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    if (!this.checkValidity()) {
+        e.stopPropagation();
+        this.classList.add('was-validated');
+        return;
+    }
+
+    const frecuenciaId = document.getElementById('selectFrecuencia').value;
+    const nombreParada = document.getElementById('nombreParada').value.trim();
+    const horaEstimada = document.getElementById('horaEstimada').value;
+
+    if (!frecuenciaId) {
+        alert('Por favor seleccione una frecuencia primero.');
+        return;
+    }
+
+    // Crear nueva parada simulada en memoria
+    const nuevaParada = {
+        id: Date.now(),
+        frecuenciaId: frecuenciaId,
+        nombre: nombreParada,
+        hora: horaEstimada
+    };
+
+    paradasMemoria.push(nuevaParada);
+
+    // Cerrar el modal, limpiar formulario y refrescar tabla
+    var modalElement = document.getElementById('modalParada');
+    var modalInstance = bootstrap.Modal.getInstance(modalElement);
+    if (modalInstance) {
+        modalInstance.hide();
+    }
+
+    this.reset();
+    this.classList.remove('was-validated');
+    renderizarParadas();
+});
