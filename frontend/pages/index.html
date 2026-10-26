@@ -44,10 +44,10 @@
             <div class="col-lg-10">
                 <div class="card shadow border-0 rounded-4">
                     <div class="card-body p-4">
-                        <form class="row g-3 align-items-end">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Origen</label>
-                                <select class="form-select">
+                        <form id="form-busqueda" class="row g-3 align-items-end"
+                                aria-label="Búsqueda de viajes">
+                                <label for="origen" class="form-label fw-bold">Origen</label>
+                                <select id="origen" class="form-select">
                                     <option selected>¿De dónde sales?</option>
                                     <option value="1">Ambato</option>
                                     <option value="2">Quito</option>
@@ -55,8 +55,8 @@
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold">Destino</label>
-                                <select class="form-select">
+                                <label for="destino" class="form-label fw-bold">Destino</label>
+                                <select id="destino" class="form-select">
                                     <option selected>¿A dónde vas?</option>
                                     <option value="1">Ambato</option>
                                     <option value="2">Quito</option>
@@ -64,8 +64,8 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fw-bold">Fecha de viaje</label>
-                                <input type="date" class="form-control">
+                                <label for="fecha" class="form-label fw-bold">Fecha de viaje</label>
+                                <input id="fecha" type="date" class="form-control">
                             </div>
                             <div class="col-md-1 d-grid">
                                 <button type="button" class="btn btn-primary" style="background-color: var(--primary-color); border: none;">
