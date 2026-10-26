@@ -3,6 +3,10 @@
 
 import { obtenerSesion, obtenerRol } from './auth.js';
 
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 /**
  * Exige que el usuario tenga uno de los roles permitidos.
  * Si no hay sesión, redirige al login.
@@ -29,3 +33,17 @@ export async function exigirRoles(
     window.location.href = rutaSinAcceso;
   }
 }
+
+// Cierre de sesión y limpieza de credenciales
+export async function cerrarSesion() {
+    await supabase.auth.signOut();
+    window.location.href = '../login.html'; // Ajusta la ruta si es necesario según la carpeta
+}
+
+// Escuchador global para cualquier botón que tenga el id "btnCerrarSesion"
+document.addEventListener('DOMContentLoaded', () => {
+    const btnCerrarSesion = document.getElementById('btnCerrarSesion');
+    if (btnCerrarSesion) {
+        btnCerrarSesion.addEventListener('click', cerrarSesion);
+    }
+});
