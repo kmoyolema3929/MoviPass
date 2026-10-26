@@ -43,12 +43,10 @@
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <div class="card shadow border-0 rounded-4">
-                    <div class="card-body p-4">
-                        <form id="form-busqueda" class="row g-3 align-items-end"
-                                aria-label="Búsqueda de viajes">
+                            <div class="col-md-4">
                                 <label for="origen" class="form-label fw-bold">Origen</label>
-                                <select id="origen" class="form-select">
-                                    <option selected>¿De dónde sales?</option>
+                                <select id="origen" name="origen" class="form-select" required>
+                                    <option value="" selected disabled>¿De dónde sales?</option>
                                     <option value="1">Ambato</option>
                                     <option value="2">Quito</option>
                                     <option value="3">Guayaquil</option>
@@ -56,8 +54,8 @@
                             </div>
                             <div class="col-md-4">
                                 <label for="destino" class="form-label fw-bold">Destino</label>
-                                <select id="destino" class="form-select">
-                                    <option selected>¿A dónde vas?</option>
+                                <select id="destino" name="destino" class="form-select" required>
+                                    <option value="" selected disabled>¿A dónde vas?</option>
                                     <option value="1">Ambato</option>
                                     <option value="2">Quito</option>
                                     <option value="3">Guayaquil</option>
