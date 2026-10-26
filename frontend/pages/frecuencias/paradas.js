@@ -78,3 +78,13 @@ document.getElementById('formParada').addEventListener('submit', function(e) {
     this.classList.remove('was-validated');
     renderizarParadas();
 });
+
+// Función para eliminar una parada por ID
+function eliminarParada(id) {
+    if (!confirm('¿Está seguro de que desea eliminar esta parada?')) {
+        return;
+    }
+
+    paradasMemoria = paradasMemoria.filter(p => p.id !== id);
+    renderizarParadas();
+}
