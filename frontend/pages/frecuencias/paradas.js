@@ -57,26 +57,36 @@ document.getElementById('formParada').addEventListener('submit', function(e) {
         return;
     }
 
-    // Crear nueva parada simulada en memoria
-    const nuevaParada = {
-        id: Date.now(),
-        frecuenciaId: frecuenciaId,
-        nombre: nombreParada,
-        hora: horaEstimada
-    };
+    const btnSubmit = this.querySelector('button[type="submit"]');
+    const textoOriginal = btnSubmit.textContent;
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Guardando...';
 
-    paradasMemoria.push(nuevaParada);
+    setTimeout(() => {
+        // Crear nueva parada simulada en memoria
+        const nuevaParada = {
+            id: Date.now(),
+            frecuenciaId: frecuenciaId,
+            nombre: nombreParada,
+            hora: horaEstimada
+        };
 
-    // Cerrar el modal, limpiar formulario y refrescar tabla
-    var modalElement = document.getElementById('modalParada');
-    var modalInstance = bootstrap.Modal.getInstance(modalElement);
-    if (modalInstance) {
-        modalInstance.hide();
-    }
+        paradasMemoria.push(nuevaParada);
 
-    this.reset();
-    this.classList.remove('was-validated');
-    renderizarParadas();
+        // Cerrar el modal, limpiar formulario y refrescar tabla
+        var modalElement = document.getElementById('modalParada');
+        var modalInstance = bootstrap.Modal.getInstance(modalElement);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+
+        this.reset();
+        this.classList.remove('was-validated');
+        renderizarParadas();
+
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = textoOriginal;
+    }, 300);
 });
 
 // Función para eliminar una parada por ID
