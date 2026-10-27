@@ -46,9 +46,17 @@
         <div class="card shadow border-0 rounded-4">
             <div class="card-body p-4">
                 <form id="form-busqueda"
-                      class="row g-3 align-items-end"
-                      aria-label="Búsqueda de viajes">
-
+                        class="row g-3 align-items-end"
+                        aria-label="Búsqueda de viajes"
+                        novalidate>
+                        <div class="col-12">
+                        <div id="errores-busqueda"
+                            class="alert alert-danger mb-0"
+                            role="alert"
+                            tabindex="-1"
+                            hidden>
+                        </div>
+                    </div>
                     <!-- Origen -->
                     <div class="col-12 col-md-6 col-lg-3">
                         <label for="origen" class="form-label fw-bold">Origen</label>
@@ -103,14 +111,7 @@
         </div>
     </footer>
 
-    <script>
-        // Usar la fecha local para evitar desfases con la zona horaria UTC.
-        const hoy = new Date();
-        const anio = hoy.getFullYear();
-        const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-        const dia = String(hoy.getDate()).padStart(2, '0');
-        document.getElementById('fecha').min = `${anio}-${mes}-${dia}`;
-    </script>
+   <script src="../js/busqueda.js"></script>
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
