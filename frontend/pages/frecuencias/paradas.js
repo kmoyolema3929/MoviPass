@@ -11,30 +11,61 @@ function renderizarParadas() {
     const frecuenciaId = document.getElementById('selectFrecuencia').value;
     const tbody = document.getElementById('tablaParadas');
 
+    // Limpieza segura del contenedor sin usar innerHTML
+    tbody.replaceChildren();
+
     if (!frecuenciaId) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">Seleccione una frecuencia para ver sus paradas.</td></tr>';
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.className = 'text-center py-3 text-muted';
+        td.textContent = 'Seleccione una frecuencia para ver sus paradas.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
         return;
     }
 
     const filtradas = paradasMemoria.filter(p => p.frecuenciaId === frecuenciaId);
 
     if (filtradas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No hay paradas registradas para esta frecuencia.</td></tr>';
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.className = 'text-center py-3 text-muted';
+        td.textContent = 'No hay paradas registradas para esta frecuencia.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
         return;
     }
 
-    tbody.innerHTML = '';
     filtradas.forEach((item, index) => {
-        tbody.innerHTML += `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${item.nombre}</td>
-                <td>${item.hora}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarParada(${item.id})">Eliminar</button>
-                </td>
-            </tr>
-        `;
+        const tr = document.createElement('tr');
+
+        const tdIndex = document.createElement('td');
+        tdIndex.textContent = index + 1;
+
+        const tdNombre = document.createElement('td');
+        tdNombre.textContent = item.nombre;
+
+        const tdHora = document.createElement('td');
+        tdHora.textContent = item.hora;
+
+        const tdAcciones = document.createElement('td');
+        tdAcciones.className = 'text-center';
+
+        const btnEliminar = document.createElement('button');
+        btnEliminar.className = 'btn btn-sm btn-outline-danger';
+        btnEliminar.textContent = 'Eliminar';
+        btnEliminar.onclick = () => eliminarParada(item.id);
+
+        tdAcciones.appendChild(btnEliminar);
+
+        tr.appendChild(tdIndex);
+        tr.appendChild(tdNombre);
+        tr.appendChild(tdHora);
+        tr.appendChild(tdAcciones);
+
+        tbody.appendChild(tr);
     });
 }
 
@@ -63,7 +94,6 @@ document.getElementById('formParada').addEventListener('submit', function(e) {
     btnSubmit.textContent = 'Guardando...';
 
     setTimeout(() => {
-        // Crear nueva parada simulada en memoria
         const nuevaParada = {
             id: Date.now(),
             frecuenciaId: frecuenciaId,
@@ -73,7 +103,6 @@ document.getElementById('formParada').addEventListener('submit', function(e) {
 
         paradasMemoria.push(nuevaParada);
 
-        // Cerrar el modal, limpiar formulario y refrescar tabla
         var modalElement = document.getElementById('modalParada');
         var modalInstance = bootstrap.Modal.getInstance(modalElement);
         if (modalInstance) {
