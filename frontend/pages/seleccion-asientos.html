@@ -228,11 +228,19 @@
       const asientos = [...seleccionados].sort(ordenarAsientos);
       
       // Actualizar la lista visual
-      lista.innerHTML = '';
-      asientos.forEach(id => {
+      lista.replaceChildren();
+            asientos.forEach(id => {
         const li = document.createElement('li');
         li.className = 'list-group-item d-flex justify-content-between px-0';
-        li.innerHTML = `<span>Asiento ${id}</span><span>$${PRECIO_ASIENTO.toFixed(2)}</span>`;
+        
+        const spanAsiento = document.createElement('span');
+        spanAsiento.textContent = `Asiento ${id}`;
+        
+        const spanPrecio = document.createElement('span');
+        spanPrecio.textContent = `$${PRECIO_ASIENTO.toFixed(2)}`;
+        
+        li.appendChild(spanAsiento);
+        li.appendChild(spanPrecio);
         lista.appendChild(li);
       });
 
@@ -261,6 +269,7 @@
     // Botón Continuar
     btnContinuar.addEventListener('click', () => {
       const asientos = [...seleccionados].sort(ordenarAsientos);
+      sessionStorage.setItem('asientosSeleccionados', JSON.stringify(asientos)); 
       console.log('Asientos listos para pago:', asientos);
     });
 
