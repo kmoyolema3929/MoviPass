@@ -20,23 +20,9 @@
     <h1 class="h3 mb-4">Resumen de tu compra</h1>
 
     <div class="row g-4">
+      <!-- Columna Izquierda -->
       <div class="col-12 col-lg-7">
         <!-- Tarjeta de Información del Viaje -->
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-white fw-semibold">Detalles del Viaje</div>
-          <div class="card-body">
-            <p class="mb-1"><strong>Ruta:</strong> Quito → Guayaquil</p>
-            <p class="mb-1"><strong>Fecha:</strong> 26 de Octubre, 2026</p>
-            <p class="mb-0"><strong>Hora de salida:</strong> 08:00 AM</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-</body>
-      <div class="col-12 col-lg-7">
-        <!-- Tarjeta de Información del Viaje (ya la tenías) -->
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-white fw-semibold">Detalles del Viaje</div>
           <div class="card-body">
@@ -76,4 +62,27 @@
           </div>
         </div>
       </div>
+
+      <!-- Columna Derecha: Resumen de Asientos y Total -->
+      <div class="col-12 col-lg-5">
+        <div class="card shadow-sm sticky-lg-top" style="top: 1rem;">
+          <div class="card-header fw-semibold">Asientos Seleccionados</div>
+          <div class="card-body">
+            <ul class="list-group list-group-flush mb-3" id="listaAsientosResumen">
+              <li class="list-group-item d-flex justify-content-between px-0">
+                <span>Asiento 1C</span>
+                <span>$12.50</span>
+              </li>
+            </ul>
+            <div class="d-flex justify-content-between fs-5 mt-3 border-top pt-3">
+              <span>Total a pagar</span>
+              <strong class="text-primary" id="totalPagar">$12.50</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</body>
 </html>
