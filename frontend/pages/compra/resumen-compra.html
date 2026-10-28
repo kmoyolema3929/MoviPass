@@ -35,4 +35,45 @@
   </main>
 
 </body>
+      <div class="col-12 col-lg-7">
+        <!-- Tarjeta de Información del Viaje (ya la tenías) -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white fw-semibold">Detalles del Viaje</div>
+          <div class="card-body">
+            <p class="mb-1"><strong>Ruta:</strong> Quito → Guayaquil</p>
+            <p class="mb-1"><strong>Fecha:</strong> 26 de Octubre, 2026</p>
+            <p class="mb-0"><strong>Hora de salida:</strong> 08:00 AM</p>
+          </div>
+        </div>
+
+        <!-- Formulario de Pasajeros -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-white fw-semibold">Datos de los Pasajeros</div>
+          <div class="card-body">
+            <form id="formPasajeros" class="needs-validation" novalidate>
+              <div class="mb-4 p-3 border rounded bg-light">
+                <h6 class="mb-3 text-primary">Pasajero para Asiento 1C</h6>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="nombre1" class="form-label">Nombres</label>
+                    <input type="text" class="form-control" id="nombre1" required minlength="3">
+                    <div class="invalid-feedback">Ingrese los nombres.</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="apellido1" class="form-label">Apellidos</label>
+                    <input type="text" class="form-control" id="apellido1" required minlength="3">
+                    <div class="invalid-feedback">Ingrese los apellidos.</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="cedula1" class="form-label">Cédula</label>
+                    <input type="text" class="form-control" id="cedula1" required pattern="\d{10}">
+                    <div class="invalid-feedback">Ingrese una cédula válida de 10 dígitos.</div>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success w-100">Continuar al Pago</button>
+            </form>
+          </div>
+        </div>
+      </div>
 </html>
