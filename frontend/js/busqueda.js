@@ -59,6 +59,11 @@ formulario.addEventListener('submit', (evento) => {
         return;
     }
 
-    // La futura consulta a Supabase debe ejecutarse aquí,
-    // después de superar todas las validaciones.
+    // Acción temporal mientras se conecta Supabase.
+    const nombreOrigen = origen.options[origen.selectedIndex].text;
+    const nombreDestino = destino.options[destino.selectedIndex].text;
+
+    alert(`Buscando viajes de ${nombreOrigen} a ${nombreDestino} para el día ${fecha.value}`);
+
+    // Aquí irá la futura consulta a Supabase en el Issue #41.
 });
