@@ -1,5 +1,6 @@
-// Crea el cliente de Supabase usando la configuración local.
-// config.js no se sube al repositorio.
+// frontend/js/supabaseClient.js
+// Crea el cliente de Supabase usando las credenciales de config.js.
+// config.js NO se sube al repositorio (está en .gitignore).
 // Se usa config.example.js como plantilla.
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
