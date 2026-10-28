@@ -17,3 +17,61 @@ body {
 main {
   flex: 1; /* Permite que el footer se quede siempre abajo */
 }
+
+/* Tarjeta del formulario de búsqueda */
+.tarjeta-busqueda {
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 1.25rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(33, 37, 41, 0.1);
+}
+
+.tarjeta-busqueda .card-body {
+  padding: 2rem;
+}
+
+/* Espaciado para pantallas pequeñas */
+@media (max-width: 575.98px) {
+  .tarjeta-busqueda .card-body {
+    padding: 1.25rem;
+  }
+}
+
+/* Campos del formulario de búsqueda */
+#form-busqueda .form-label {
+  color: var(--text-dark);
+  margin-bottom: 0.5rem;
+}
+
+#form-busqueda .form-select,
+#form-busqueda .form-control {
+  min-height: 3rem;
+  min-width: 0;
+  border-radius: 0.75rem;
+}
+
+#form-busqueda .form-select:focus,
+#form-busqueda .form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Botón con los colores del proyecto */
+#buscar-viajes {
+  min-height: 3rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+#buscar-viajes:hover,
+#buscar-viajes:active {
+  background-color: var(--text-dark);
+  border-color: var(--text-dark);
+}
+
+#buscar-viajes:focus-visible {
+  outline: 3px solid var(--text-dark);
+  outline-offset: 3px;
+}
