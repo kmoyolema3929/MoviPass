@@ -1,21 +1,58 @@
 import { supabase } from "./supabaseClient.js";
 import { obtenerSesion, obtenerRol } from "./auth.js";
 
+const columnas = "id, placa, chasis, carroceria, cooperativa_id, tipo_bus";
+
 let cooperativas = [];
 let buses = [];
+let ocupado = false;
+let accesoPermitido = false;
 
 const tabla = document.getElementById("tablaBuses");
 const formulario = document.getElementById("formBus");
+const busId = document.getElementById("busId");
+const placa = document.getElementById("placa");
+const chasis = document.getElementById("chasis");
+const carroceria = document.getElementById("carroceria");
 const cooperativa = document.getElementById("cooperativa");
+const tipoBus = document.getElementById("tipoBus");
 const mensaje = document.getElementById("mensaje");
+const tituloModal = document.getElementById("tituloModalBus");
 const botonNuevo = document.getElementById("btnNuevoBus");
 const botonGuardar = document.getElementById("btnGuardarBus");
 const elementoModal = document.getElementById("modalBus");
 const modal = new bootstrap.Modal(elementoModal);
 
+const errorFormulario = document.createElement("div");
+errorFormulario.className = "alert alert-danger d-none";
+errorFormulario.setAttribute("role", "alert");
+formulario.querySelector(".modal-body").prepend(errorFormulario);
+
 function mostrarMensaje(texto, tipo = "info") {
     mensaje.textContent = texto;
     mensaje.className = `alert alert-${tipo}`;
+}
+
+function cambiarOcupado(valor) {
+    ocupado = valor;
+
+    botonNuevo.disabled =
+        valor || !accesoPermitido || cooperativas.length === 0;
+
+    botonGuardar.disabled =
+        valor || !accesoPermitido || cooperativas.length === 0;
+
+    botonGuardar.textContent = valor
+        ? "Procesando..."
+        : busId.value ? "Actualizar bus" : "Guardar bus";
+
+    formulario.querySelectorAll("input, select").forEach(function (campo) {
+        campo.disabled = valor;
+    });
+
+    tabla.querySelectorAll("button").forEach(function (boton) {
+        boton.disabled = valor;
+    });
 }
 
 function mostrarEstadoTabla(texto) {
@@ -48,6 +85,43 @@ function llenarCooperativas() {
     });
 }
 
+function prepararFormulario() {
+    formulario.reset();
+    errorFormulario.classList.add("d-none");
+    formulario.classList.remove("was-validated");
+
+    busId.value = "";
+    placa.setCustomValidity("");
+    cooperativa.setCustomValidity("");
+
+    tituloModal.textContent = "Nuevo bus";
+    botonGuardar.textContent = "Guardar bus";
+}
+
+function abrirEdicion(id) {
+    if (ocupado || !accesoPermitido) return;
+
+    const bus = buses.find(function (item) {
+        return item.id === id;
+    });
+
+    if (!bus) return;
+
+    prepararFormulario();
+
+    busId.value = bus.id;
+    placa.value = bus.placa;
+    chasis.value = bus.chasis;
+    carroceria.value = bus.carroceria;
+    cooperativa.value = bus.cooperativa_id;
+    tipoBus.value = bus.tipo_bus;
+
+    tituloModal.textContent = "Editar bus";
+    botonGuardar.textContent = "Actualizar bus";
+
+    modal.show();
+}
+
 function mostrarBuses() {
     if (buses.length === 0) {
         mostrarEstadoTabla("No hay buses registrados.");
@@ -67,9 +141,7 @@ function mostrarBuses() {
             bus.placa,
             bus.chasis,
             bus.carroceria,
-            cooperativaBus
-                ? cooperativaBus.nombre
-                : "Cooperativa no disponible",
+            cooperativaBus ? cooperativaBus.nombre : "Cooperativa no disponible",
             bus.tipo_bus
         ];
 
@@ -83,8 +155,22 @@ function mostrarBuses() {
         });
 
         const acciones = document.createElement("td");
-        acciones.textContent = "—";
+        const botonEditar = document.createElement("button");
 
+        botonEditar.type = "button";
+        botonEditar.className = "btn btn-outline-primary btn-sm";
+        botonEditar.textContent = "Editar";
+
+        botonEditar.setAttribute(
+            "aria-label",
+            `Editar bus con placa ${bus.placa}`
+        );
+
+        botonEditar.addEventListener("click", function () {
+            abrirEdicion(bus.id);
+        });
+
+        acciones.appendChild(botonEditar);
         fila.appendChild(acciones);
         tabla.appendChild(fila);
     });
@@ -102,19 +188,12 @@ async function cargarDatos() {
 
         supabase
             .from("buses")
-            .select(
-                "id, placa, chasis, carroceria, cooperativa_id, tipo_bus"
-            )
+            .select(columnas)
             .order("placa")
     ]);
 
-    if (respuestaCooperativas.error) {
-        throw respuestaCooperativas.error;
-    }
-
-    if (respuestaBuses.error) {
-        throw respuestaBuses.error;
-    }
+    if (respuestaCooperativas.error) throw respuestaCooperativas.error;
+    if (respuestaBuses.error) throw respuestaBuses.error;
 
     cooperativas = respuestaCooperativas.data ?? [];
     buses = respuestaBuses.data ?? [];
@@ -123,7 +202,6 @@ async function cargarDatos() {
     mostrarBuses();
 
     mensaje.classList.add("d-none");
-    botonNuevo.disabled = cooperativas.length === 0;
 
     if (cooperativas.length === 0) {
         mostrarMensaje(
@@ -133,29 +211,127 @@ async function cargarDatos() {
     }
 }
 
+async function guardarBus(evento) {
+    evento.preventDefault();
+
+    if (ocupado || !accesoPermitido) return;
+
+    errorFormulario.classList.add("d-none");
+
+    const idActual = busId.value;
+
+    placa.value = placa.value.trim().toUpperCase();
+    chasis.value = chasis.value.trim();
+    carroceria.value = carroceria.value.trim();
+
+    placa.setCustomValidity("");
+    cooperativa.setCustomValidity("");
+
+    const placaDuplicada = buses.some(function (bus) {
+        return bus.placa === placa.value && bus.id !== idActual;
+    });
+
+    if (placaDuplicada) {
+        placa.setCustomValidity("Ya existe un bus con esta placa.");
+    }
+
+    const cooperativaValida = cooperativas.some(function (item) {
+        return item.id === cooperativa.value;
+    });
+
+    if (!cooperativaValida) {
+        cooperativa.setCustomValidity("Selecciona una cooperativa registrada.");
+    }
+
+    formulario.classList.add("was-validated");
+
+    if (!formulario.checkValidity()) {
+        formulario.reportValidity();
+        return;
+    }
+
+    const datos = {
+        placa: placa.value,
+        chasis: chasis.value,
+        carroceria: carroceria.value,
+        cooperativa_id: cooperativa.value,
+        tipo_bus: tipoBus.value
+    };
+
+    cambiarOcupado(true);
+
+    let guardado = false;
+
+    try {
+        const consulta = idActual
+            ? supabase.from("buses").update(datos).eq("id", idActual)
+            : supabase.from("buses").insert(datos);
+
+        const { data, error } = await consulta.select(columnas).single();
+
+        if (error) throw error;
+
+        buses = buses.filter(function (bus) {
+            return bus.id !== data.id;
+        });
+
+        buses.push(data);
+
+        buses.sort(function (a, b) {
+            return a.placa.localeCompare(b.placa, "es");
+        });
+
+        mostrarBuses();
+
+        mostrarMensaje(
+            idActual ? "Bus actualizado correctamente." : "Bus registrado correctamente.",
+            "success"
+        );
+
+        guardado = true;
+    } catch (error) {
+        console.error("Error al guardar el bus:", error);
+
+        errorFormulario.textContent = error.code === "23505"
+            ? "Ya existe un bus con esta placa."
+            : "No se pudo guardar el bus. Revisa tu conexión y tus permisos.";
+
+        errorFormulario.classList.remove("d-none");
+    } finally {
+        cambiarOcupado(false);
+    }
+
+    if (guardado) modal.hide();
+}
+
 botonNuevo.addEventListener("click", function () {
-    formulario.reset();
-    formulario.classList.remove("was-validated");
+    if (ocupado || !accesoPermitido || cooperativas.length === 0) return;
 
-    document.getElementById("busId").value = "";
-    document.getElementById("tituloModalBus").textContent = "Nuevo bus";
-
+    prepararFormulario();
     modal.show();
 });
 
-elementoModal.addEventListener("shown.bs.modal", function () {
-    document.getElementById("placa").focus();
+placa.addEventListener("input", function () {
+    placa.setCustomValidity("");
 });
 
-// La creación y la edición se implementarán en el siguiente commit.
-formulario.addEventListener("submit", function (evento) {
-    evento.preventDefault();
+cooperativa.addEventListener("change", function () {
+    cooperativa.setCustomValidity("");
 });
+
+elementoModal.addEventListener("shown.bs.modal", function () {
+    placa.focus();
+});
+
+elementoModal.addEventListener("hide.bs.modal", function (evento) {
+    if (ocupado) evento.preventDefault();
+});
+
+elementoModal.addEventListener("hidden.bs.modal", prepararFormulario);
+formulario.addEventListener("submit", guardarBus);
 
 async function iniciar() {
-    botonNuevo.disabled = true;
-    botonGuardar.disabled = true;
-
+    cambiarOcupado(true);
     mostrarEstadoTabla("Comprobando acceso...");
 
     try {
@@ -173,8 +349,12 @@ async function iniciar() {
             return;
         }
 
+        accesoPermitido = true;
+
         await cargarDatos();
     } catch (error) {
+        accesoPermitido = false;
+
         console.error("Error al cargar buses:", error);
 
         mostrarMensaje(
@@ -183,6 +363,8 @@ async function iniciar() {
         );
 
         mostrarEstadoTabla("No se pudo cargar el listado de buses.");
+    } finally {
+        cambiarOcupado(false);
     }
 }
 
