@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoviPass | Selección de asientos</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .bus {
+      max-width: 340px;
+      margin: 0 auto;
+      padding: 1rem 1.25rem 1.5rem;
+      border: 3px solid #adb5bd;
+      border-radius: 2rem 2rem 1rem 1rem;
+      background: #f8f9fa;
+    }
+    .bus-front {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: .75rem;
+      margin-bottom: .75rem;
+      border-bottom: 2px dashed #ced4da;
+      font-size: .85rem;
+      color: #6c757d;
+    }
+    .driver {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid #6c757d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+    .seat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 28px 1fr 1fr;
+      gap: .5rem;
+      margin-bottom: .5rem;
+      align-items: center;
+    }
+    .aisle {
+      text-align: center;
+      font-size: .7rem;
+      color: #adb5bd;
+    }
+    .seat {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      border-radius: .5rem .5rem .25rem .25rem;
+      border: 2px solid #198754;
+      background: #fff;
+      color: #198754;
+      font-weight: 600;
+      font-size: .8rem;
+      padding: 0;
+      transition: transform .1s, background-color .15s;
+    }
+    .seat:hover:not(:disabled) { transform: scale(1.08); background: #d1e7dd; }
+    .seat:focus-visible { outline: 3px solid #0d6efd; outline-offset: 2px; }
+    .seat.selected { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+    .seat:disabled {
+      background: #dee2e6;
+      border-color: #adb5bd;
+      color: #868e96;
+      cursor: not-allowed;
+    }
+    .legend-box {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 2px solid;
+      vertical-align: middle;
+      margin-right: .35rem;
+    }
+    .legend-free { border-color: #198754; background: #fff; }
+    .legend-selected { border-color: #0d6efd; background: #0d6efd; }
+    .legend-occupied { border-color: #adb5bd; background: #dee2e6; }
+  </style>
+</head>
+<body class="bg-body-tertiary">
+
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container">
+      <span class="navbar-brand fw-bold">MoviPass</span>
+      <span class="navbar-text small">Compra de boletos</span>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <h1 class="h3 mb-1">Selecciona tus asientos</h1>
+    <p class="text-secondary mb-4">Quito → Guayaquil · Salida 08:00 · Precio por asiento: $<span id="precioUnitario"></span></p>
+
+    <div class="row g-4">
+      <!-- Estructura del bus -->
+      <div class="col-12 col-lg-7">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-center gap-3 mb-3 small">
+              <span><span class="legend-box legend-free"></span>Disponible</span>
+              <span><span class="legend-box legend-selected"></span>Seleccionado</span>
+              <span><span class="legend-box legend-occupied"></span>Ocupado</span>
+            </div>
+
+            <div class="bus">
+              <div class="bus-front">
+                <span>Frente del bus</span>
+                <div class="driver" title="Conductor">&#128652;</div>
+              </div>
+              <div id="mapaAsientos" aria-label="Mapa de asientos del bus"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen -->
+      <div class="col-12 col-lg-5">
+        <div class="card shadow-sm sticky-lg-top" style="top: 1rem;">
+          <div class="card-header fw-semibold">Resumen de tu compra</div>
+          <div class="card-body">
+            <p class="text-secondary mb-2" id="sinSeleccion">Aún no has seleccionado asientos.</p>
+            <ul class="list-group list-group-flush mb-3" id="listaSeleccion"></ul>
+
+            <div class="d-flex justify-content-between mb-1">
+              <span>Asientos seleccionados</span>
+              <strong id="cantidad">0</strong>
+            </div>
+            <div class="d-flex justify-content-between fs-5">
+              <span>Total a pagar</span>
+              <strong class="text-primary" id="total">$0.00</strong>
+            </div>
+          </div>
+          <div class="card-footer d-grid gap-2">
+            <button type="button" class="btn btn-primary" id="btnContinuar" disabled>Continuar al pago</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLimpiar" disabled>Limpiar selección</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // --- Configuración (luego puede venir del backend) ---
+    const PRECIO_ASIENTO = 12.5;
+    const FILAS = 10;
+    const COLUMNAS = ['A', 'B', null, 'C', 'D']; // null = pasillo
+    const OCUPADOS = new Set(['1A', '2C', '2D', '4B', '5A', '5B', '7C', '8D', '9A', '10B']);
+
+    const seleccionados = new Set();
+
+    const mapa = document.getElementById('mapaAsientos');
+    const lista = document.getElementById('listaSeleccion');
+    const sinSeleccion = document.getElementById('sinSeleccion');
+    const cantidadEl = document.getElementById('cantidad');
+    const totalEl = document.getElementById('total');
+    const btnContinuar = document.getElementById('btnContinuar');
+    const btnLimpiar = document.getElementById('btnLimpiar');
+
+    document.getElementById('precioUnitario').textContent = PRECIO_ASIENTO.toFixed(2);
+
+    function construirMapa() {
+      for (let fila = 1; fila <= FILAS; fila++) {
+        const filaEl = document.createElement('div');
+        filaEl.className = 'seat-row';
+
+        COLUMNAS.forEach(col => {
+          if (col === null) {
+            const pasillo = document.createElement('div');
+            pasillo.className = 'aisle';
+            pasillo.textContent = fila;
+            filaEl.appendChild(pasillo);
+            return;
+          }
+
+          const id = `${fila}${col}`;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'seat';
+          btn.textContent = id;
+          btn.dataset.id = id;
+
+          if (OCUPADOS.has(id)) {
+            btn.disabled = true;
+            btn.setAttribute('aria-label', `Asiento ${id} ocupado`);
+          } else {
+            btn.setAttribute('aria-label', `Asiento ${id} disponible`);
+            btn.setAttribute('aria-pressed', 'false');
+            btn.addEventListener('click', () => alternarAsiento(id, btn));
+          }
+          filaEl.appendChild(btn);
+        });
+
+        mapa.appendChild(filaEl);
+      }
+    }
+
+    function alternarAsiento(id, btn) {
+      if (seleccionados.has(id)) {
+        seleccionados.delete(id);
+        btn.classList.remove('selected');
+        btn.setAttribute('aria-pressed', 'false');
+      } else {
+        seleccionados.add(id);
+        btn.classList.add('selected');
+        btn.setAttribute('aria-pressed', 'true');
+      }
+      actualizarResumen();
+    }
+
+    function ordenarAsientos(a, b) {
+      const na = parseInt(a, 10), nb = parseInt(b, 10);
+      return na - nb || a.localeCompare(b);
+    }
+
+    function actualizarResumen() {
+      const asientos = [...seleccionados].sort(ordenarAsientos);
+
+      lista.innerHTML = '';
+      asientos.forEach(id => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between px-0';
+        li.innerHTML = `<span>Asiento ${id}</span><span>$${PRECIO_ASIENTO.toFixed(2)}</span>`;
+        lista.appendChild(li);
+      });
+
+      sinSeleccion.classList.toggle('d-none', asientos.length > 0);
+      cantidadEl.textContent = asientos.length;
+      totalEl.textContent = '$' + (asientos.length * PRECIO_ASIENTO).toFixed(2);
+      btnContinuar.disabled = asientos.length === 0;
+      btnLimpiar.disabled = asientos.length === 0;
+    }
+
+    btnLimpiar.addEventListener('click', () => {
+      seleccionados.clear();
+      document.querySelectorAll('.seat.selected').forEach(b => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      actualizarResumen();
+    });
+
+    btnContinuar.addEventListener('click', () => {
+      // Aquí se conectará con el módulo de pago (siguiente issue).
+      const asientos = [...seleccionados].sort(ordenarAsientos);
+      console.log('Asientos para pago:', asientos);
+    });
+
+    construirMapa();
+    actualizarResumen();
+  </script>
+</body>
+</html>

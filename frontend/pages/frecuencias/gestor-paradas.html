@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Paradas Intermedias - MoviPass</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>Gestión de Paradas Intermedias</h2>
+                <p class="text-muted mb-0">Asignación de paradas y horarios estimados por frecuencia</p>
+            </div>
+            <!-- Botón para Nueva Parada -->
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalParada">
+                + Nueva Parada
+            </button>
+        </div>
+
+        <!-- Selector de Frecuencia -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <label for="selectFrecuencia" class="form-label fw-bold">Seleccionar Frecuencia:</label>
+                <select class="form-select" id="selectFrecuencia">
+                    <option value="" selected disabled>-- Seleccione una frecuencia --</option>
+                    <option value="1">Ambato - Quito (08:00 AM)</option>
+                    <option value="2">Ambato - Guayaquil (10:30 AM)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Tabla de Paradas -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">Paradas Registradas</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre de Parada</th>
+                                <th>Hora Estimada</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaParadas">
+                            <tr>
+                                <td colspan="4" class="text-center py-3 text-muted">Seleccione una frecuencia para ver sus paradas.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Agregar Parada -->
+    <div class="modal fade" id="modalParada" tabindex="-1" aria-labelledby="modalParadaLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalParadaLabel">Agregar Nueva Parada</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formParada" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="nombreParada" class="form-label">Nombre de la Parada</label>
+                            <input type="text" class="form-control" id="nombreParada" placeholder="Ej. Terminal Latacunga" required minlength="3">
+                            <div class="invalid-feedback">Ingrese un nombre válido para la parada.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="horaEstimada" class="form-label">Hora Estimada</label>
+                            <input type="time" class="form-control" id="horaEstimada" required>
+                            <div class="invalid-feedback">Seleccione la hora estimada.</div>
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-success">Guardar Parada</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="paradas.js"></script>
+</body>
+</html>
