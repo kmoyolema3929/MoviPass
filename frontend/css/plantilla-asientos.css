@@ -1,0 +1,155 @@
+.plantilla-bus {
+    width: 100%;
+    max-width: 22rem;
+    margin: 0 auto;
+    padding: 1rem;
+    background-color: var(--bg-light);
+    border: 3px solid #adb5bd;
+    border-radius: 2rem 2rem 1rem 1rem;
+}
+
+.plantilla-frente {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px dashed #adb5bd;
+}
+
+.plantilla-fila {
+    display: grid;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+
+.plantilla-asiento {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    min-width: 0;
+    min-height: 3.5rem;
+    padding: 0.35rem 0.1rem;
+    background-color: #ffffff;
+    color: #084298;
+    border: 2px solid var(--primary-color);
+    border-bottom-width: 6px;
+    border-radius: 0.8rem 0.8rem 0.35rem 0.35rem;
+    cursor: pointer;
+}
+
+.plantilla-asiento small {
+    font-size: 0.6rem;
+}
+
+.plantilla-asiento strong {
+    font-size: 1rem;
+}
+
+.plantilla-asiento:hover {
+    background-color: #e7f1ff;
+}
+
+.plantilla-asiento:focus-visible {
+    outline: 3px solid #212529;
+    outline-offset: 3px;
+}
+
+.plantilla-asiento[aria-pressed="true"] {
+    background-color: #146c43;
+    color: #ffffff;
+    border-color: #0f5132;
+}
+
+.plantilla-asiento[aria-pressed="true"]::after {
+    content: "✓";
+    position: absolute;
+    top: 0;
+    right: 0.15rem;
+    font-size: 0.75rem;
+}
+
+.plantilla-muestra {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.25rem;
+    vertical-align: middle;
+    background-color: #ffffff;
+    border: 2px solid var(--primary-color);
+    border-radius: 0.2rem;
+}
+
+.plantilla-muestra-elegido {
+    background-color: #146c43;
+    border-color: #0f5132;
+}
+
+/* Distribución de las vistas por piso. */
+.plantilla-mapas {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.plantilla-piso {
+    width: 100%;
+    min-width: 0;
+    max-width: 26rem;
+    margin: 0 auto;
+}
+
+.plantilla-piso[hidden] {
+    display: none;
+}
+
+/* Botones para cambiar de piso. */
+.plantilla-pisos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.plantilla-pisos button {
+    flex: 1 1 auto;
+    min-height: 44px;
+}
+
+.plantilla-pisos button[aria-pressed="true"] {
+    background-color: var(--primary-color);
+    color: #ffffff;
+}
+
+#estadoSeleccion {
+    overflow-wrap: anywhere;
+}
+
+/* En pantallas amplias pueden verse ambos pisos juntos. */
+@media (min-width: 768px) {
+    .plantilla-mapas[data-vista="ambos"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Adaptación para celulares. */
+@media (max-width: 575.98px) {
+    .plantilla-bus {
+        padding: 0.65rem;
+    }
+
+    .plantilla-fila {
+        gap: 0.3rem;
+    }
+
+    .plantilla-asiento {
+        min-height: 3.5rem;
+        touch-action: manipulation;
+    }
+}

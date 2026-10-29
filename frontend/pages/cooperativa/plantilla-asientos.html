@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Plantilla de asientos - MoviPass</title>
 
     <link
@@ -10,7 +11,9 @@
         rel="stylesheet"
     >
     <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/plantilla-asientos.css">
 </head>
+
 <body>
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
@@ -32,26 +35,25 @@
             class="alert alert-info"
             role="status"
             aria-live="polite"
-            aria-atomic="true"
         >
             Comprobando acceso...
         </div>
 
         <div class="row justify-content-center">
-            <div class="col-12 col-lg-8">
+            <div class="col-12 col-xl-10">
                 <section
                     class="card shadow-sm border-0"
                     aria-labelledby="tituloConfiguracion"
                 >
                     <div class="card-body p-3 p-md-4">
-                        <h2 class="h5 mb-4" id="tituloConfiguracion">
+                        <h2 id="tituloConfiguracion" class="h5 mb-4">
                             Configuración del bus
                         </h2>
 
                         <form id="formPlantilla" novalidate>
                             <fieldset id="configuracion" disabled>
                                 <legend class="visually-hidden">
-                                    Bus y dimensiones de la plantilla
+                                    Bus y distribución de asientos
                                 </legend>
 
                                 <div class="mb-3">
@@ -65,9 +67,7 @@
                                         class="form-select"
                                         required
                                     >
-                                        <option value="">
-                                            Selecciona un bus
-                                        </option>
+                                        <option value="">Selecciona un bus</option>
                                     </select>
 
                                     <div class="invalid-feedback">
@@ -75,65 +75,206 @@
                                     </div>
                                 </div>
 
-                                <div class="row g-3">
-                                    <div class="col-12 col-sm-6">
-                                        <label for="filas" class="form-label">
-                                            Número de filas
-                                        </label>
+                                <div class="mb-3">
+                                    <label for="numeroPisos" class="form-label">
+                                        Número de pisos
+                                    </label>
 
-                                        <input
-                                            type="number"
-                                            id="filas"
-                                            name="filas"
-                                            class="form-control"
-                                            min="1"
-                                            max="30"
-                                            step="1"
-                                            value="10"
-                                            aria-describedby="ayudaFilas"
-                                            required
-                                        >
+                                    <select
+                                        id="numeroPisos"
+                                        name="numeroPisos"
+                                        class="form-select"
+                                        required
+                                    >
+                                        <option value="1">1 piso</option>
+                                        <option value="2">2 pisos</option>
+                                    </select>
 
-                                        <div id="ayudaFilas" class="form-text">
-                                            Entre 1 y 30 filas.
-                                        </div>
-
-                                        <div class="invalid-feedback">
-                                            Ingresa un número entero entre 1 y 30.
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12 col-sm-6">
-                                        <label for="columnas" class="form-label">
-                                            Asientos por fila
-                                        </label>
-
-                                        <input
-                                            type="number"
-                                            id="columnas"
-                                            name="columnas"
-                                            class="form-control"
-                                            min="1"
-                                            max="6"
-                                            step="1"
-                                            value="4"
-                                            aria-describedby="ayudaColumnas"
-                                            required
-                                        >
-
-                                        <div id="ayudaColumnas" class="form-text">
-                                            Entre 1 y 6 columnas de asientos.
-                                        </div>
-
-                                        <div class="invalid-feedback">
-                                            Ingresa un número entero entre 1 y 6.
-                                        </div>
+                                    <div class="form-text">
+                                        Configura la distribución de cada piso por separado.
                                     </div>
                                 </div>
 
+                                <div
+                                    id="totalConfigurado"
+                                    class="alert alert-info"
+                                    role="status"
+                                    aria-live="polite"
+                                ></div>
+
+                                <fieldset
+                                    id="configuracionPiso1"
+                                    class="border rounded p-3 mb-3"
+                                >
+                                    <legend class="float-none w-auto px-2 fs-6 fw-bold">
+                                        Piso 1
+                                    </legend>
+
+                                    <div class="row g-3">
+                                        <div class="col-12 col-sm-4">
+                                            <label for="cantidad1" class="form-label">
+                                                Cantidad de asientos
+                                            </label>
+
+                                            <input
+                                                type="number"
+                                                id="cantidad1"
+                                                name="cantidad1"
+                                                class="form-control"
+                                                min="1"
+                                                max="60"
+                                                step="1"
+                                                value="41"
+                                                inputmode="numeric"
+                                                required
+                                            >
+
+                                            <div class="invalid-feedback">
+                                                Ingresa un entero entre 1 y 60.
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12 col-sm-4">
+                                            <label for="filas1" class="form-label">
+                                                Número de filas
+                                            </label>
+
+                                            <input
+                                                type="number"
+                                                id="filas1"
+                                                name="filas1"
+                                                class="form-control"
+                                                min="1"
+                                                max="15"
+                                                step="1"
+                                                value="11"
+                                                inputmode="numeric"
+                                                required
+                                            >
+
+                                            <div class="invalid-feedback">
+                                                Revisa el número de filas de este piso.
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12 col-sm-4">
+                                            <label for="columnas1" class="form-label">
+                                                Asientos por fila
+                                            </label>
+
+                                            <input
+                                                type="number"
+                                                id="columnas1"
+                                                name="columnas1"
+                                                class="form-control"
+                                                min="1"
+                                                max="4"
+                                                step="1"
+                                                value="4"
+                                                inputmode="numeric"
+                                                required
+                                            >
+
+                                            <div class="invalid-feedback">
+                                                Ingresa un entero entre 1 y 4.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </fieldset>
+
+                                <fieldset
+                                    id="configuracionPiso2"
+                                    class="border rounded p-3 mb-3"
+                                    hidden
+                                    disabled
+                                >
+                                    <legend class="float-none w-auto px-2 fs-6 fw-bold">
+                                        Piso 2
+                                    </legend>
+
+                                    <div class="row g-3">
+                                        <div class="col-12 col-sm-4">
+                                            <label for="cantidad2" class="form-label">
+                                                Cantidad de asientos
+                                            </label>
+
+                                            <input
+                                                type="number"
+                                                id="cantidad2"
+                                                name="cantidad2"
+                                                class="form-control"
+                                                min="1"
+                                                max="60"
+                                                step="1"
+                                                value="20"
+                                                inputmode="numeric"
+                                                required
+                                            >
+
+                                            <div class="invalid-feedback">
+                                                Ingresa un entero entre 1 y 60.
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12 col-sm-4">
+                                            <label for="filas2" class="form-label">
+                                                Número de filas
+                                            </label>
+
+                                            <input
+                                                type="number"
+                                                id="filas2"
+                                                name="filas2"
+                                                class="form-control"
+                                                min="1"
+                                                max="15"
+                                                step="1"
+                                                value="5"
+                                                inputmode="numeric"
+                                                required
+                                            >
+
+                                            <div class="invalid-feedback">
+                                                Revisa el número de filas de este piso.
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12 col-sm-4">
+                                            <label for="columnas2" class="form-label">
+                                                Asientos por fila
+                                            </label>
+
+                                            <input
+                                                type="number"
+                                                id="columnas2"
+                                                name="columnas2"
+                                                class="form-control"
+                                                min="1"
+                                                max="4"
+                                                step="1"
+                                                value="4"
+                                                inputmode="numeric"
+                                                required
+                                            >
+
+                                            <div class="invalid-feedback">
+                                                Ingresa un entero entre 1 y 4.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </fieldset>
+
+                                <p class="text-muted small">
+                                    Con 4 asientos por fila: dos a cada lado del pasillo.
+                                    La cantidad de asientos ajusta las filas de cada piso.
+                                    Al cambiar las filas se generan filas completas,
+                                    hasta 60 puestos. Ajusta la cantidad para dejar
+                                    la última fila incompleta.
+                                </p>
+
                                 <div class="d-grid d-sm-flex justify-content-sm-end mt-4">
                                     <button type="submit" class="btn btn-primary">
-                                        Definir estructura
+                                        Generar vista previa
                                     </button>
                                 </div>
                             </fieldset>
@@ -146,17 +287,85 @@
                     class="card shadow-sm border-0 mt-4 d-none"
                     aria-labelledby="tituloResumen"
                 >
-                    <div class="card-body">
+                    <div class="card-body p-3 p-md-4">
                         <h2 id="tituloResumen" class="h5">
-                            Resumen de configuración
+                            Vista previa de la plantilla
                         </h2>
 
-                        <p
-                            id="textoResumen"
-                            class="mb-0"
-                            role="status"
-                            aria-live="polite"
-                        ></p>
+                        <p id="textoResumen"></p>
+
+                        <div class="border rounded p-3 mb-4">
+                            <h3 class="h6">Prueba de selección</h3>
+
+                            <p class="text-muted small">
+                                Elige cuántos puestos necesitas y pulsa los asientos
+                                de cualquiera de los pisos para probar la distribución.
+                                Esta prueba no realiza reservas.
+                            </p>
+
+                            <label for="cantidadBoletos" class="form-label">
+                                Cantidad de puestos que quieres seleccionar
+                            </label>
+
+                            <input
+                                type="number"
+                                id="cantidadBoletos"
+                                class="form-control"
+                                min="1"
+                                max="60"
+                                step="1"
+                                value="1"
+                                required
+                            >
+
+                            <p
+                                id="estadoSeleccion"
+                                class="mt-3 mb-2"
+                                role="status"
+                                aria-live="polite"
+                                aria-atomic="true"
+                            ></p>
+
+                            <button
+                                type="button"
+                                id="limpiarSeleccion"
+                                class="btn btn-outline-secondary btn-sm"
+                            >
+                                Limpiar selección
+                            </button>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-3 mb-3 small">
+                            <span>
+                                <span
+                                    class="plantilla-muestra"
+                                    aria-hidden="true"
+                                ></span>
+                                Sin seleccionar
+                            </span>
+
+                            <span>
+                                <span
+                                    class="plantilla-muestra plantilla-muestra-elegido"
+                                    aria-hidden="true"
+                                ></span>
+                                Seleccionado
+                            </span>
+                        </div>
+
+                        <div
+                            id="botonesPisos"
+                            class="plantilla-pisos mb-4"
+                            role="group"
+                            aria-label="Elegir el piso de la vista previa"
+                        ></div>
+
+                        <div
+                            id="mapaPlantilla"
+                            class="plantilla-mapas"
+                            role="group"
+                            aria-label="Distribución de asientos del bus"
+                        ></div>
                     </div>
                 </section>
             </div>
