@@ -170,9 +170,25 @@ function mostrarBuses() {
             abrirEdicion(bus.id);
         });
 
-        acciones.appendChild(botonEditar);
-        fila.appendChild(acciones);
-        tabla.appendChild(fila);
+        const botonEliminar = document.createElement("button");
+
+botonEliminar.type = "button";
+botonEliminar.className = "btn btn-outline-danger btn-sm ms-2";
+botonEliminar.textContent = "Eliminar";
+
+botonEliminar.setAttribute(
+    "aria-label",
+    `Eliminar bus con placa ${bus.placa}`
+);
+
+botonEliminar.addEventListener("click", function () {
+    eliminarBus(bus.id);
+});
+
+acciones.appendChild(botonEditar);
+acciones.appendChild(botonEliminar);
+fila.appendChild(acciones);
+tabla.appendChild(fila);
     });
 }
 
@@ -208,6 +224,76 @@ async function cargarDatos() {
             "Primero registra una cooperativa para poder asignarle buses.",
             "warning"
         );
+    }
+}
+function obtenerMensajeError(error, accion = "guardar") {
+    switch (error?.code) {
+        case "23505":
+            return "Ya existe un bus con esta placa.";
+
+        case "23503":
+            return accion === "eliminar"
+                ? "No se puede eliminar el bus porque tiene registros relacionados."
+                : "La cooperativa seleccionada ya no está disponible. Recarga la página.";
+
+        case "42501":
+            return "No tienes permisos para realizar esta operación.";
+
+        case "PGRST116":
+            return "El bus ya no está disponible o tus permisos cambiaron. Recarga la página.";
+
+        case "23502":
+        case "23514":
+        case "22001":
+            return "Revisa los campos obligatorios y la longitud de los datos.";
+
+        default:
+            return `No se pudo ${accion} el bus. Revisa tu conexión e inténtalo nuevamente.`;
+    }
+}
+
+async function eliminarBus(id) {
+    if (ocupado || !accesoPermitido) return;
+
+    const bus = buses.find(function (item) {
+        return item.id === id;
+    });
+
+    if (!bus) return;
+
+    const confirmado = window.confirm(
+        `¿Deseas eliminar el bus con placa ${bus.placa}? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmado) return;
+
+    cambiarOcupado(true);
+
+    try {
+        const { data, error } = await supabase
+            .from("buses")
+            .delete()
+            .eq("id", id)
+            .select("id")
+            .single();
+
+        if (error) throw error;
+
+        buses = buses.filter(function (item) {
+            return item.id !== data.id;
+        });
+
+        mostrarBuses();
+        mostrarMensaje("Bus eliminado correctamente.", "success");
+    } catch (error) {
+        console.error("Error al eliminar el bus:", error);
+
+        mostrarMensaje(
+            obtenerMensajeError(error, "eliminar"),
+            "danger"
+        );
+    } finally {
+        cambiarOcupado(false);
     }
 }
 
@@ -292,9 +378,7 @@ async function guardarBus(evento) {
     } catch (error) {
         console.error("Error al guardar el bus:", error);
 
-        errorFormulario.textContent = error.code === "23505"
-            ? "Ya existe un bus con esta placa."
-            : "No se pudo guardar el bus. Revisa tu conexión y tus permisos.";
+      errorFormulario.textContent = obtenerMensajeError(error, "guardar");
 
         errorFormulario.classList.remove("d-none");
     } finally {
