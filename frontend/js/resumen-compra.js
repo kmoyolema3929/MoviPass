@@ -32,4 +32,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     totalPagar.textContent = `$${total.toFixed(2)}`;
+    
+    const formPasajeros = document.getElementById('formPasajeros');
+    
+    formPasajeros.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        // Validación visual de Bootstrap
+        if (!formPasajeros.checkValidity()) {
+            e.stopPropagation();
+            formPasajeros.classList.add('was-validated');
+            return;
+        }
+
+        // Mensaje de confirmación al usuario
+        alert('¡Datos de pasajeros registrados con éxito! Redirigiendo al pago...');
+        
+        // Aquí iría la redirección real al siguiente issue (#47)
+        // window.location.href = 'pago.html';
+    });
 });
