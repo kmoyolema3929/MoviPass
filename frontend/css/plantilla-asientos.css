@@ -60,7 +60,25 @@
     outline-offset: 3px;
 }
 
-.plantilla-asiento[aria-pressed="true"] {
+/* Asientos VIP del piso inferior. */
+.plantilla-asiento[data-tipo="vip"] {
+    background-color: #fff3cd;
+    color: #664d03;
+    border-color: #997404;
+}
+
+.plantilla-asiento[data-tipo="vip"]:hover {
+    background-color: #ffe69c;
+}
+
+.plantilla-muestra.plantilla-muestra-vip {
+    background-color: #fff3cd;
+    border-color: #997404;
+}
+
+/* La selección se muestra en verde para ambos tipos. */
+.plantilla-asiento[aria-pressed="true"],
+.plantilla-asiento[aria-pressed="true"]:hover {
     background-color: #146c43;
     color: #ffffff;
     border-color: #0f5132;
@@ -90,7 +108,6 @@
     border-color: #0f5132;
 }
 
-/* Distribución de las vistas por piso. */
 .plantilla-mapas {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -110,7 +127,6 @@
     display: none;
 }
 
-/* Botones para cambiar de piso. */
 .plantilla-pisos {
     display: flex;
     flex-wrap: wrap;
@@ -131,14 +147,12 @@
     overflow-wrap: anywhere;
 }
 
-/* En pantallas amplias pueden verse ambos pisos juntos. */
 @media (min-width: 768px) {
     .plantilla-mapas[data-vista="ambos"] {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-/* Adaptación para celulares. */
 @media (max-width: 575.98px) {
     .plantilla-bus {
         padding: 0.65rem;

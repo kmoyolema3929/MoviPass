@@ -14,6 +14,7 @@ const selectorBus = document.getElementById("bus");
 const mensaje = document.getElementById("mensaje");
 const resumen = document.getElementById("resumenConfiguracion");
 const textoResumen = document.getElementById("textoResumen");
+const resumenTipos = document.getElementById("resumenTipos");
 const mapaPlantilla = document.getElementById("mapaPlantilla");
 
 const cantidadBoletos = document.getElementById("cantidadBoletos");
@@ -65,6 +66,7 @@ function actualizarTotal() {
     }, 0);
 
     const minimo = datos.length === 2 ? 40 : 1;
+
     const dentroDelRango =
         valido && enteroEnRango(total, minimo, 60);
 
@@ -244,7 +246,9 @@ function crearPisos(datos) {
                 piso: numeroPiso,
                 fila: Math.floor(indice / piso.columnas) + 1,
                 columna: indice % piso.columnas + 1,
-                tipo: "normal"
+                tipo: datos.length === 2 && numeroPiso === 1
+                    ? "vip"
+                    : "normal"
             })
         );
 
@@ -272,6 +276,45 @@ function alternarSeleccion(numero, limite, seleccionados) {
 }
 
 function actualizarContador(aviso = "") {
+    if (!configuracionActual) return;
+
+    let totalVip = 0;
+
+    configuracionActual.pisos.forEach(function (piso) {
+        const vip = piso.asientos.filter(function (asiento) {
+            return asiento.tipo === "vip";
+        }).length;
+
+        const normales = piso.asientos.length - vip;
+
+        const elegidos = piso.asientos.filter(function (asiento) {
+            return seleccionados.has(asiento.numero);
+        }).length;
+
+        const contadorPiso = document.getElementById(
+            "seleccionPiso" + piso.numero
+        );
+
+        totalVip += vip;
+
+        if (contadorPiso) {
+            contadorPiso.textContent =
+                "Normales: " + normales +
+                " · VIP: " + vip +
+                " · Seleccionados: " + elegidos;
+        }
+    });
+
+    const total = configuracionActual.pisos.reduce(
+        (suma, piso) => suma + piso.asientos.length,
+        0
+    );
+
+    resumenTipos.textContent =
+        "Total: " + total +
+        " · Normales: " + (total - totalVip) +
+        " · VIP: " + totalVip;
+
     if (!cantidadBoletos.checkValidity()) {
         estadoSeleccion.textContent =
             "Ingresa una cantidad entera entre 1 y " +
@@ -291,37 +334,34 @@ function actualizarContador(aviso = "") {
                 : ""
         ) +
         aviso;
-
-    if (!configuracionActual) {
-        return;
-    }
-
-    configuracionActual.pisos.forEach(function (piso) {
-        const contadorPiso = document.getElementById(
-            "seleccionPiso" + piso.numero
-        );
-
-        const elegidos = piso.asientos.filter(function (asiento) {
-            return seleccionados.has(asiento.numero);
-        }).length;
-
-        if (contadorPiso) {
-            contadorPiso.textContent =
-                "Seleccionados en este piso: " + elegidos + ".";
-        }
-    });
 }
 
 function actualizarBoton(boton) {
     const numero = Number(boton.dataset.numero);
+
+    const piso = configuracionActual?.pisos.find(function (piso) {
+        return piso.numero === Number(boton.dataset.piso);
+    });
+
+    const asiento = piso?.asientos.find(function (asiento) {
+        return asiento.numero === numero;
+    });
+
+    if (!asiento) return;
+
     const elegido = seleccionados.has(numero);
+    const tipo = asiento.tipo === "vip" ? "VIP" : "Normal";
+
+    boton.dataset.tipo = asiento.tipo;
+    boton.querySelector("small").textContent = tipo;
 
     boton.setAttribute("aria-pressed", String(elegido));
 
     boton.setAttribute(
         "aria-label",
         "Asiento " + numero +
-        ", piso " + boton.dataset.piso + ", " +
+        ", piso " + asiento.piso +
+        ", " + tipo + ", " +
         (elegido ? "seleccionado" : "sin seleccionar")
     );
 }
