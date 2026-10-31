@@ -22,6 +22,9 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Sitio publicado en `https://movipass.netlify.app` y enlace agregado al README (issue #5).
 - Variables `SUPABASE_URL` y `SUPABASE_ANON_KEY` cargadas en el panel de Netlify (issue #5).
 - Se documentan las opciones de seguridad elegidas al crear el proyecto de Supabase (Data API, exposición automática de tablas y RLS automático) en `docs/DECISIONES.md` (decisión D-009).
+- CRUD completo de paradas intermedias sincronizado con Supabase para el módulo de Frecuencias y Rutas (Issue #35).
+- Creación de migración SQL para la tabla `paradas` con restricciones de clave foránea y políticas RLS (Issue #35).
+- Aplicación de migración SQL pendiente para la tabla `frecuencias` y habilitación de políticas RLS en Supabase (Issue #64).
 
 ### Cambiado
 - El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security) (PR #2, decisión D-001).

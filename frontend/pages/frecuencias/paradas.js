@@ -1,13 +1,14 @@
-let paradasMemoria = [
-    { id: 1, frecuenciaId: "1", nombre: "Terminal Latacunga", hora: "08:45" },
-    { id: 2, frecuenciaId: "1", nombre: "Peaje Machachi", hora: "09:30" }
-];
+// Inicialización del cliente Supabase para el módulo de paradas
+const supabaseUrl = window.ENV?.SUPABASE_URL || 'https://tvfexoehpenfkqfcitck.supabase.co';
+const supabaseKey = window.ENV?.SUPABASE_ANON_KEY || 'pega_aqui_tu_anon_key_si_aplica';
+const supabaseClient = window.supabase?.createClient ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('selectFrecuencia').addEventListener('change', renderizarParadas);
 });
 
-function renderizarParadas() {
+// Función para listar/renderizar paradas desde Supabase
+async function renderizarParadas() {
     const frecuenciaId = document.getElementById('selectFrecuencia').value;
     const tbody = document.getElementById('tablaParadas');
 
@@ -25,9 +26,23 @@ function renderizarParadas() {
         return;
     }
 
-    const filtradas = paradasMemoria.filter(p => p.frecuenciaId === frecuenciaId);
+    // Consulta remota a la tabla 'paradas' en Supabase
+    let paradas = [];
+    if (supabaseClient) {
+        const { data, error } = await supabaseClient
+            .from('paradas')
+            .select('*')
+            .eq('frecuencia_id', frecuenciaId)
+            .order('hora_estimada', { ascending: true });
 
-    if (filtradas.length === 0) {
+        if (error) {
+            console.error('Error al obtener paradas de Supabase:', error);
+        } else {
+            paradas = data || [];
+        }
+    }
+
+    if (paradas.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
         td.colSpan = 4;
@@ -38,7 +53,7 @@ function renderizarParadas() {
         return;
     }
 
-    filtradas.forEach((item, index) => {
+    paradas.forEach((item, index) => {
         const tr = document.createElement('tr');
 
         const tdIndex = document.createElement('td');
@@ -48,7 +63,7 @@ function renderizarParadas() {
         tdNombre.textContent = item.nombre;
 
         const tdHora = document.createElement('td');
-        tdHora.textContent = item.hora;
+        tdHora.textContent = item.hora_estimada || item.hora;
 
         const tdAcciones = document.createElement('td');
         tdAcciones.className = 'text-center';
@@ -69,8 +84,8 @@ function renderizarParadas() {
     });
 }
 
-// Manejar el envío del formulario para agregar una parada
-document.getElementById('formParada').addEventListener('submit', function(e) {
+// Manejar el envío del formulario para agregar una parada en Supabase
+document.getElementById('formParada').addEventListener('submit', async function(e) {
     e.preventDefault();
 
     if (!this.checkValidity()) {
@@ -93,37 +108,55 @@ document.getElementById('formParada').addEventListener('submit', function(e) {
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Guardando...';
 
-    setTimeout(() => {
-        const nuevaParada = {
-            id: Date.now(),
-            frecuenciaId: frecuenciaId,
-            nombre: nombreParada,
-            hora: horaEstimada
-        };
+    // Inserción en Supabase
+    if (supabaseClient) {
+        const { error } = await supabaseClient
+            .from('paradas')
+            .insert([{
+                frecuencia_id: frecuenciaId,
+                nombre: nombreParada,
+                hora_estimada: horaEstimada
+            }]);
 
-        paradasMemoria.push(nuevaParada);
-
-        var modalElement = document.getElementById('modalParada');
-        var modalInstance = bootstrap.Modal.getInstance(modalElement);
-        if (modalInstance) {
-            modalInstance.hide();
+        if (error) {
+            alert('Error al guardar la parada en Supabase: ' + error.message);
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = textoOriginal;
+            return;
         }
+    }
 
-        this.reset();
-        this.classList.remove('was-validated');
-        renderizarParadas();
+    var modalElement = document.getElementById('modalParada');
+    var modalInstance = bootstrap.Modal.getInstance(modalElement);
+    if (modalInstance) {
+        modalInstance.hide();
+    }
 
-        btnSubmit.disabled = false;
-        btnSubmit.textContent = textoOriginal;
-    }, 300);
+    this.reset();
+    this.classList.remove('was-validated');
+    await renderizarParadas();
+
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = textoOriginal;
 });
 
-// Función para eliminar una parada por ID
-function eliminarParada(id) {
+// Función para eliminar una parada por ID en Supabase
+async function eliminarParada(id) {
     if (!confirm('¿Está seguro de que desea eliminar esta parada?')) {
         return;
     }
 
-    paradasMemoria = paradasMemoria.filter(p => p.id !== id);
-    renderizarParadas();
+    if (supabaseClient) {
+        const { error } = await supabaseClient
+            .from('paradas')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            alert('Error al eliminar la parada: ' + error.message);
+            return;
+        }
+    }
+
+    await renderizarParadas();
 }
