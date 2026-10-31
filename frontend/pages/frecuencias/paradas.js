@@ -1,7 +1,7 @@
-let paradasMemoria = [
-    { id: 1, frecuenciaId: "1", nombre: "Terminal Latacunga", hora: "08:45" },
-    { id: 2, frecuenciaId: "1", nombre: "Peaje Machachi", hora: "09:30" }
-];
+// Inicialización del cliente Supabase para el módulo de paradas
+const supabaseUrl = window.ENV?.SUPABASE_URL || 'https://tvfexoehpenfkqfcitck.supabase.co';
+const supabaseKey = window.ENV?.SUPABASE_ANON_KEY || 'pega_aqui_tu_anon_key_si_aplica';
+const supabaseClient = window.supabase?.createClient ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('selectFrecuencia').addEventListener('change', renderizarParadas);
@@ -25,7 +25,7 @@ function renderizarParadas() {
         return;
     }
 
-    const filtradas = paradasMemoria.filter(p => p.frecuenciaId === frecuenciaId);
+    const filtradas = [];
 
     if (filtradas.length === 0) {
         const tr = document.createElement('tr');
@@ -94,15 +94,6 @@ document.getElementById('formParada').addEventListener('submit', function(e) {
     btnSubmit.textContent = 'Guardando...';
 
     setTimeout(() => {
-        const nuevaParada = {
-            id: Date.now(),
-            frecuenciaId: frecuenciaId,
-            nombre: nombreParada,
-            hora: horaEstimada
-        };
-
-        paradasMemoria.push(nuevaParada);
-
         var modalElement = document.getElementById('modalParada');
         var modalInstance = bootstrap.Modal.getInstance(modalElement);
         if (modalInstance) {
@@ -124,6 +115,5 @@ function eliminarParada(id) {
         return;
     }
 
-    paradasMemoria = paradasMemoria.filter(p => p.id !== id);
     renderizarParadas();
 }
