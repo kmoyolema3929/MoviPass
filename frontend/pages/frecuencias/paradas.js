@@ -140,11 +140,23 @@ document.getElementById('formParada').addEventListener('submit', async function(
     btnSubmit.textContent = textoOriginal;
 });
 
-// Función para eliminar una parada por ID
-function eliminarParada(id) {
+// Función para eliminar una parada por ID en Supabase
+async function eliminarParada(id) {
     if (!confirm('¿Está seguro de que desea eliminar esta parada?')) {
         return;
     }
 
-    renderizarParadas();
+    if (supabaseClient) {
+        const { error } = await supabaseClient
+            .from('paradas')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            alert('Error al eliminar la parada: ' + error.message);
+            return;
+        }
+    }
+
+    await renderizarParadas();
 }
