@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('selectFrecuencia').addEventListener('change', renderizarParadas);
 });
 
-function renderizarParadas() {
+// Función para listar/renderizar paradas desde Supabase
+async function renderizarParadas() {
     const frecuenciaId = document.getElementById('selectFrecuencia').value;
     const tbody = document.getElementById('tablaParadas');
 
@@ -25,9 +26,23 @@ function renderizarParadas() {
         return;
     }
 
-    const filtradas = [];
+    // Consulta remota a la tabla 'paradas' en Supabase
+    let paradas = [];
+    if (supabaseClient) {
+        const { data, error } = await supabaseClient
+            .from('paradas')
+            .select('*')
+            .eq('frecuencia_id', frecuenciaId)
+            .order('hora_estimada', { ascending: true });
 
-    if (filtradas.length === 0) {
+        if (error) {
+            console.error('Error al obtener paradas de Supabase:', error);
+        } else {
+            paradas = data || [];
+        }
+    }
+
+    if (paradas.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
         td.colSpan = 4;
@@ -38,7 +53,7 @@ function renderizarParadas() {
         return;
     }
 
-    filtradas.forEach((item, index) => {
+    paradas.forEach((item, index) => {
         const tr = document.createElement('tr');
 
         const tdIndex = document.createElement('td');
@@ -48,7 +63,7 @@ function renderizarParadas() {
         tdNombre.textContent = item.nombre;
 
         const tdHora = document.createElement('td');
-        tdHora.textContent = item.hora;
+        tdHora.textContent = item.hora_estimada || item.hora;
 
         const tdAcciones = document.createElement('td');
         tdAcciones.className = 'text-center';
