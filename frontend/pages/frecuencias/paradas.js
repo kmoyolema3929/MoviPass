@@ -84,8 +84,8 @@ async function renderizarParadas() {
     });
 }
 
-// Manejar el envío del formulario para agregar una parada
-document.getElementById('formParada').addEventListener('submit', function(e) {
+// Manejar el envío del formulario para agregar una parada en Supabase
+document.getElementById('formParada').addEventListener('submit', async function(e) {
     e.preventDefault();
 
     if (!this.checkValidity()) {
@@ -108,20 +108,36 @@ document.getElementById('formParada').addEventListener('submit', function(e) {
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Guardando...';
 
-    setTimeout(() => {
-        var modalElement = document.getElementById('modalParada');
-        var modalInstance = bootstrap.Modal.getInstance(modalElement);
-        if (modalInstance) {
-            modalInstance.hide();
+    // Inserción en Supabase
+    if (supabaseClient) {
+        const { error } = await supabaseClient
+            .from('paradas')
+            .insert([{
+                frecuencia_id: frecuenciaId,
+                nombre: nombreParada,
+                hora_estimada: horaEstimada
+            }]);
+
+        if (error) {
+            alert('Error al guardar la parada en Supabase: ' + error.message);
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = textoOriginal;
+            return;
         }
+    }
 
-        this.reset();
-        this.classList.remove('was-validated');
-        renderizarParadas();
+    var modalElement = document.getElementById('modalParada');
+    var modalInstance = bootstrap.Modal.getInstance(modalElement);
+    if (modalInstance) {
+        modalInstance.hide();
+    }
 
-        btnSubmit.disabled = false;
-        btnSubmit.textContent = textoOriginal;
-    }, 300);
+    this.reset();
+    this.classList.remove('was-validated');
+    await renderizarParadas();
+
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = textoOriginal;
 });
 
 // Función para eliminar una parada por ID
