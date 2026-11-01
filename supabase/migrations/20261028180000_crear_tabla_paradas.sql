@@ -10,19 +10,19 @@ CREATE TABLE IF NOT EXISTS public.paradas (
 -- Habilitar Row Level Security (RLS)
 ALTER TABLE public.paradas ENABLE ROW LEVEL SECURITY;
 
--- Políticas de Seguridad RLS
+-- Políticas de Seguridad RLS corregidas por rol
 CREATE POLICY "Permitir lectura publica de paradas" 
 ON public.paradas FOR SELECT 
 USING (true);
 
 CREATE POLICY "Permitir insercion a usuarios autenticados" 
 ON public.paradas FOR INSERT 
-WITH CHECK (auth.role() = 'authenticated' OR true);
+WITH CHECK (auth.role() = 'authenticated');
 
 CREATE POLICY "Permitir actualizacion a usuarios autenticados" 
 ON public.paradas FOR UPDATE 
-USING (auth.role() = 'authenticated' OR true);
+USING (auth.role() = 'authenticated');
 
 CREATE POLICY "Permitir eliminacion a usuarios autenticados" 
 ON public.paradas FOR DELETE 
-USING (auth.role() = 'authenticated' OR true);
+USING (auth.role() = 'authenticated');

@@ -1,7 +1,4 @@
-// Inicialización del cliente Supabase para el módulo de paradas
-const supabaseUrl = window.ENV?.SUPABASE_URL || 'https://tvfexoehpenfkqfcitck.supabase.co';
-const supabaseKey = window.ENV?.SUPABASE_ANON_KEY || 'pega_aqui_tu_anon_key_si_aplica';
-const supabaseClient = window.supabase?.createClient ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+import { supabase as supabaseClient } from "../../js/supabaseClient.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('selectFrecuencia').addEventListener('change', renderizarParadas);
