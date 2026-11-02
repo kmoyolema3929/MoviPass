@@ -166,4 +166,15 @@
         min-height: 3.5rem;
         touch-action: manipulation;
     }
+    .plantilla-pisos button:focus-visible {
+    outline: 3px solid #212529;
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .plantilla-asiento,
+    .plantilla-pisos button {
+        transition: none;
+    }
+}
 }

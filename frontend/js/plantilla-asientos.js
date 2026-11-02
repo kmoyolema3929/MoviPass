@@ -82,6 +82,7 @@ function actualizarTotal() {
                   : "Máximo 60 asientos."
           )
         : "Completa la cantidad de asientos de cada piso.";
+        validarCapacidadTotal();
 }
 
 function limpiarResumen() {
@@ -452,6 +453,10 @@ function actualizarContador(aviso = "") {
         "Total: " + total +
         " · Normales: " + (total - totalVip) +
         " · VIP: " + totalVip;
+        cantidadBoletos.setAttribute(
+    "aria-invalid",
+    String(!cantidadBoletos.validity.valid)
+);
 
     if (!cantidadBoletos.checkValidity()) {
         estadoSeleccion.textContent =
@@ -750,7 +755,9 @@ formulario.addEventListener("submit", function (evento) {
 
     formulario.classList.add("was-validated");
 
-    if (!formulario.reportValidity()) return;
+   validarCapacidadTotal();
+
+if (!formulario.reportValidity()) return;
 
     const busSeleccionado = busesDisponibles.find(function (bus) {
         return bus.id === selectorBus.value;
@@ -794,15 +801,17 @@ formulario.addEventListener("submit", function (evento) {
 
         dibujarVistaPrevia();
         actualizarContador();
+resumen.classList.remove("d-none");
+mensaje.classList.add("d-none");
 
-        resumen.classList.remove("d-none");
-        mensaje.classList.add("d-none");
+guardarBorradorBus();
 
-        guardarBorradorBus();
+document.getElementById("tituloResumen").focus();
     } catch (error) {
         mostrarMensaje(error.message, "warning");
     }
 });
+mapaPlantilla.addEventListener("keydown", navegarAsientos);
 
 selectorBus.addEventListener("change", cambiarBus);
 
@@ -890,5 +899,114 @@ async function iniciar() {
         );
     }
 }
+function actualizarValidezCampos() {
+    const mostrarErrores =
+        formulario.classList.contains("was-validated");
 
+    formulario.querySelectorAll("input, select").forEach(function (campo) {
+        if (!mostrarErrores || campo.matches(":disabled")) {
+            campo.removeAttribute("aria-invalid");
+        } else {
+            campo.setAttribute(
+                "aria-invalid",
+                String(!campo.validity.valid)
+            );
+        }
+    });
+}
+
+function validarCapacidadTotal() {
+    [1, 2].forEach(function (numero) {
+        document
+            .getElementById("cantidad" + numero)
+            .setCustomValidity("");
+    });
+
+    const pisos = Number(numeroPisos.value);
+
+    if (!enteroEnRango(pisos, 1, 2)) {
+        actualizarValidezCampos();
+        return false;
+    }
+
+    const cantidades = Array.from(
+        { length: pisos },
+        (_, indice) => Number(
+            document.getElementById("cantidad" + (indice + 1)).value
+        )
+    );
+
+    const individualesValidas = cantidades.every(function (cantidad) {
+        return enteroEnRango(cantidad, 1, 60);
+    });
+
+    if (!individualesValidas) {
+        actualizarValidezCampos();
+        return false;
+    }
+
+    const total = cantidades.reduce(
+        (suma, cantidad) => suma + cantidad,
+        0
+    );
+
+    const minimo = pisos === 2 ? 40 : 1;
+    const valido = enteroEnRango(total, minimo, 60);
+
+    if (!valido) {
+        document.getElementById("cantidad" + pisos).setCustomValidity(
+            "Los pisos suman " + total +
+            " asientos. El total debe estar entre " +
+            minimo + " y 60."
+        );
+    }
+
+    actualizarValidezCampos();
+
+    return valido;
+}
+
+function navegarAsientos(evento) {
+    if (evento.altKey || evento.ctrlKey || evento.metaKey) return;
+
+    const desplazamientos = {
+        ArrowLeft: [0, -1],
+        ArrowRight: [0, 1],
+        ArrowUp: [-1, 0],
+        ArrowDown: [1, 0]
+    };
+
+    const desplazamiento = desplazamientos[evento.key];
+
+    const boton = evento.target.closest(
+        "button[data-numero]"
+    );
+
+    if (!desplazamiento || !boton || !configuracionActual) return;
+
+    const piso = configuracionActual.pisos.find(function (piso) {
+        return piso.numero === Number(boton.dataset.piso);
+    });
+
+    const actual = piso?.asientos.find(function (asiento) {
+        return asiento.numero === Number(boton.dataset.numero);
+    });
+
+    if (!actual) return;
+
+    evento.preventDefault();
+
+    const destino = piso.asientos.find(function (asiento) {
+        return asiento.fila === actual.fila + desplazamiento[0] &&
+            asiento.columna === actual.columna + desplazamiento[1];
+    });
+
+    if (!destino) return;
+
+    mapaPlantilla.querySelector(
+        'button[data-piso="' + piso.numero +
+        '"][data-numero="' + destino.numero + '"]'
+    )?.focus();
+   
+}
 iniciar();
