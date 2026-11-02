@@ -12,6 +12,7 @@ async function renderizarParadas() {
     // Limpieza segura del contenedor sin usar innerHTML
     tbody.replaceChildren();
 
+    // 1. Corrección sugerida por la líder: Verificación de ID seleccionado
     if (!frecuenciaId) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
@@ -50,6 +51,7 @@ async function renderizarParadas() {
         return;
     }
 
+    // 2. Corrección sugerida por la líder: Declaración completa de celdas y armado de filas
     paradas.forEach((item, index) => {
         const tr = document.createElement('tr');
 
@@ -72,11 +74,7 @@ async function renderizarParadas() {
 
         tdAcciones.appendChild(btnEliminar);
 
-        tr.appendChild(tdIndex);
-        tr.appendChild(tdNombre);
-        tr.appendChild(tdHora);
-        tr.appendChild(tdAcciones);
-
+        tr.append(tdIndex, tdNombre, tdHora, tdAcciones);
         tbody.appendChild(tr);
     });
 }
@@ -85,12 +83,14 @@ async function renderizarParadas() {
 document.getElementById('formParada').addEventListener('submit', async function(e) {
     e.preventDefault();
 
+    // 3. Corrección sugerida por la líder: Validación y return del formulario
     if (!this.checkValidity()) {
         e.stopPropagation();
         this.classList.add('was-validated');
         return;
     }
 
+    // 4. Corrección sugerida por la líder: Captura de variables de los inputs
     const frecuenciaId = document.getElementById('selectFrecuencia').value;
     const nombreParada = document.getElementById('nombreParada').value.trim();
     const horaEstimada = document.getElementById('horaEstimada').value;
