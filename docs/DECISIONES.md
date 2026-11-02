@@ -244,3 +244,28 @@ Al crear el proyecto de Supabase se eligieron las siguientes opciones de segurid
 ### Consecuencias
 - Toda migración que cree una tabla debe declarar explícitamente su exposición y sus políticas RLS.
 - Documentado en `docs/MODELO_DATOS.md` (#10).
+
+## D-010: Excepción en el nombre de rama para corrección urgente
+
+- **Fecha:** 30 de octubre de 2026
+- **Estado:** Aprobada
+- **Decidida por:** Comité de control de cambios (Katherine Moyolema y Anahi Molina)
+
+### Contexto
+Durante el Sprint 1, el desarrollador Mateo Herrera necesitaba aplicar una migración pendiente en Supabase que bloqueaba el módulo de frecuencias. Para ello, creó una rama llamada `fix/migracion-frecuencias` y abrió el PR #68. Sin embargo, nuestra convención de ramas documentada en `FLUJO_GIT.md` solo contempla los prefijos `feature/*`, `release/*` y `hotfix/*`.
+
+### Decisión
+Se aprueba la excepción en el nombre de la rama y se permite fusionar el PR #68. Para futuras correcciones, se exigirá el uso de `feature/` (si nace de `develop`) o `hotfix/` (si es una emergencia en `main`).
+
+### Motivos
+- El código de la migración y la captura de la tabla creada en Supabase demostraron que la corrección era funcional.
+- Rechazar el PR por un detalle de nomenclatura habría retrasado la integración del módulo de frecuencias y el avance del Sprint.
+- El comité priorizó la agilidad del equipo sin descuidar la calidad técnica del entregable.
+
+### Alternativas descartadas
+- **Rechazar el PR y pedir una nueva rama:** habría generado retrabajo innecesario y pérdida de tiempo, sin aportar valor real al producto en ese momento.
+
+### Consecuencias
+- Se aprueba y fusiona el PR #68.
+- Se deja registro de la excepción en el historial de auditoría.
+- Se refuerza la comunicación al equipo sobre las convenciones de nombres para evitar futuras desviaciones.
