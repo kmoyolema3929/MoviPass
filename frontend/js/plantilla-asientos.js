@@ -1,12 +1,14 @@
 import { supabase } from "./supabaseClient.js";
 import { obtenerSesion, obtenerRol } from "./auth.js";
-
+import { obtenerPlantillaGuardada } from "./asientosService.js";
 let busesDisponibles = [];
 let configuracionActual = null;
 let segundoPisoPreparado = false;
 let busEnEdicion = "";
 
 const configuracionesPorBus = new Map();
+const versionesPorBus = new Map();
+let solicitudPlantilla = 0;
 const seleccionados = new Set();
 
 const formulario = document.getElementById("formPlantilla");
@@ -164,8 +166,7 @@ function cambiarNumeroPisos() {
 }
 
 function guardarBorradorBus() {
-    if (!busEnEdicion) return;
-
+if (!busEnEdicion || !versionesPorBus.has(busEnEdicion)) return;
     const campos = [1, 2].map(function (numero) {
         return {
             cantidad: document.getElementById(
@@ -243,24 +244,124 @@ function actualizarTextoResumen(bus) {
         " asientos en total.";
 }
 
-function cambiarBus() {
+async function cambiarBus() {
     guardarBorradorBus();
+
+    const solicitud = ++solicitudPlantilla;
 
     busEnEdicion = selectorBus.value;
     limpiarResumen();
+
     mensaje.classList.add("d-none");
+    controles.disabled = false;
+    formulario.removeAttribute("aria-busy");
 
-    const bus = busesDisponibles.find(function (bus) {
-        return bus.id === busEnEdicion;
-    });
+    const bus = busesDisponibles.find(
+        bus => bus.id === busEnEdicion
+    );
 
-    const borrador = bus
+    let borrador = bus
         ? configuracionesPorBus.get(bus.id)
         : null;
 
+    let cargadaDesdeSupabase = false;
+
     restaurarCamposBus(borrador);
 
-    if (!bus || !borrador) return;
+    if (!bus) return;
+
+    if (!borrador) {
+        controles.disabled = true;
+        formulario.setAttribute("aria-busy", "true");
+
+        mostrarMensaje(
+            "Cargando la plantilla del bus " + bus.placa + "..."
+        );
+
+        try {
+            const guardada = await obtenerPlantillaGuardada(bus.id);
+
+            // Ignorar una respuesta si ya se seleccionó otro bus.
+            if (solicitud !== solicitudPlantilla) return;
+
+            versionesPorBus.set(
+                bus.id,
+                guardada?.actualizado_en ?? null
+            );
+
+            if (!guardada) {
+                mostrarMensaje(
+                    "Este bus todavía no tiene una plantilla guardada. " +
+                    "Configura sus asientos y genera la vista previa."
+                );
+
+                return;
+            }
+
+            borrador = {
+                numeroPisos: String(guardada.numero_pisos),
+
+                segundoPisoPreparado:
+                    guardada.numero_pisos === 2,
+
+                campos: [1, 2].map(function (numero) {
+                    const piso = guardada.pisos.find(
+                        piso => piso.numero === numero
+                    );
+
+                    return {
+                        cantidad: piso
+                            ? String(piso.asientos.length)
+                            : document.getElementById(
+                                "cantidad" + numero
+                            ).defaultValue,
+
+                        filas: piso
+                            ? String(piso.filas)
+                            : document.getElementById(
+                                "filas" + numero
+                            ).defaultValue,
+
+                        columnas: piso
+                            ? String(piso.columnas)
+                            : document.getElementById(
+                                "columnas" + numero
+                            ).defaultValue
+                    };
+                }),
+
+                configuracion: guardada,
+                vista: null
+            };
+
+            configuracionesPorBus.set(bus.id, borrador);
+
+            restaurarCamposBus(borrador);
+            cargadaDesdeSupabase = true;
+        } catch (error) {
+            if (solicitud !== solicitudPlantilla) return;
+
+            versionesPorBus.delete(bus.id);
+
+            console.error(
+                "No se pudo cargar la plantilla:",
+                error
+            );
+
+            mostrarMensaje(
+                "No se pudo cargar la plantilla. Selecciona otro bus " +
+                "y vuelve a elegir este para reintentar.",
+                "danger"
+            );
+
+            return;
+        } finally {
+            if (solicitud === solicitudPlantilla) {
+                controles.disabled = false;
+                formulario.removeAttribute("aria-busy");
+            }
+        }
+    }
 
     if (!borrador.configuracion) {
         mostrarMensaje(
@@ -292,13 +393,18 @@ function cambiarBus() {
             ["2", "ambos"].includes(borrador.vista)
         );
 
-    mostrarPiso(vistaValida ? borrador.vista : "1");
+    if (vistaValida) {
+        mostrarPiso(borrador.vista);
+    }
 
     resumen.classList.remove("d-none");
 
     mostrarMensaje(
-        "Configuración recuperada para el bus " + bus.placa +
-        ". Se conserva mientras esta página permanezca abierta."
+        cargadaDesdeSupabase
+            ? "Plantilla guardada cargada para el bus " +
+              bus.placa + "."
+            : "Borrador recuperado para el bus " + bus.placa +
+              ". Los cambios nuevos todavía no se han guardado."
     );
 }
 
