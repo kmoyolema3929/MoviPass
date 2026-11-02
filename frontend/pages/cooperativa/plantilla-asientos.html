@@ -67,7 +67,9 @@
                                         class="form-select"
                                         required
                                     >
-                                        <option value="">Selecciona un bus</option>
+                                        <option value="">
+                                            Selecciona un bus
+                                        </option>
                                     </select>
 
                                     <div class="invalid-feedback">
@@ -91,7 +93,8 @@
                                     </select>
 
                                     <div class="form-text">
-                                        Configura la distribución de cada piso por separado.
+                                        Configura la distribución de cada piso
+                                        por separado.
                                     </div>
                                 </div>
 
@@ -276,9 +279,18 @@
                                     la última fila incompleta.
                                 </p>
 
-                                <div class="d-grid d-sm-flex justify-content-sm-end mt-4">
+                                <div class="d-grid d-sm-flex gap-2 justify-content-sm-end mt-4">
                                     <button type="submit" class="btn btn-primary">
                                         Generar vista previa
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        id="guardarPlantilla"
+                                        class="btn btn-success"
+                                        disabled
+                                    >
+                                        Guardar plantilla
                                     </button>
                                 </div>
                             </fieldset>

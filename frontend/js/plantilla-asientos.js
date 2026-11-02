@@ -1,14 +1,19 @@
 import { supabase } from "./supabaseClient.js";
 import { obtenerSesion, obtenerRol } from "./auth.js";
-import { obtenerPlantillaGuardada } from "./asientosService.js";
+import {
+    obtenerPlantillaGuardada,
+    guardarPlantillaEnSupabase
+} from "./asientosService.js";
+
 let busesDisponibles = [];
 let configuracionActual = null;
 let segundoPisoPreparado = false;
 let busEnEdicion = "";
+let solicitudPlantilla = 0;
+let guardandoPlantilla = false;
 
 const configuracionesPorBus = new Map();
 const versionesPorBus = new Map();
-let solicitudPlantilla = 0;
 const seleccionados = new Set();
 
 const formulario = document.getElementById("formPlantilla");
@@ -28,6 +33,9 @@ const botonLimpiar = document.getElementById("limpiarSeleccion");
 const numeroPisos = document.getElementById("numeroPisos");
 const totalConfigurado = document.getElementById("totalConfigurado");
 const botonesPisos = document.getElementById("botonesPisos");
+const botonGuardar = document.getElementById("guardarPlantilla");
+
+// Mensajes y validación.
 
 function mostrarMensaje(texto, tipo = "info") {
     mensaje.textContent = texto;
@@ -55,6 +63,73 @@ function leerPiso(numero) {
     };
 }
 
+function actualizarValidezCampos() {
+    const mostrarErrores =
+        formulario.classList.contains("was-validated");
+
+    formulario.querySelectorAll("input, select").forEach(function (campo) {
+        if (!mostrarErrores || campo.matches(":disabled")) {
+            campo.removeAttribute("aria-invalid");
+        } else {
+            campo.setAttribute(
+                "aria-invalid",
+                String(!campo.validity.valid)
+            );
+        }
+    });
+}
+
+function validarCapacidadTotal() {
+    [1, 2].forEach(function (numero) {
+        document
+            .getElementById("cantidad" + numero)
+            .setCustomValidity("");
+    });
+
+    const pisos = Number(numeroPisos.value);
+
+    if (!enteroEnRango(pisos, 1, 2)) {
+        actualizarValidezCampos();
+        return false;
+    }
+
+    const cantidades = Array.from(
+        { length: pisos },
+        (_, indice) => Number(
+            document.getElementById("cantidad" + (indice + 1)).value
+        )
+    );
+
+    const individualesValidas = cantidades.every(function (cantidad) {
+        return enteroEnRango(cantidad, 1, 60);
+    });
+
+    if (!individualesValidas) {
+        actualizarValidezCampos();
+        return false;
+    }
+
+    const total = cantidades.reduce(
+        (suma, cantidad) => suma + cantidad,
+        0
+    );
+
+    const minimo = pisos === 2 ? 40 : 1;
+    const valido = enteroEnRango(total, minimo, 60);
+
+    if (!valido) {
+        document.getElementById("cantidad" + pisos).setCustomValidity(
+            "Los pisos suman " + total +
+            " asientos. El total debe estar entre " +
+            minimo + " y 60."
+        );
+    }
+
+    actualizarValidezCampos();
+
+    return valido;
+}
+
 function actualizarTotal() {
     const datos = Array.from(
         { length: Number(numeroPisos.value) },
@@ -70,6 +145,7 @@ function actualizarTotal() {
     }, 0);
 
     const minimo = datos.length === 2 ? 40 : 1;
+
     const dentroDelRango =
         valido && enteroEnRango(total, minimo, 60);
 
@@ -84,7 +160,19 @@ function actualizarTotal() {
                   : "Máximo 60 asientos."
           )
         : "Completa la cantidad de asientos de cada piso.";
-        validarCapacidadTotal();
+
+    validarCapacidadTotal();
+}
+
+// Configuración y borradores por bus.
+
+function actualizarBotonGuardar() {
+    botonGuardar.disabled =
+        guardandoPlantilla ||
+        controles.disabled ||
+        !configuracionActual ||
+        configuracionActual.bus_id !== selectorBus.value ||
+        !versionesPorBus.has(selectorBus.value);
 }
 
 function limpiarResumen() {
@@ -96,15 +184,72 @@ function limpiarResumen() {
 
     resumen.classList.add("d-none");
     formulario.classList.remove("was-validated");
+
+    actualizarBotonGuardar();
+}
+
+function guardarBorradorBus() {
+    if (!busEnEdicion || !versionesPorBus.has(busEnEdicion)) return;
+
+    const campos = [1, 2].map(function (numero) {
+        return {
+            cantidad: document.getElementById("cantidad" + numero).value,
+            filas: document.getElementById("filas" + numero).value,
+            columnas: document.getElementById("columnas" + numero).value
+        };
+    });
+
+    const configuracion =
+        configuracionActual?.bus_id === busEnEdicion
+            ? structuredClone(configuracionActual)
+            : null;
+
+    configuracionesPorBus.set(busEnEdicion, {
+        numeroPisos: numeroPisos.value,
+        segundoPisoPreparado,
+        campos,
+        configuracion,
+        vista: mapaPlantilla.dataset.vista ?? "1"
+    });
+}
+
+function restaurarCamposBus(borrador) {
+    numeroPisos.value = borrador?.numeroPisos ?? "1";
+
+    segundoPisoPreparado =
+        borrador?.segundoPisoPreparado ?? false;
+
+    [1, 2].forEach(function (numero) {
+        ["cantidad", "filas", "columnas"].forEach(function (nombre) {
+            const campo = document.getElementById(nombre + numero);
+
+            campo.value =
+                borrador?.campos[numero - 1]?.[nombre] ??
+                campo.defaultValue;
+        });
+
+        const columnas = Number(
+            document.getElementById("columnas" + numero).value
+        );
+
+        document.getElementById("filas" + numero).max = String(
+            enteroEnRango(columnas, 1, 4)
+                ? Math.ceil(60 / columnas)
+                : 60
+        );
+    });
+
+    const segundoPiso = document.getElementById("configuracionPiso2");
+
+    segundoPiso.hidden = numeroPisos.value !== "2";
+    segundoPiso.disabled = numeroPisos.value !== "2";
+
+    actualizarTotal();
 }
 
 function ajustarPiso(numero, desdeFilas = false) {
-    const campoCantidad =
-        document.getElementById("cantidad" + numero);
-
-    const campoFilas =
-        document.getElementById("filas" + numero);
-
+    const campoCantidad = document.getElementById("cantidad" + numero);
+    const campoFilas = document.getElementById("filas" + numero);
     const datos = leerPiso(numero);
 
     if (enteroEnRango(datos.columnas, 1, 4)) {
@@ -165,70 +310,43 @@ function cambiarNumeroPisos() {
     }
 }
 
-function guardarBorradorBus() {
-if (!busEnEdicion || !versionesPorBus.has(busEnEdicion)) return;
-    const campos = [1, 2].map(function (numero) {
-        return {
-            cantidad: document.getElementById(
-                "cantidad" + numero
-            ).value,
-            filas: document.getElementById(
-                "filas" + numero
-            ).value,
-            columnas: document.getElementById(
-                "columnas" + numero
-            ).value
-        };
-    });
+// Consulta de buses y plantillas.
 
-    const configuracion =
-        configuracionActual?.bus_id === busEnEdicion
-            ? structuredClone(configuracionActual)
-            : null;
+function llenarSelectorBuses() {
+    const opcionInicial = document.createElement("option");
 
-    configuracionesPorBus.set(busEnEdicion, {
-        numeroPisos: numeroPisos.value,
-        segundoPisoPreparado,
-        campos,
-        configuracion,
-        vista: mapaPlantilla.dataset.vista ?? "1"
+    opcionInicial.value = "";
+    opcionInicial.textContent = "Selecciona un bus";
+
+    selectorBus.replaceChildren(opcionInicial);
+
+    busesDisponibles.forEach(function (bus) {
+        const opcion = document.createElement("option");
+
+        const cooperativa =
+            bus.cooperativas?.nombre ?? "Cooperativa no disponible";
+
+        opcion.value = bus.id;
+
+        opcion.textContent =
+            `${bus.placa} — ${cooperativa} (${bus.tipo_bus})`;
+
+        selectorBus.appendChild(opcion);
     });
 }
 
-function restaurarCamposBus(borrador) {
-    numeroPisos.value = borrador?.numeroPisos ?? "1";
+async function cargarBuses() {
+    const { data, error } = await supabase
+        .from("buses")
+        .select(
+            "id, placa, tipo_bus, cooperativa_id, cooperativas(nombre)"
+        )
+        .order("placa");
 
-    segundoPisoPreparado =
-        borrador?.segundoPisoPreparado ?? false;
+    if (error) throw error;
 
-    [1, 2].forEach(function (numero) {
-        ["cantidad", "filas", "columnas"].forEach(function (nombre) {
-            const campo = document.getElementById(nombre + numero);
-
-            campo.value =
-                borrador?.campos[numero - 1]?.[nombre] ??
-                campo.defaultValue;
-        });
-
-        const columnas = Number(
-            document.getElementById("columnas" + numero).value
-        );
-
-        document.getElementById("filas" + numero).max = String(
-            enteroEnRango(columnas, 1, 4)
-                ? Math.ceil(60 / columnas)
-                : 60
-        );
-    });
-
-    const segundoPiso = document.getElementById(
-        "configuracionPiso2"
-    );
-
-    segundoPiso.hidden = numeroPisos.value !== "2";
-    segundoPiso.disabled = numeroPisos.value !== "2";
-
-    actualizarTotal();
+    busesDisponibles = data ?? [];
+    llenarSelectorBuses();
 }
 
 function actualizarTextoResumen(bus) {
@@ -281,7 +399,7 @@ async function cambiarBus() {
         try {
             const guardada = await obtenerPlantillaGuardada(bus.id);
 
-            // Ignorar una respuesta si ya se seleccionó otro bus.
+            // Evita aplicar una respuesta que corresponda a otro bus.
             if (solicitud !== solicitudPlantilla) return;
 
             versionesPorBus.set(
@@ -359,6 +477,7 @@ async function cambiarBus() {
             if (solicitud === solicitudPlantilla) {
                 controles.disabled = false;
                 formulario.removeAttribute("aria-busy");
+                actualizarBotonGuardar();
             }
         }
     }
@@ -408,41 +527,7 @@ async function cambiarBus() {
     );
 }
 
-function llenarSelectorBuses() {
-    const opcionInicial = document.createElement("option");
-
-    opcionInicial.value = "";
-    opcionInicial.textContent = "Selecciona un bus";
-
-    selectorBus.replaceChildren(opcionInicial);
-
-    busesDisponibles.forEach(function (bus) {
-        const opcion = document.createElement("option");
-
-        const cooperativa =
-            bus.cooperativas?.nombre ?? "Cooperativa no disponible";
-
-        opcion.value = bus.id;
-        opcion.textContent =
-            `${bus.placa} — ${cooperativa} (${bus.tipo_bus})`;
-
-        selectorBus.appendChild(opcion);
-    });
-}
-
-async function cargarBuses() {
-    const { data, error } = await supabase
-        .from("buses")
-        .select(
-            "id, placa, tipo_bus, cooperativa_id, cooperativas(nombre)"
-        )
-        .order("placa");
-
-    if (error) throw error;
-
-    busesDisponibles = data ?? [];
-    llenarSelectorBuses();
-}
+// Generación de los asientos.
 
 function crearPisos(datos) {
     if (
@@ -506,6 +591,8 @@ function crearPisos(datos) {
     });
 }
 
+// Prueba de selección de puestos.
+
 function alternarSeleccion(numero, limite, seleccionados) {
     if (seleccionados.has(numero)) {
         seleccionados.delete(numero);
@@ -517,6 +604,7 @@ function alternarSeleccion(numero, limite, seleccionados) {
     }
 
     seleccionados.add(numero);
+
     return true;
 }
 
@@ -559,10 +647,11 @@ function actualizarContador(aviso = "") {
         "Total: " + total +
         " · Normales: " + (total - totalVip) +
         " · VIP: " + totalVip;
-        cantidadBoletos.setAttribute(
-    "aria-invalid",
-    String(!cantidadBoletos.validity.valid)
-);
+
+    cantidadBoletos.setAttribute(
+        "aria-invalid",
+        String(!cantidadBoletos.validity.valid)
+    );
 
     if (!cantidadBoletos.checkValidity()) {
         estadoSeleccion.textContent =
@@ -643,6 +732,8 @@ function seleccionarAsiento(boton) {
     actualizarContador();
 }
 
+// Vista previa por pisos.
+
 function mostrarPiso(vista) {
     mapaPlantilla.dataset.vista = vista;
 
@@ -689,6 +780,7 @@ function crearMapaPiso(piso) {
     titulo.textContent = "Piso " + piso.numero;
 
     detalle.className = "text-muted small mb-1";
+
     detalle.textContent =
         piso.asientos.length + " asientos: del " +
         piso.asientos[0].numero + " al " +
@@ -731,16 +823,13 @@ function crearMapaPiso(piso) {
         filaVisual.style.gridTemplateColumns = anchos.join(" ");
 
         filaVisual.setAttribute("role", "group");
+
         filaVisual.setAttribute(
             "aria-label",
             "Piso " + piso.numero + ", fila " + fila
         );
 
-        for (
-            let columna = 1;
-            columna <= piso.columnas;
-            columna++
-        ) {
+        for (let columna = 1; columna <= piso.columnas; columna++) {
             const indice =
                 (fila - 1) * piso.columnas + columna - 1;
 
@@ -753,6 +842,7 @@ function crearMapaPiso(piso) {
 
                 boton.type = "button";
                 boton.className = "plantilla-asiento";
+
                 boton.dataset.numero = String(asiento.numero);
                 boton.dataset.piso = String(piso.numero);
 
@@ -774,10 +864,7 @@ function crearMapaPiso(piso) {
                 filaVisual.appendChild(hueco);
             }
 
-            if (
-                columna === centro &&
-                piso.columnas > 1
-            ) {
+            if (columna === centro && piso.columnas > 1) {
                 const pasillo = document.createElement("span");
 
                 pasillo.className = "plantilla-pasillo";
@@ -852,224 +939,7 @@ function dibujarVistaPrevia() {
         window.matchMedia("(min-width: 768px)").matches;
 
     mostrarPiso(verAmbos ? "ambos" : "1");
-}
-
-formulario.addEventListener("submit", function (evento) {
-    evento.preventDefault();
-
-    if (controles.disabled) return;
-
-    formulario.classList.add("was-validated");
-
-   validarCapacidadTotal();
-
-if (!formulario.reportValidity()) return;
-
-    const busSeleccionado = busesDisponibles.find(function (bus) {
-        return bus.id === selectorBus.value;
-    });
-
-    if (!busSeleccionado) {
-        mostrarMensaje(
-            "Selecciona un bus disponible.",
-            "warning"
-        );
-
-        return;
-    }
-
-    try {
-        const datos = Array.from(
-            { length: Number(numeroPisos.value) },
-            (_, indice) => leerPiso(indice + 1)
-        );
-
-        const pisos = crearPisos(datos);
-
-        const total = pisos.reduce(function (suma, piso) {
-            return suma + piso.asientos.length;
-        }, 0);
-
-        configuracionActual = {
-            bus_id: busSeleccionado.id,
-            numero_pisos: pisos.length,
-            total_asientos: total,
-            pisos
-        };
-
-        seleccionados.clear();
-
-        cantidadBoletos.max = String(total);
-        cantidadBoletos.value = "1";
-
-        busEnEdicion = busSeleccionado.id;
-        actualizarTextoResumen(busSeleccionado);
-
-        dibujarVistaPrevia();
-        actualizarContador();
-resumen.classList.remove("d-none");
-mensaje.classList.add("d-none");
-
-guardarBorradorBus();
-
-document.getElementById("tituloResumen").focus();
-    } catch (error) {
-        mostrarMensaje(error.message, "warning");
-    }
-});
-mapaPlantilla.addEventListener("keydown", navegarAsientos);
-
-selectorBus.addEventListener("change", cambiarBus);
-
-numeroPisos.addEventListener(
-    "change",
-    cambiarNumeroPisos
-);
-
-[1, 2].forEach(function (numero) {
-    document
-        .getElementById("cantidad" + numero)
-        .addEventListener("input", function () {
-            ajustarPiso(numero);
-        });
-
-    document
-        .getElementById("columnas" + numero)
-        .addEventListener("input", function () {
-            ajustarPiso(numero);
-        });
-
-    document
-        .getElementById("filas" + numero)
-        .addEventListener("input", function () {
-            ajustarPiso(numero, true);
-        });
-});
-
-cantidadBoletos.addEventListener(
-    "input",
-    limpiarSeleccion
-);
-
-botonLimpiar.addEventListener(
-    "click",
-    limpiarSeleccion
-);
-
-actualizarTotal();
-
-async function iniciar() {
-    controles.disabled = true;
-
-    try {
-        const sesion = await obtenerSesion();
-
-        if (!sesion) {
-            window.location.replace("../login.html");
-            return;
-        }
-
-        const rol = await obtenerRol();
-
-        if (!["administrador", "cooperativa"].includes(rol)) {
-            window.location.replace("../sin-acceso.html");
-            return;
-        }
-
-        mostrarMensaje("Cargando buses disponibles...");
-
-        await cargarBuses();
-
-        if (busesDisponibles.length === 0) {
-            mostrarMensaje(
-                rol === "administrador"
-                    ? "No hay buses registrados. Registra uno desde la gestión de buses."
-                    : "No hay buses disponibles para esta cuenta. Solicita al administrador que revise tu asignación.",
-                "warning"
-            );
-
-            return;
-        }
-
-        controles.disabled = false;
-        mensaje.classList.add("d-none");
-    } catch (error) {
-        console.error(
-            "Error al cargar la plantilla de asientos:",
-            error
-        );
-
-        mostrarMensaje(
-            "No se pudieron cargar los buses. Revisa tu conexión y vuelve a intentar.",
-            "danger"
-        );
-    }
-}
-function actualizarValidezCampos() {
-    const mostrarErrores =
-        formulario.classList.contains("was-validated");
-
-    formulario.querySelectorAll("input, select").forEach(function (campo) {
-        if (!mostrarErrores || campo.matches(":disabled")) {
-            campo.removeAttribute("aria-invalid");
-        } else {
-            campo.setAttribute(
-                "aria-invalid",
-                String(!campo.validity.valid)
-            );
-        }
-    });
-}
-
-function validarCapacidadTotal() {
-    [1, 2].forEach(function (numero) {
-        document
-            .getElementById("cantidad" + numero)
-            .setCustomValidity("");
-    });
-
-    const pisos = Number(numeroPisos.value);
-
-    if (!enteroEnRango(pisos, 1, 2)) {
-        actualizarValidezCampos();
-        return false;
-    }
-
-    const cantidades = Array.from(
-        { length: pisos },
-        (_, indice) => Number(
-            document.getElementById("cantidad" + (indice + 1)).value
-        )
-    );
-
-    const individualesValidas = cantidades.every(function (cantidad) {
-        return enteroEnRango(cantidad, 1, 60);
-    });
-
-    if (!individualesValidas) {
-        actualizarValidezCampos();
-        return false;
-    }
-
-    const total = cantidades.reduce(
-        (suma, cantidad) => suma + cantidad,
-        0
-    );
-
-    const minimo = pisos === 2 ? 40 : 1;
-    const valido = enteroEnRango(total, minimo, 60);
-
-    if (!valido) {
-        document.getElementById("cantidad" + pisos).setCustomValidity(
-            "Los pisos suman " + total +
-            " asientos. El total debe estar entre " +
-            minimo + " y 60."
-        );
-    }
-
-    actualizarValidezCampos();
-
-    return valido;
+    actualizarBotonGuardar();
 }
 
 function navegarAsientos(evento) {
@@ -1113,6 +983,296 @@ function navegarAsientos(evento) {
         'button[data-piso="' + piso.numero +
         '"][data-numero="' + destino.numero + '"]'
     )?.focus();
-   
 }
+
+// Guardado y actualización en Supabase.
+
+async function guardarPlantillaActual() {
+    if (guardandoPlantilla || controles.disabled) return;
+
+    if (
+        !configuracionActual ||
+        configuracionActual.bus_id !== selectorBus.value
+    ) {
+        mostrarMensaje(
+            "Genera la vista previa del bus antes de guardar.",
+            "warning"
+        );
+
+        return;
+    }
+
+    const busId = configuracionActual.bus_id;
+
+    if (!versionesPorBus.has(busId)) {
+        mostrarMensaje(
+            "Primero carga la plantilla del bus. Selecciona otro bus " +
+            "y vuelve a este para reintentar.",
+            "warning"
+        );
+
+        return;
+    }
+
+    validarCapacidadTotal();
+
+    if (!formulario.reportValidity()) return;
+
+    const configuracion = structuredClone(configuracionActual);
+    const versionEsperada = versionesPorBus.get(busId);
+
+    guardandoPlantilla = true;
+    controles.disabled = true;
+
+    formulario.setAttribute("aria-busy", "true");
+    botonGuardar.textContent = "Guardando...";
+
+    actualizarBotonGuardar();
+    mostrarMensaje("Guardando la plantilla...");
+
+    try {
+        const guardada = await guardarPlantillaEnSupabase(
+            configuracion,
+            versionEsperada
+        );
+
+        if (
+            !guardada?.actualizado_en ||
+            guardada.bus_id !== busId
+        ) {
+            throw new Error("Respuesta de guardado incompleta.");
+        }
+
+        versionesPorBus.set(
+            busId,
+            guardada.actualizado_en
+        );
+
+        configuracionActual = {
+            ...configuracion,
+            id: guardada.id,
+            actualizado_en: guardada.actualizado_en
+        };
+
+        guardarBorradorBus();
+
+        mostrarMensaje(
+            "Plantilla guardada correctamente. Puedes recargar " +
+            "la página y volver a seleccionar este bus.",
+            "success"
+        );
+    } catch (error) {
+        console.error(
+            "Error al guardar la plantilla:",
+            error
+        );
+
+        if (error?.code === "40001") {
+            versionesPorBus.delete(busId);
+            configuracionesPorBus.delete(busId);
+
+            mostrarMensaje(
+                "La plantilla cambió en otra sesión. Revisa tus cambios " +
+                "antes de seleccionar otro bus y volver a este " +
+                "para cargar la versión actual.",
+                "warning"
+            );
+        } else if (error?.code === "42501") {
+            mostrarMensaje(
+                "Tu cuenta no tiene permiso para guardar la plantilla " +
+                "de este bus.",
+                "danger"
+            );
+        } else if (error?.code === "22023") {
+            mostrarMensaje(
+                "Revisa la cantidad de asientos, las filas y las columnas " +
+                "de cada piso y genera otra vez la vista previa.",
+                "warning"
+            );
+        } else {
+            mostrarMensaje(
+                "No se pudo confirmar el guardado. Revisa tu conexión " +
+                "e inténtalo de nuevo.",
+                "danger"
+            );
+        }
+    } finally {
+        guardandoPlantilla = false;
+        controles.disabled = false;
+
+        formulario.removeAttribute("aria-busy");
+        botonGuardar.textContent = "Guardar plantilla";
+
+        actualizarBotonGuardar();
+    }
+}
+
+// Generar la vista previa desde el formulario.
+
+formulario.addEventListener("submit", function (evento) {
+    evento.preventDefault();
+
+    if (controles.disabled) return;
+
+    formulario.classList.add("was-validated");
+    validarCapacidadTotal();
+
+    if (!formulario.reportValidity()) return;
+
+    const busSeleccionado = busesDisponibles.find(function (bus) {
+        return bus.id === selectorBus.value;
+    });
+
+    if (!busSeleccionado) {
+        mostrarMensaje(
+            "Selecciona un bus disponible.",
+            "warning"
+        );
+
+        return;
+    }
+
+    try {
+        const datos = Array.from(
+            { length: Number(numeroPisos.value) },
+            (_, indice) => leerPiso(indice + 1)
+        );
+
+        const pisos = crearPisos(datos);
+
+        const total = pisos.reduce(function (suma, piso) {
+            return suma + piso.asientos.length;
+        }, 0);
+
+        configuracionActual = {
+            bus_id: busSeleccionado.id,
+            numero_pisos: pisos.length,
+            total_asientos: total,
+            pisos
+        };
+
+        seleccionados.clear();
+
+        cantidadBoletos.max = String(total);
+        cantidadBoletos.value = "1";
+
+        busEnEdicion = busSeleccionado.id;
+        actualizarTextoResumen(busSeleccionado);
+
+        dibujarVistaPrevia();
+        actualizarContador();
+
+        resumen.classList.remove("d-none");
+        mensaje.classList.add("d-none");
+
+        guardarBorradorBus();
+
+        document.getElementById("tituloResumen").focus();
+    } catch (error) {
+        mostrarMensaje(error.message, "warning");
+    }
+});
+
+// Eventos.
+
+selectorBus.addEventListener("change", cambiarBus);
+
+numeroPisos.addEventListener(
+    "change",
+    cambiarNumeroPisos
+);
+
+[1, 2].forEach(function (numero) {
+    document
+        .getElementById("cantidad" + numero)
+        .addEventListener("input", function () {
+            ajustarPiso(numero);
+        });
+
+    document
+        .getElementById("columnas" + numero)
+        .addEventListener("input", function () {
+            ajustarPiso(numero);
+        });
+
+    document
+        .getElementById("filas" + numero)
+        .addEventListener("input", function () {
+            ajustarPiso(numero, true);
+        });
+});
+
+mapaPlantilla.addEventListener(
+    "keydown",
+    navegarAsientos
+);
+
+cantidadBoletos.addEventListener(
+    "input",
+    limpiarSeleccion
+);
+
+botonLimpiar.addEventListener(
+    "click",
+    limpiarSeleccion
+);
+
+botonGuardar.addEventListener(
+    "click",
+    guardarPlantillaActual
+);
+
+// Inicio y comprobación del acceso.
+
+async function iniciar() {
+    controles.disabled = true;
+
+    try {
+        const sesion = await obtenerSesion();
+
+        if (!sesion) {
+            window.location.replace("../login.html");
+            return;
+        }
+
+        const rol = await obtenerRol();
+
+        if (!["administrador", "cooperativa"].includes(rol)) {
+            window.location.replace("../sin-acceso.html");
+            return;
+        }
+
+        mostrarMensaje("Cargando buses disponibles...");
+
+        await cargarBuses();
+
+        if (busesDisponibles.length === 0) {
+            mostrarMensaje(
+                rol === "administrador"
+                    ? "No hay buses registrados. Registra uno desde la gestión de buses."
+                    : "No hay buses disponibles para esta cuenta. Solicita al administrador que revise tu asignación.",
+                "warning"
+            );
+
+            return;
+        }
+
+        controles.disabled = false;
+        mensaje.classList.add("d-none");
+
+        actualizarBotonGuardar();
+    } catch (error) {
+        console.error(
+            "Error al cargar la plantilla de asientos:",
+            error
+        );
+
+        mostrarMensaje(
+            "No se pudieron cargar los buses. Revisa tu conexión y vuelve a intentar.",
+            "danger"
+        );
+    }
+}
+
+actualizarTotal();
 iniciar();
