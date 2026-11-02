@@ -50,9 +50,17 @@ async function cargarBuses() {
     });
 }
 
-// Generación de la hoja de ruta consultando paradas en Supabase
+// Generación de la hoja de ruta con validación de formulario y consulta en Supabase
 async function generarHojaRuta(e) {
     e.preventDefault();
+    const form = e.target;
+
+    // Validación de formulario con Bootstrap
+    if (!form.checkValidity()) {
+        e.stopPropagation();
+        form.classList.add('was-validated');
+        return;
+    }
 
     const frecuenciaId = document.getElementById('selectFrecuencia').value;
     const busId = document.getElementById('selectBus').value;
@@ -61,11 +69,6 @@ async function generarHojaRuta(e) {
 
     // Limpieza segura de la tabla
     tbody.replaceChildren();
-
-    if (!frecuenciaId || !busId || !fechaViaje) {
-        alert('Por favor complete todos los campos.');
-        return;
-    }
 
     let paradas = [];
     if (supabaseClient) {
