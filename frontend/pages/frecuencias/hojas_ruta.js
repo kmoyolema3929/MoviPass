@@ -50,8 +50,68 @@ async function cargarBuses() {
     });
 }
 
-// Función preliminar para la generación de la hoja de ruta
-function generarHojaRuta(e) {
+// Generación de la hoja de ruta consultando paradas en Supabase
+async function generarHojaRuta(e) {
     e.preventDefault();
-    alert('Parámetros seleccionados correctamente. Generando hoja de ruta...');
+
+    const frecuenciaId = document.getElementById('selectFrecuencia').value;
+    const busId = document.getElementById('selectBus').value;
+    const fechaViaje = document.getElementById('fechaViaje').value;
+    const tbody = document.getElementById('tablaHojaRuta');
+
+    // Limpieza segura de la tabla
+    tbody.replaceChildren();
+
+    if (!frecuenciaId || !busId || !fechaViaje) {
+        alert('Por favor complete todos los campos.');
+        return;
+    }
+
+    let paradas = [];
+    if (supabaseClient) {
+        const { data, error } = await supabaseClient
+            .from('paradas')
+            .select('*')
+            .eq('frecuencia_id', frecuenciaId)
+            .order('hora_estimada', { ascending: true });
+
+        if (error) {
+            console.error('Error al consultar paradas:', error);
+        } else {
+            paradas = data || [];
+        }
+    }
+
+    if (paradas.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.className = 'text-center py-3 text-muted';
+        td.textContent = 'No hay paradas registradas para esta frecuencia.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    paradas.forEach((item, index) => {
+        const tr = document.createElement('tr');
+
+        const tdIndex = document.createElement('td');
+        tdIndex.textContent = index + 1;
+
+        const tdNombre = document.createElement('td');
+        tdNombre.textContent = item.nombre;
+
+        const tdHora = document.createElement('td');
+        tdHora.textContent = item.hora_estimada || item.hora;
+
+        const tdEstado = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-success';
+        badge.textContent = 'Programado';
+        tdEstado.appendChild(badge);
+
+        tr.append(tdIndex, tdNombre, tdHora, tdEstado);
+        tbody.appendChild(tr);
+    });
 }
