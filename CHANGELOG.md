@@ -25,6 +25,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - CRUD completo de paradas intermedias sincronizado con Supabase para el módulo de Frecuencias y Rutas (Issue #35).
 - Creación de migración SQL para la tabla `paradas` con restricciones de clave foránea y políticas RLS (Issue #35).
 - Aplicación de migración SQL pendiente para la tabla `frecuencias` y habilitación de políticas RLS en Supabase (Issue #64).
+- Conexión de la búsqueda de viajes con Supabase por origen, destino y fecha, incluyendo datos de cooperativa y tipo de bus, manejo de errores, migración de viajes y capturas de pruebas (#41).
 
 ### Cambiado
 - El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security) (PR #2, decisión D-001).
