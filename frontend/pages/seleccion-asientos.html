@@ -144,6 +144,12 @@
 
   <script>
     // --- Configuración ---
+    const parametrosViaje = new URLSearchParams(window.location.search);
+    const viajeId = parametrosViaje.get('viaje_id');
+    // Conserva el contexto recibido desde las tarjetas para la integración del viaje.
+    if (viajeId) {
+      document.getElementById('mapaAsientos').dataset.viajeId = viajeId;
+    }
     const PRECIO_ASIENTO = 12.5;
     const FILAS = 10;
     const COLUMNAS = ['A', 'B', null, 'C', 'D']; // null = pasillo
@@ -274,7 +280,9 @@
       sessionStorage.setItem('asientosSeleccionados', JSON.stringify(asientos)); 
       
       // Redirigimos a la pantalla de resumen de compra (Issue #46)
-      window.location.href = 'compra/resumen-compra.html'; 
+      const resumenUrl = new URL('compra/resumen-compra.html', window.location.href);
+      if (viajeId) resumenUrl.searchParams.set('viaje_id', viajeId);
+      window.location.href = resumenUrl.href;
     });
 
     // Inicializar todo al cargar la página
