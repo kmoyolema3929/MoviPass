@@ -67,7 +67,7 @@ async function listarHojasRuta() {
         const btnEditar = document.createElement('button');
         btnEditar.className = 'btn btn-sm btn-outline-primary me-2';
         btnEditar.textContent = 'Editar';
-        btnEditar.onclick = () => editarHojaRuta(item.id);
+        btnEditar.onclick = () => editarHojaRuta(item.id, item.estado);
 
         const btnEliminar = document.createElement('button');
         btnEliminar.className = 'btn btn-sm btn-outline-danger';
@@ -80,11 +80,28 @@ async function listarHojasRuta() {
     });
 }
 
-// Funciones placeholder para completar el CRUD en los siguientes commits
-function editarHojaRuta(id) {
-    alert('Función de edición para la hoja de ruta ID: ' + id);
+// Función para cambiar el estado de una hoja de ruta existente
+async function editarHojaRuta(id, estadoActual) {
+    const nuevoEstado = estadoActual === 'Programado' ? 'Completado' : 'Programado';
+    
+    if (!confirm(`¿Desea cambiar el estado de la hoja de ruta a '${nuevoEstado}'?`)) return;
+
+    if (supabaseClient) {
+        const { error } = await supabaseClient
+            .from('hojas_ruta')
+            .update({ estado: nuevoEstado })
+            .eq('id', id);
+
+        if (error) {
+            alert('Error al actualizar la hoja de ruta: ' + error.message);
+            return;
+        }
+    }
+
+    await listarHojasRuta();
 }
 
+// Función para eliminar una hoja de ruta
 async function eliminarHojaRuta(id) {
     if (!confirm('¿Está seguro de eliminar esta hoja de ruta?')) return;
     
@@ -95,9 +112,10 @@ async function eliminarHojaRuta(id) {
             .eq('id', id);
 
         if (error) {
-            alert('Error al eliminar: ' + error.message);
+            alert('Error al eliminar la hoja de ruta: ' + error.message);
             return;
         }
     }
-    listarHojasRuta();
+    
+    await listarHojasRuta();
 }
