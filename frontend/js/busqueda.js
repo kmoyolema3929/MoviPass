@@ -111,11 +111,9 @@ formulario.addEventListener('busqueda:validada', async (evento) => {
     formulario.setAttribute('aria-busy', 'true');
     mostrarErrores([]);
 
-    // Retira resultados anteriores mientras llega la nueva respuesta.
+    // Distingue la carga de una consulta terminada sin coincidencias.
     formulario.dispatchEvent(
-        new CustomEvent('busqueda:resultados', {
-            detail: [],
-        })
+        new CustomEvent('busqueda:cargando')
     );
 
     try {
@@ -133,6 +131,7 @@ formulario.addEventListener('busqueda:validada', async (evento) => {
         );
     } catch (error) {
         console.error('Error al consultar viajes en Supabase:', error);
+        formulario.dispatchEvent(new CustomEvent('busqueda:error'));
 
         mostrarErrores([
             'No se pudo completar la búsqueda. Inténtalo nuevamente.',

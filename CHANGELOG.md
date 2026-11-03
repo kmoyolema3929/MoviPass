@@ -6,6 +6,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 ### Agregado
+- Tarjetas responsivas con Bootstrap 5 para los resultados de búsqueda, datos del viaje, estado de carga, mensaje sin coincidencias y enlace de selección de asientos con el identificador del viaje (#42).
 - Estructura inicial del repositorio y carpetas del proyecto.
 - Documentación base: README, CONTRIBUTING, SECURITY, SUPPORT y CODE_OF_CONDUCT.
 - Licencia GPL v3 y archivo de citación (CITATION.cff).
@@ -31,6 +32,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Implementación de la interfaz HTML de gestión y lógica backend en Supabase para el CRUD de hojas de ruta con validación de boletos (Issue #37).
 
 ### Cambiado
+- La página de selección de asientos lee `viaje_id` desde la URL y lo conserva al continuar al resumen de compra (#42).
 - El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security) (PR #2, decisión D-001).
 - El backend pasa de Java con Spring Boot a Supabase (PostgreSQL, Auth y Storage) (PR #14, decisión D-002).
 - Se ajusta el proceso de revisión de Pull Requests: el autor fusiona tras la aprobación, se exige comentar la revisión y las ramas se conservan tras fusionar (PR #4).
