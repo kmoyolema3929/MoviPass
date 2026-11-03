@@ -3,15 +3,18 @@ export function mostrarAlerta(mensaje, tipo = 'danger') {
     const contenedor = document.getElementById('alertContainer');
     if (!contenedor) return;
 
-    // Inyectar la alerta con estilos de Bootstrap (alert-danger o alert-success)
-    contenedor.innerHTML = `
-        <div class="alert alert-${tipo} alert-dismissible fade show shadow-sm" role="alert">
-            ${mensaje}
-        </div>
-    `;
+    // Limpiar contenedor de forma segura contra XSS
+    contenedor.replaceChildren();
+
+    // Crear el elemento de alerta de Bootstrap de forma programática
+    const div = document.createElement('div');
+    div.className = `alert alert-${tipo} alert-dismissible fade show shadow-sm`;
+    div.textContent = mensaje; // textContent previene la ejecución de scripts maliciosos
+
+    contenedor.appendChild(div);
 
     // Limpiar el contenedor después de 5000 milisegundos (5 segundos)
     setTimeout(() => {
-        contenedor.innerHTML = '';
+        contenedor.replaceChildren();
     }, 5000);
 }
