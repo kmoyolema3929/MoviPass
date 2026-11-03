@@ -105,6 +105,20 @@
                  aria-labelledby="titulo-resultados" hidden>
             <div class="col-lg-10">
                 <h2 id="titulo-resultados" class="h4">Viajes disponibles</h2>
+                <div id="filtros-resultados" class="row g-3 mb-3" hidden>
+                    <div class="col-12 col-md-6">
+                        <label for="filtro-cooperativa" class="form-label">Cooperativa</label>
+                        <select id="filtro-cooperativa" class="form-select" aria-controls="tarjetas-viajes">
+                            <option value="">Todas las cooperativas</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="filtro-tipo-bus" class="form-label">Tipo de bus</label>
+                        <select id="filtro-tipo-bus" class="form-select" aria-controls="tarjetas-viajes">
+                            <option value="">Todos los tipos de bus</option>
+                        </select>
+                    </div>
+                </div>
                 <p id="estado-resultados" role="status" aria-live="polite" aria-atomic="true"></p>
                 <div id="tarjetas-viajes" class="row g-3"></div>
             </div>

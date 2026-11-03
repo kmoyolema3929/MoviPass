@@ -2,6 +2,46 @@ const formulario = document.getElementById('form-busqueda');
 const seccion = document.getElementById('resultados-busqueda');
 const estado = document.getElementById('estado-resultados');
 const tarjetas = document.getElementById('tarjetas-viajes');
+const filtros = document.getElementById('filtros-resultados');
+const cooperativa = document.getElementById('filtro-cooperativa');
+const tipoBus = document.getElementById('filtro-tipo-bus');
+let viajesEncontrados = [];
+
+function llenarSelector(selector, opciones, titulo) {
+    const todas = crearElemento('option', '', titulo);
+    todas.value = '';
+    const elementos = [...opciones].sort((a, b) => a[1].localeCompare(b[1], 'es'))
+        .map(([valor, nombre]) => {
+            const opcion = crearElemento('option', '', nombre);
+            opcion.value = valor;
+            return opcion;
+        });
+    selector.replaceChildren(todas, ...elementos);
+    selector.value = '';
+}
+
+function reiniciarFiltros() {
+    viajesEncontrados = [];
+    llenarSelector(cooperativa, new Map(), 'Todas las cooperativas');
+    llenarSelector(tipoBus, new Map(), 'Todos los tipos de bus');
+    filtros.hidden = true;
+}
+
+function mostrarFiltrados() {
+    const visibles = viajesEncontrados.filter(viaje =>
+        (!cooperativa.value || viaje.cooperativaId === cooperativa.value) &&
+        (!tipoBus.value || viaje.tipoBusNombre === tipoBus.value)
+    );
+    tarjetas.replaceChildren(...visibles.map(crearTarjeta));
+    estado.textContent = viajesEncontrados.length === 0
+        ? 'No se encontraron viajes para el origen, destino y fecha seleccionados.'
+        : visibles.length === 0
+            ? 'No hay viajes que coincidan con los filtros seleccionados.'
+            : `${visibles.length} ${visibles.length === 1 ? 'viaje encontrado' : 'viajes encontrados'}.`;
+}
+
+cooperativa.addEventListener('change', mostrarFiltrados);
+tipoBus.addEventListener('change', mostrarFiltrados);
 
 function crearElemento(etiqueta, clases, texto) {
     const elemento = document.createElement(etiqueta);
@@ -41,6 +81,7 @@ function crearTarjeta(viaje) {
 }
 
 formulario.addEventListener('busqueda:cargando', () => {
+    reiniciarFiltros();
     seccion.hidden = false;
     seccion.setAttribute('aria-busy', 'true');
     tarjetas.replaceChildren();
@@ -48,16 +89,20 @@ formulario.addEventListener('busqueda:cargando', () => {
 });
 
 formulario.addEventListener('busqueda:resultados', (evento) => {
-    const viajes = evento.detail;
+    reiniciarFiltros();
+    viajesEncontrados = evento.detail;
+    llenarSelector(cooperativa, new Map(viajesEncontrados.map(viaje =>
+        [viaje.cooperativaId, viaje.cooperativaNombre])), 'Todas las cooperativas');
+    llenarSelector(tipoBus, new Map(viajesEncontrados.map(viaje =>
+        [viaje.tipoBusNombre, viaje.tipoBusNombre])), 'Todos los tipos de bus');
+    filtros.hidden = viajesEncontrados.length === 0;
     seccion.hidden = false;
     seccion.removeAttribute('aria-busy');
-    tarjetas.replaceChildren(...viajes.map(crearTarjeta));
-    estado.textContent = viajes.length === 0
-        ? 'No se encontraron viajes para el origen, destino y fecha seleccionados.'
-        : `${viajes.length} ${viajes.length === 1 ? 'viaje encontrado' : 'viajes encontrados'}.`;
+    mostrarFiltrados();
 });
 
 formulario.addEventListener('busqueda:error', () => {
+    reiniciarFiltros();
     tarjetas.replaceChildren();
     estado.textContent = '';
     seccion.removeAttribute('aria-busy');
