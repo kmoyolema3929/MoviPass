@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.hojas_ruta (
 -- Habilitar Row Level Security (RLS)
 ALTER TABLE public.hojas_ruta ENABLE ROW LEVEL SECURITY;
 
--- Políticas de Seguridad RLS ajustadas por rol
+-- Políticas de Seguridad RLS usando la función public.rol_actual()
 CREATE POLICY "Permitir lectura publica de hojas_ruta" 
 ON public.hojas_ruta FOR SELECT 
 USING (true);
@@ -19,20 +19,17 @@ USING (true);
 CREATE POLICY "Permitir insercion a administrador o cooperativa en hojas_ruta" 
 ON public.hojas_ruta FOR INSERT 
 WITH CHECK (
-    (auth.jwt() ->> 'role') IN ('administrador', 'cooperativa') 
-    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('administrador', 'cooperativa')
+    (SELECT public.rol_actual()) IN ('administrador', 'cooperativa')
 );
 
 CREATE POLICY "Permitir actualizacion a administrador o cooperativa en hojas_ruta" 
 ON public.hojas_ruta FOR UPDATE 
 USING (
-    (auth.jwt() ->> 'role') IN ('administrador', 'cooperativa') 
-    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('administrador', 'cooperativa')
+    (SELECT public.rol_actual()) IN ('administrador', 'cooperativa')
 );
 
 CREATE POLICY "Permitir eliminacion a administrador o cooperativa en hojas_ruta" 
 ON public.hojas_ruta FOR DELETE 
 USING (
-    (auth.jwt() ->> 'role') IN ('administrador', 'cooperativa') 
-    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('administrador', 'cooperativa')
+    (SELECT public.rol_actual()) IN ('administrador', 'cooperativa')
 );
