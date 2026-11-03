@@ -4,6 +4,19 @@ document.addEventListener('DOMContentLoaded', () => {
     listarHojasRuta();
 });
 
+// Función auxiliar para mostrar alertas de Bootstrap en la UI
+function mostrarAlerta(mensaje, tipo = 'danger') {
+    const contenedor = document.getElementById('alertaContenedor');
+    if (!contenedor) return;
+
+    contenedor.innerHTML = `
+        <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+}
+
 // Función para listar las hojas de ruta existentes en Supabase
 async function listarHojasRuta() {
     const tbody = document.getElementById('tablaGestionHojasRuta');
@@ -26,6 +39,7 @@ async function listarHojasRuta() {
 
     if (error) {
         console.error('Error al listar hojas de ruta:', error);
+        mostrarAlerta('Error al obtener hojas de ruta desde la base de datos.', 'danger');
         return;
     }
 
@@ -93,11 +107,12 @@ async function editarHojaRuta(id, estadoActual) {
             .eq('id', id);
 
         if (error) {
-            alert('Error al actualizar la hoja de ruta: ' + error.message);
+            mostrarAlerta('Error al actualizar la hoja de ruta: ' + error.message, 'danger');
             return;
         }
     }
 
+    mostrarAlerta(`Hoja de ruta actualizada a '${nuevoEstado}' correctamente.`, 'success');
     await listarHojasRuta();
 }
 
@@ -117,7 +132,7 @@ async function eliminarHojaRuta(id) {
         }
 
         if (boletos && boletos.length > 0) {
-            alert('No se puede eliminar la hoja de ruta porque ya tiene boletos vendidos.');
+            mostrarAlerta('No se puede eliminar la hoja de ruta porque ya tiene boletos vendidos.', 'warning');
             return;
         }
 
@@ -128,10 +143,11 @@ async function eliminarHojaRuta(id) {
             .eq('id', id);
 
         if (error) {
-            alert('Error al eliminar la hoja de ruta: ' + error.message);
+            mostrarAlerta('Error al eliminar la hoja de ruta: ' + error.message, 'danger');
             return;
         }
     }
 
+    mostrarAlerta('Hoja de ruta eliminada exitosamente.', 'success');
     await listarHojasRuta();
 }
