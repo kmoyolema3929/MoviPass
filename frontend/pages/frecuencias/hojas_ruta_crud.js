@@ -101,11 +101,27 @@ async function editarHojaRuta(id, estadoActual) {
     await listarHojasRuta();
 }
 
-// Función para eliminar una hoja de ruta
+// Función para eliminar una hoja de ruta (con validación de boletos vendidos)
 async function eliminarHojaRuta(id) {
     if (!confirm('¿Está seguro de eliminar esta hoja de ruta?')) return;
-    
+
     if (supabaseClient) {
+        // Verificar si existen boletos asociados a la hoja de ruta
+        const { data: boletos, error: errorBoletos } = await supabaseClient
+            .from('boletos')
+            .select('id')
+            .eq('hoja_ruta_id', id);
+
+        if (errorBoletos) {
+            console.warn('Advertencia al consultar boletos:', errorBoletos);
+        }
+
+        if (boletos && boletos.length > 0) {
+            alert('No se puede eliminar la hoja de ruta porque ya tiene boletos vendidos.');
+            return;
+        }
+
+        // Eliminación de la hoja de ruta si no posee boletos
         const { error } = await supabaseClient
             .from('hojas_ruta')
             .delete()
@@ -116,6 +132,6 @@ async function eliminarHojaRuta(id) {
             return;
         }
     }
-    
+
     await listarHojasRuta();
 }
