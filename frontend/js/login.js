@@ -1,3 +1,4 @@
+import { mostrarAlerta } from './alertas.js';
 // Importar Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
@@ -51,7 +52,7 @@ if (formLogin) {
             });
 
             if (authError) {
-                alert('Error al iniciar sesión: Correo o contraseña incorrectos.');
+                mostrarAlerta('Correo o contraseña incorrectos. Inténtalo de nuevo.', 'danger');
                 return; // Detenemos la ejecución aquí si hay error
             }
 
@@ -66,7 +67,7 @@ if (formLogin) {
 
             if (perfilError) {
                 console.error('Error al obtener el rol:', perfilError);
-                alert('Inicio de sesión exitoso, pero hubo un error al cargar tu perfil.');
+                mostrarAlerta('Inicio de sesión exitoso, pero hubo un error al cargar tu perfil.', 'warning');
             } else {
                 // Redirigir al usuario según su rol exacto
                 const rol = perfilData.rol;
@@ -88,7 +89,7 @@ if (formLogin) {
                         window.location.href = 'bus/index.html';
                         break;
                     default:
-                        alert('Error: Tu rol no tiene una pantalla asignada.');
+                        mostrarAlerta('Error: Tu rol no tiene una pantalla asignada.', 'danger');
                         // Cerramos sesión por seguridad si el rol es inválido
                         await supabase.auth.signOut();
                         break;
