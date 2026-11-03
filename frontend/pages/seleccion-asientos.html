@@ -269,8 +269,12 @@
     // Botón Continuar
     btnContinuar.addEventListener('click', () => {
       const asientos = [...seleccionados].sort(ordenarAsientos);
+      
+      // Guardamos la selección en el estado de la compra
       sessionStorage.setItem('asientosSeleccionados', JSON.stringify(asientos)); 
-      console.log('Asientos listos para pago:', asientos);
+      
+      // Redirigimos a la pantalla de resumen de compra (Issue #46)
+      window.location.href = 'compra/resumen-compra.html'; 
     });
 
     // Inicializar todo al cargar la página
