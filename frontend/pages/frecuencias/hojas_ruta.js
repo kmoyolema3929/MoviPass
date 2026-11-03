@@ -6,14 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('formHojaRuta').addEventListener('submit', generarHojaRuta);
 });
 
-// Cargar opciones en el select de frecuencias
+// Cargar opciones en el select de frecuencias (Corregido: 'hora' en lugar de 'hora_salida')
 async function cargarFrecuencias() {
     const select = document.getElementById('selectFrecuencia');
     if (!supabaseClient) return;
 
     const { data, error } = await supabaseClient
         .from('frecuencias')
-        .select('id, origen, destino, hora_salida');
+        .select('id, origen, destino, hora');
 
     if (error) {
         console.error('Error al cargar frecuencias:', error);
@@ -23,7 +23,7 @@ async function cargarFrecuencias() {
     data.forEach(f => {
         const option = document.createElement('option');
         option.value = f.id;
-        option.textContent = `${f.origen} -> ${f.destino} (${f.hora_salida})`;
+        option.textContent = `${f.origen} -> ${f.destino} (${f.hora})`;
         select.appendChild(option);
     });
 }
@@ -50,7 +50,7 @@ async function cargarBuses() {
     });
 }
 
-// Generación de la hoja de ruta con validación de formulario y consulta en Supabase
+// Generación de la hoja de ruta con inserción en la tabla 'viajes' y validaciones
 async function generarHojaRuta(e) {
     e.preventDefault();
     const form = e.target;
@@ -67,9 +67,33 @@ async function generarHojaRuta(e) {
     const fechaViaje = document.getElementById('fechaViaje').value;
     const tbody = document.getElementById('tablaHojaRuta');
 
+    // Validaciones explícitas adicionales solicitadas por la líder
+    if (!frecuenciaId || !busId || !fechaViaje) {
+        alert('Por favor, asegúrese de seleccionar una frecuencia, un bus y una fecha válidos.');
+        return;
+    }
+
     // Limpieza segura de la tabla
     tbody.replaceChildren();
 
+    if (supabaseClient) {
+        // 1. Guardar el viaje en la tabla 'viajes' creada en el issue #41
+        const { error: errorViaje } = await supabaseClient
+            .from('viajes')
+            .insert([{
+                frecuencia_id: frecuenciaId,
+                bus_id: busId,
+                fecha: fechaViaje
+            }]);
+
+        if (errorViaje) {
+            console.error('Error al registrar el viaje en Supabase:', errorViaje);
+            alert('Error al guardar el viaje: ' + errorViaje.message);
+            return;
+        }
+    }
+
+    // 2. Consultar las paradas asociadas a la frecuencia seleccionada
     let paradas = [];
     if (supabaseClient) {
         const { data, error } = await supabaseClient
