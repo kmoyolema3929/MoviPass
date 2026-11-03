@@ -1,3 +1,5 @@
+import { mostrarAlerta } from './alertas.js';
+
 // Importar Supabase directamente desde el CDN para usarlo en el navegador
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
@@ -46,14 +48,16 @@ formRegistro.addEventListener('submit', async (e) => {
     if (error) {
         // Criterio de aceptación: Mensaje de error si el correo ya existe
         if (error.message.includes('already registered') || error.message.includes('already exists')) {
-            alert('Error: Este correo electrónico ya se encuentra registrado.');
+            mostrarAlerta('Error: Este correo electrónico ya se encuentra registrado.', 'danger');
         } else {
-            alert('Ocurrió un error al registrarse: ' + error.message);
+            mostrarAlerta('Ocurrió un error al registrarse: ' + error.message, 'danger');
         }
     } else {
         // Criterio de aceptación: Mensaje de éxito
-        alert('¡Registro exitoso! Por favor, revisa tu bandeja de entrada para confirmar tu correo electrónico.');
-        window.location.href = 'login.html'; // Redirigir al login
+        mostrarAlerta('¡Registro exitoso! Redirigiendo al login...', 'success');
+        setTimeout(() => {
+            window.location.href = 'login.html'; // Redirigir al login
+        }, 2000);
     }
 
     // Restaurar el botón
