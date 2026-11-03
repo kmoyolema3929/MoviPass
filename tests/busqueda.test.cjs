@@ -36,7 +36,7 @@ function iniciar(consulta = async () => []) {
         document: { getElementById: id => campos[id], createElement: elemento },
         console: { log() {}, table() {}, error() {} },
         CustomEvent: class {
-            constructor(type, opciones) { this.type = type; this.detail = opciones.detail; }
+            constructor(type, opciones = {}) { this.type = type; this.detail = opciones.detail; }
         },
         buscarViajes: async criterios => {
             llamadas.push(criterios);

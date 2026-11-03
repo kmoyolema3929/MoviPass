@@ -6,6 +6,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 ### Agregado
+- Tarjetas responsivas con Bootstrap 5 para los resultados de búsqueda, datos del viaje, estado de carga, mensaje sin coincidencias y enlace de selección de asientos con el identificador del viaje (#42).
 - Estructura inicial del repositorio y carpetas del proyecto.
 - Documentación base: README, CONTRIBUTING, SECURITY, SUPPORT y CODE_OF_CONDUCT.
 - Licencia GPL v3 y archivo de citación (CITATION.cff).
