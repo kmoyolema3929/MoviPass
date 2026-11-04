@@ -1,9 +1,10 @@
 import { supabase } from "./supabaseClient.js";
-import { obtenerSesion, obtenerRol } from "./auth.js";
+import { exigirRoles } from "./guardas.js";
 
 const columnas = "id, placa, chasis, carroceria, cooperativa_id, tipo_bus";
 
-let cooperativas = [];
+// Cooperativa del gerente: { id, nombre }. Todo lo que se ve y se guarda es de ella.
+let cooperativaGerente = null;
 let buses = [];
 let ocupado = false;
 let accesoPermitido = false;
@@ -14,9 +15,9 @@ const busId = document.getElementById("busId");
 const placa = document.getElementById("placa");
 const chasis = document.getElementById("chasis");
 const carroceria = document.getElementById("carroceria");
-const cooperativa = document.getElementById("cooperativa");
 const tipoBus = document.getElementById("tipoBus");
 const mensaje = document.getElementById("mensaje");
+const nombreCoop = document.getElementById("nombreCoop");
 const tituloModal = document.getElementById("tituloModalBus");
 const botonNuevo = document.getElementById("btnNuevoBus");
 const botonGuardar = document.getElementById("btnGuardarBus");
@@ -36,11 +37,10 @@ function mostrarMensaje(texto, tipo = "info") {
 function cambiarOcupado(valor) {
     ocupado = valor;
 
-    botonNuevo.disabled =
-        valor || !accesoPermitido || cooperativas.length === 0;
+    const sinCooperativa = !cooperativaGerente;
 
-    botonGuardar.disabled =
-        valor || !accesoPermitido || cooperativas.length === 0;
+    botonNuevo.disabled = valor || !accesoPermitido || sinCooperativa;
+    botonGuardar.disabled = valor || !accesoPermitido || sinCooperativa;
 
     botonGuardar.textContent = valor
         ? "Procesando..."
@@ -59,30 +59,12 @@ function mostrarEstadoTabla(texto) {
     const fila = document.createElement("tr");
     const celda = document.createElement("td");
 
-    celda.colSpan = 6;
+    celda.colSpan = 5;
     celda.className = "text-center text-muted py-4";
     celda.textContent = texto;
 
     fila.appendChild(celda);
     tabla.replaceChildren(fila);
-}
-
-function llenarCooperativas() {
-    const opcionInicial = document.createElement("option");
-
-    opcionInicial.value = "";
-    opcionInicial.textContent = "Selecciona una cooperativa";
-
-    cooperativa.replaceChildren(opcionInicial);
-
-    cooperativas.forEach(function (item) {
-        const opcion = document.createElement("option");
-
-        opcion.value = item.id;
-        opcion.textContent = item.nombre;
-
-        cooperativa.appendChild(opcion);
-    });
 }
 
 function prepararFormulario() {
@@ -92,7 +74,6 @@ function prepararFormulario() {
 
     busId.value = "";
     placa.setCustomValidity("");
-    cooperativa.setCustomValidity("");
 
     tituloModal.textContent = "Nuevo bus";
     botonGuardar.textContent = "Guardar bus";
@@ -113,7 +94,19 @@ function abrirEdicion(id) {
     placa.value = bus.placa;
     chasis.value = bus.chasis;
     carroceria.value = bus.carroceria;
-    cooperativa.value = bus.cooperativa_id;
+
+    // Si el bus tiene un tipo antiguo que ya no está en la lista, se agrega para no perderlo
+    const existe = Array.from(tipoBus.options).some(function (opcion) {
+        return opcion.value === bus.tipo_bus;
+    });
+
+    if (!existe) {
+        const opcion = document.createElement("option");
+        opcion.value = bus.tipo_bus;
+        opcion.textContent = bus.tipo_bus;
+        tipoBus.appendChild(opcion);
+    }
+
     tipoBus.value = bus.tipo_bus;
 
     tituloModal.textContent = "Editar bus";
@@ -124,7 +117,7 @@ function abrirEdicion(id) {
 
 function mostrarBuses() {
     if (buses.length === 0) {
-        mostrarEstadoTabla("No hay buses registrados.");
+        mostrarEstadoTabla("Aún no has registrado buses. Pulsa «Nuevo Bus» para empezar.");
         return;
     }
 
@@ -133,17 +126,7 @@ function mostrarBuses() {
     buses.forEach(function (bus) {
         const fila = document.createElement("tr");
 
-        const cooperativaBus = cooperativas.find(function (item) {
-            return item.id === bus.cooperativa_id;
-        });
-
-        const valores = [
-            bus.placa,
-            bus.chasis,
-            bus.carroceria,
-            cooperativaBus ? cooperativaBus.nombre : "Cooperativa no disponible",
-            bus.tipo_bus
-        ];
+        const valores = [bus.placa, bus.chasis, bus.carroceria, bus.tipo_bus];
 
         valores.forEach(function (valor) {
             const celda = document.createElement("td");
@@ -155,77 +138,76 @@ function mostrarBuses() {
         });
 
         const acciones = document.createElement("td");
-        const botonEditar = document.createElement("button");
+        acciones.className = "text-nowrap";
 
+        const botonEditar = document.createElement("button");
         botonEditar.type = "button";
         botonEditar.className = "btn btn-outline-primary btn-sm";
         botonEditar.textContent = "Editar";
-
-        botonEditar.setAttribute(
-            "aria-label",
-            `Editar bus con placa ${bus.placa}`
-        );
-
+        botonEditar.setAttribute("aria-label", `Editar bus con placa ${bus.placa}`);
         botonEditar.addEventListener("click", function () {
             abrirEdicion(bus.id);
         });
 
+        // Siguiente paso: la plantilla de asientos de ESTE bus
+        const enlaceAsientos = document.createElement("a");
+        enlaceAsientos.className = "btn btn-outline-success btn-sm ms-2";
+        enlaceAsientos.textContent = "Asientos";
+        enlaceAsientos.href = `../cooperativa/plantilla-asientos.html?bus=${encodeURIComponent(bus.id)}`;
+        enlaceAsientos.setAttribute("aria-label", `Configurar asientos del bus con placa ${bus.placa}`);
+
         const botonEliminar = document.createElement("button");
+        botonEliminar.type = "button";
+        botonEliminar.className = "btn btn-outline-danger btn-sm ms-2";
+        botonEliminar.textContent = "Eliminar";
+        botonEliminar.setAttribute("aria-label", `Eliminar bus con placa ${bus.placa}`);
+        botonEliminar.addEventListener("click", function () {
+            eliminarBus(bus.id);
+        });
 
-botonEliminar.type = "button";
-botonEliminar.className = "btn btn-outline-danger btn-sm ms-2";
-botonEliminar.textContent = "Eliminar";
-
-botonEliminar.setAttribute(
-    "aria-label",
-    `Eliminar bus con placa ${bus.placa}`
-);
-
-botonEliminar.addEventListener("click", function () {
-    eliminarBus(bus.id);
-});
-
-acciones.appendChild(botonEditar);
-acciones.appendChild(botonEliminar);
-fila.appendChild(acciones);
-tabla.appendChild(fila);
+        acciones.append(botonEditar, enlaceAsientos, botonEliminar);
+        fila.appendChild(acciones);
+        tabla.appendChild(fila);
     });
 }
 
-async function cargarDatos() {
-    mostrarMensaje("Cargando cooperativas y buses...");
+// Busca la cooperativa asignada al gerente en cooperativas_usuarios
+async function obtenerCooperativaGerente() {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) return null;
+
+    const { data, error } = await supabase
+        .from("cooperativas_usuarios")
+        .select("cooperativa_id, cooperativas(nombre)")
+        .eq("perfil_id", session.user.id)
+        .limit(1)
+        .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return { id: data.cooperativa_id, nombre: data.cooperativas?.nombre ?? "tu cooperativa" };
+}
+
+async function cargarBuses() {
+    mostrarMensaje("Cargando buses...");
     mostrarEstadoTabla("Cargando buses...");
 
-    const [respuestaCooperativas, respuestaBuses] = await Promise.all([
-        supabase
-            .from("cooperativas")
-            .select("id, nombre")
-            .order("nombre"),
+    const { data, error } = await supabase
+        .from("buses")
+        .select(columnas)
+        .eq("cooperativa_id", cooperativaGerente.id)
+        .order("placa");
 
-        supabase
-            .from("buses")
-            .select(columnas)
-            .order("placa")
-    ]);
+    if (error) throw error;
 
-    if (respuestaCooperativas.error) throw respuestaCooperativas.error;
-    if (respuestaBuses.error) throw respuestaBuses.error;
+    buses = data ?? [];
 
-    cooperativas = respuestaCooperativas.data ?? [];
-    buses = respuestaBuses.data ?? [];
-
-    llenarCooperativas();
     mostrarBuses();
-
     mensaje.classList.add("d-none");
-
-    if (cooperativas.length === 0) {
-        mostrarMensaje(
-            "Primero registra una cooperativa para poder asignarle buses.",
-            "warning"
-        );
-    }
 }
+
 function obtenerMensajeError(error, accion = "guardar") {
     switch (error?.code) {
         case "23505":
@@ -233,8 +215,8 @@ function obtenerMensajeError(error, accion = "guardar") {
 
         case "23503":
             return accion === "eliminar"
-                ? "No se puede eliminar el bus porque tiene registros relacionados."
-                : "La cooperativa seleccionada ya no está disponible. Recarga la página.";
+                ? "No se puede eliminar el bus porque tiene registros relacionados (asientos u hojas de ruta)."
+                : "La cooperativa ya no está disponible. Recarga la página.";
 
         case "42501":
             return "No tienes permisos para realizar esta operación.";
@@ -274,6 +256,7 @@ async function eliminarBus(id) {
             .from("buses")
             .delete()
             .eq("id", id)
+            .eq("cooperativa_id", cooperativaGerente.id)
             .select("id")
             .single();
 
@@ -288,10 +271,7 @@ async function eliminarBus(id) {
     } catch (error) {
         console.error("Error al eliminar el bus:", error);
 
-        mostrarMensaje(
-            obtenerMensajeError(error, "eliminar"),
-            "danger"
-        );
+        mostrarMensaje(obtenerMensajeError(error, "eliminar"), "danger");
     } finally {
         cambiarOcupado(false);
     }
@@ -300,7 +280,7 @@ async function eliminarBus(id) {
 async function guardarBus(evento) {
     evento.preventDefault();
 
-    if (ocupado || !accesoPermitido) return;
+    if (ocupado || !accesoPermitido || !cooperativaGerente) return;
 
     errorFormulario.classList.add("d-none");
 
@@ -311,7 +291,6 @@ async function guardarBus(evento) {
     carroceria.value = carroceria.value.trim();
 
     placa.setCustomValidity("");
-    cooperativa.setCustomValidity("");
 
     const placaDuplicada = buses.some(function (bus) {
         return bus.placa === placa.value && bus.id !== idActual;
@@ -321,14 +300,6 @@ async function guardarBus(evento) {
         placa.setCustomValidity("Ya existe un bus con esta placa.");
     }
 
-    const cooperativaValida = cooperativas.some(function (item) {
-        return item.id === cooperativa.value;
-    });
-
-    if (!cooperativaValida) {
-        cooperativa.setCustomValidity("Selecciona una cooperativa registrada.");
-    }
-
     formulario.classList.add("was-validated");
 
     if (!formulario.checkValidity()) {
@@ -336,11 +307,12 @@ async function guardarBus(evento) {
         return;
     }
 
+    // La cooperativa NO se elige: siempre es la del gerente
     const datos = {
         placa: placa.value,
         chasis: chasis.value,
         carroceria: carroceria.value,
-        cooperativa_id: cooperativa.value,
+        cooperativa_id: cooperativaGerente.id,
         tipo_bus: tipoBus.value
     };
 
@@ -350,7 +322,7 @@ async function guardarBus(evento) {
 
     try {
         const consulta = idActual
-            ? supabase.from("buses").update(datos).eq("id", idActual)
+            ? supabase.from("buses").update(datos).eq("id", idActual).eq("cooperativa_id", cooperativaGerente.id)
             : supabase.from("buses").insert(datos);
 
         const { data, error } = await consulta.select(columnas).single();
@@ -370,7 +342,7 @@ async function guardarBus(evento) {
         mostrarBuses();
 
         mostrarMensaje(
-            idActual ? "Bus actualizado correctamente." : "Bus registrado correctamente.",
+            idActual ? "Bus actualizado correctamente." : "Bus registrado correctamente. Ahora configura sus asientos.",
             "success"
         );
 
@@ -378,8 +350,7 @@ async function guardarBus(evento) {
     } catch (error) {
         console.error("Error al guardar el bus:", error);
 
-      errorFormulario.textContent = obtenerMensajeError(error, "guardar");
-
+        errorFormulario.textContent = obtenerMensajeError(error, "guardar");
         errorFormulario.classList.remove("d-none");
     } finally {
         cambiarOcupado(false);
@@ -389,7 +360,7 @@ async function guardarBus(evento) {
 }
 
 botonNuevo.addEventListener("click", function () {
-    if (ocupado || !accesoPermitido || cooperativas.length === 0) return;
+    if (ocupado || !accesoPermitido || !cooperativaGerente) return;
 
     prepararFormulario();
     modal.show();
@@ -397,10 +368,6 @@ botonNuevo.addEventListener("click", function () {
 
 placa.addEventListener("input", function () {
     placa.setCustomValidity("");
-});
-
-cooperativa.addEventListener("change", function () {
-    cooperativa.setCustomValidity("");
 });
 
 elementoModal.addEventListener("shown.bs.modal", function () {
@@ -419,26 +386,28 @@ async function iniciar() {
     mostrarEstadoTabla("Comprobando acceso...");
 
     try {
-        const sesion = await obtenerSesion();
+        // Solo el gerente (rol 'cooperativa'). Sin sesión -> login; otro rol -> sin-acceso.
+        const rol = await exigirRoles(["cooperativa"]);
 
-        if (!sesion) {
-            window.location.replace("../login.html");
-            return;
-        }
-
-        const rol = await obtenerRol();
-
-        if (rol !== "administrador") {
-            window.location.replace("../sin-acceso.html");
-            return;
-        }
+        if (!rol) return; // ya fue redirigido
 
         accesoPermitido = true;
 
-        await cargarDatos();
-    } catch (error) {
-        accesoPermitido = false;
+        cooperativaGerente = await obtenerCooperativaGerente();
 
+        if (!cooperativaGerente) {
+            mostrarMensaje(
+                "Tu cuenta aún no tiene una cooperativa asignada. Contacta al administrador.",
+                "warning"
+            );
+            mostrarEstadoTabla("Sin cooperativa asignada.");
+            return;
+        }
+
+        nombreCoop.textContent = cooperativaGerente.nombre;
+
+        await cargarBuses();
+    } catch (error) {
         console.error("Error al cargar buses:", error);
 
         mostrarMensaje(

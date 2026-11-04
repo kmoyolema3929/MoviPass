@@ -1,24 +1,28 @@
-import { supabase } from "./supabaseClient.js";
 import { obtenerSesion, obtenerRol } from "./auth.js";
 import {
-    obtenerPlantillaGuardada,
-    guardarPlantillaEnSupabase
+    obtenerCooperativasPermitidas,
+    obtenerBusesDeCooperativa,
+    obtenerPlantillasDeCooperativa,
+    guardarPlantillaDeTipo
 } from "./asientosService.js";
 
-let busesDisponibles = [];
+let cooperativaId = "";
+let busesCooperativa = [];
+let plantillasCooperativa = [];
+let plantillaCargada = null;
 let configuracionActual = null;
 let segundoPisoPreparado = false;
-let busEnEdicion = "";
-let solicitudPlantilla = 0;
-let guardandoPlantilla = false;
+let solicitudCooperativa = 0;
+let guardando = false;
 
-const configuracionesPorBus = new Map();
-const versionesPorBus = new Map();
 const seleccionados = new Set();
 
 const formulario = document.getElementById("formPlantilla");
 const controles = document.getElementById("configuracion");
-const selectorBus = document.getElementById("bus");
+const selectorCooperativa = document.getElementById("cooperativa");
+const campoTipo = document.getElementById("tipoBus");
+const listaTipos = document.getElementById("tiposSugeridos");
+const infoBuses = document.getElementById("busesDelTipo");
 
 const mensaje = document.getElementById("mensaje");
 const resumen = document.getElementById("resumenConfiguracion");
@@ -35,7 +39,9 @@ const totalConfigurado = document.getElementById("totalConfigurado");
 const botonesPisos = document.getElementById("botonesPisos");
 const botonGuardar = document.getElementById("guardarPlantilla");
 
-// Mensajes y validación.
+const listaGuardadas = document.getElementById("listaGuardadas");
+
+// Utilidades.
 
 function mostrarMensaje(texto, tipo = "info") {
     mensaje.textContent = texto;
@@ -48,32 +54,59 @@ function enteroEnRango(valor, minimo, maximo) {
         valor <= maximo;
 }
 
+function claveTipo(texto) {
+    return String(texto ?? "").trim().toLowerCase();
+}
+
+function campo(nombre, numero) {
+    return document.getElementById(nombre + numero);
+}
+
+function busesDeTipo(clave) {
+    return busesCooperativa.filter(function (bus) {
+        return claveTipo(bus.tipo_bus) === clave;
+    });
+}
+
 function leerPiso(numero) {
     return {
         numero,
-        cantidad: Number(
-            document.getElementById("cantidad" + numero).value
-        ),
-        filas: Number(
-            document.getElementById("filas" + numero).value
-        ),
-        columnas: Number(
-            document.getElementById("columnas" + numero).value
-        )
+        cantidad: Number(campo("cantidad", numero).value),
+        filas: Number(campo("filas", numero).value),
+        columnas: Number(campo("columnas", numero).value),
+        central: campo("central", numero).checked
     };
+}
+
+// Con la última fila de 5 asientos: filas de 4 y una última de 5,
+// así que la cantidad es 4 × filas + 1 (5, 9, 13, ... 37, 41).
+function mensajeDePiso(piso) {
+    if (!piso.central) return "";
+
+    if (
+        piso.columnas !== 4 ||
+        !Number.isInteger(piso.cantidad) ||
+        piso.cantidad < 5 ||
+        (piso.cantidad - 1) % 4 !== 0
+    ) {
+        return "Con la última fila de 5 asientos, la cantidad debe ser " +
+            "5, 9, 13... (4 × filas + 1), por ejemplo 37 o 41.";
+    }
+
+    return "";
 }
 
 function actualizarValidezCampos() {
     const mostrarErrores =
         formulario.classList.contains("was-validated");
 
-    formulario.querySelectorAll("input, select").forEach(function (campo) {
-        if (!mostrarErrores || campo.matches(":disabled")) {
-            campo.removeAttribute("aria-invalid");
+    formulario.querySelectorAll("input, select").forEach(function (campoForm) {
+        if (!mostrarErrores || campoForm.matches(":disabled")) {
+            campoForm.removeAttribute("aria-invalid");
         } else {
-            campo.setAttribute(
+            campoForm.setAttribute(
                 "aria-invalid",
-                String(!campo.validity.valid)
+                String(!campoForm.validity.valid)
             );
         }
     });
@@ -81,98 +114,112 @@ function actualizarValidezCampos() {
 
 function validarCapacidadTotal() {
     [1, 2].forEach(function (numero) {
-        document
-            .getElementById("cantidad" + numero)
-            .setCustomValidity("");
+        campo("cantidad", numero).setCustomValidity("");
     });
 
     const pisos = Number(numeroPisos.value);
 
-    if (!enteroEnRango(pisos, 1, 2)) {
-        actualizarValidezCampos();
-        return false;
-    }
-
-    const cantidades = Array.from(
-        { length: pisos },
-        (_, indice) => Number(
-            document.getElementById("cantidad" + (indice + 1)).value
-        )
-    );
-
-    const individualesValidas = cantidades.every(function (cantidad) {
-        return enteroEnRango(cantidad, 1, 60);
-    });
-
-    if (!individualesValidas) {
-        actualizarValidezCampos();
-        return false;
-    }
-
-    const total = cantidades.reduce(
-        (suma, cantidad) => suma + cantidad,
-        0
-    );
-
-    const minimo = pisos === 2 ? 40 : 1;
-    const valido = enteroEnRango(total, minimo, 60);
-
-    if (!valido) {
-        document.getElementById("cantidad" + pisos).setCustomValidity(
-            "Los pisos suman " + total +
-            " asientos. El total debe estar entre " +
-            minimo + " y 60."
+    if (enteroEnRango(pisos, 1, 2)) {
+        const datos = Array.from(
+            { length: pisos },
+            (_, indice) => leerPiso(indice + 1)
         );
+
+        let hayError = false;
+
+        datos.forEach(function (piso) {
+            const texto = mensajeDePiso(piso);
+
+            if (texto) {
+                campo("cantidad", piso.numero).setCustomValidity(texto);
+                hayError = true;
+            }
+        });
+
+        const cantidadesValidas = datos.every(function (piso) {
+            return enteroEnRango(piso.cantidad, 1, 60);
+        });
+
+        if (!hayError && cantidadesValidas) {
+            const total = datos.reduce(
+                (suma, piso) => suma + piso.cantidad,
+                0
+            );
+
+            const minimo = pisos === 2 ? 40 : 1;
+
+            if (!enteroEnRango(total, minimo, 60)) {
+                campo("cantidad", pisos).setCustomValidity(
+                    "Los pisos suman " + total +
+                    " asientos. El total debe estar entre " +
+                    minimo + " y 60."
+                );
+            }
+        }
     }
 
     actualizarValidezCampos();
 
-    return valido;
+    return formulario.checkValidity();
 }
 
 function actualizarTotal() {
+    validarCapacidadTotal();
+
     const datos = Array.from(
         { length: Number(numeroPisos.value) },
         (_, indice) => leerPiso(indice + 1)
     );
 
-    const valido = datos.every(function (piso) {
+    const cantidadesValidas = datos.every(function (piso) {
         return enteroEnRango(piso.cantidad, 1, 60);
     });
 
-    const total = datos.reduce(function (suma, piso) {
-        return suma + piso.cantidad;
-    }, 0);
+    const total = datos.reduce(
+        (suma, piso) => suma + piso.cantidad,
+        0
+    );
 
     const minimo = datos.length === 2 ? 40 : 1;
 
-    const dentroDelRango =
-        valido && enteroEnRango(total, minimo, 60);
+    const problema = datos
+        .map(piso => campo("cantidad", piso.numero))
+        .filter(c => c.validity.customError)
+        .map(c => c.validationMessage)[0] ?? "";
+
+    const correcto =
+        cantidadesValidas &&
+        !problema &&
+        enteroEnRango(total, minimo, 60);
 
     totalConfigurado.className =
-        "alert " + (dentroDelRango ? "alert-info" : "alert-warning");
+        "alert " + (correcto ? "alert-info" : "alert-warning");
 
-    totalConfigurado.textContent = valido
-        ? "Total del bus: " + total + " asientos. " +
-          (
-              datos.length === 2
-                  ? "Los dos pisos deben sumar entre 40 y 60."
-                  : "Máximo 60 asientos."
-          )
-        : "Completa la cantidad de asientos de cada piso.";
-
-    validarCapacidadTotal();
+    if (!cantidadesValidas) {
+        totalConfigurado.textContent =
+            "Completa la cantidad de asientos de cada piso.";
+    } else if (problema) {
+        totalConfigurado.textContent = problema;
+    } else {
+        totalConfigurado.textContent =
+            "Total del bus: " + total + " asientos. " +
+            (
+                datos.length === 2
+                    ? "Los dos pisos deben sumar entre 40 y 60."
+                    : "Máximo 60 asientos."
+            );
+    }
 }
 
-// Configuración y borradores por bus.
+// Estado de los botones y del resumen.
 
 function actualizarBotonGuardar() {
     botonGuardar.disabled =
-        guardandoPlantilla ||
+        guardando ||
         controles.disabled ||
         !configuracionActual ||
-        configuracionActual.bus_id !== selectorBus.value ||
-        !versionesPorBus.has(selectorBus.value);
+        configuracionActual.cooperativa_id !== cooperativaId ||
+        configuracionActual.clave !== claveTipo(campoTipo.value);
 }
 
 function limpiarResumen() {
@@ -188,54 +235,188 @@ function limpiarResumen() {
     actualizarBotonGuardar();
 }
 
-function guardarBorradorBus() {
-    if (!busEnEdicion || !versionesPorBus.has(busEnEdicion)) return;
+function actualizarInfoBuses() {
+    const tipo = campoTipo.value.trim();
 
-    const campos = [1, 2].map(function (numero) {
-        return {
-            cantidad: document.getElementById("cantidad" + numero).value,
-            filas: document.getElementById("filas" + numero).value,
-            columnas: document.getElementById("columnas" + numero).value
-        };
-    });
+    if (!cooperativaId || !tipo) {
+        infoBuses.className = "alert alert-secondary";
+        infoBuses.textContent = cooperativaId
+            ? "Escribe o elige un tipo de bus para ver cuántos buses usarán la plantilla."
+            : "Elige una cooperativa y un tipo de bus.";
 
-    const configuracion =
-        configuracionActual?.bus_id === busEnEdicion
-            ? structuredClone(configuracionActual)
-            : null;
+        return;
+    }
 
-    configuracionesPorBus.set(busEnEdicion, {
-        numeroPisos: numeroPisos.value,
-        segundoPisoPreparado,
-        campos,
-        configuracion,
-        vista: mapaPlantilla.dataset.vista ?? "1"
-    });
+    const buses = busesDeTipo(claveTipo(tipo));
+
+    infoBuses.className = "alert alert-secondary";
+
+    infoBuses.textContent = buses.length
+        ? "Esta plantilla se aplicará a " + buses.length +
+          (buses.length === 1 ? " bus" : " buses") +
+          " de tipo «" + tipo + "»: " +
+          buses.map(bus => bus.placa).join(", ") + "."
+        : "Todavía no hay buses de tipo «" + tipo + "». " +
+          "La plantilla quedará guardada y se asignará a los buses " +
+          "que registres con este tipo.";
 }
 
-function restaurarCamposBus(borrador) {
-    numeroPisos.value = borrador?.numeroPisos ?? "1";
+// Lista de plantillas guardadas de la cooperativa.
 
-    segundoPisoPreparado =
-        borrador?.segundoPisoPreparado ?? false;
+function renderizarGuardadas() {
+    listaGuardadas.replaceChildren();
 
-    [1, 2].forEach(function (numero) {
-        ["cantidad", "filas", "columnas"].forEach(function (nombre) {
-            const campo = document.getElementById(nombre + numero);
+    if (!cooperativaId) {
+        const p = document.createElement("p");
 
-            campo.value =
-                borrador?.campos[numero - 1]?.[nombre] ??
-                campo.defaultValue;
+        p.className = "text-muted mb-0";
+        p.textContent = "Elige una cooperativa para ver sus plantillas.";
+
+        listaGuardadas.appendChild(p);
+
+        return;
+    }
+
+    if (!plantillasCooperativa.length) {
+        const p = document.createElement("p");
+
+        p.className = "text-muted mb-0";
+        p.textContent = "Todavía no has guardado ninguna plantilla.";
+
+        listaGuardadas.appendChild(p);
+    } else {
+        const grupo = document.createElement("div");
+
+        grupo.className = "list-group";
+
+        plantillasCooperativa.forEach(function (plantilla) {
+            const buses = busesDeTipo(claveTipo(plantilla.tipo_bus)).length;
+
+            const fila = document.createElement("div");
+            const texto = document.createElement("div");
+            const titulo = document.createElement("strong");
+            const detalle = document.createElement("div");
+            const editar = document.createElement("button");
+
+            fila.className =
+                "list-group-item d-flex flex-wrap " +
+                "justify-content-between align-items-center gap-2";
+
+            titulo.textContent = plantilla.tipo_bus;
+
+            detalle.className = "small text-muted";
+
+            detalle.textContent =
+                plantilla.numero_pisos +
+                (plantilla.numero_pisos === 1 ? " piso" : " pisos") +
+                " · " + plantilla.total_asientos + " asientos · " +
+                buses + (buses === 1 ? " bus" : " buses");
+
+            texto.append(titulo, detalle);
+
+            editar.type = "button";
+            editar.className = "btn btn-outline-primary btn-sm";
+            editar.textContent = "Ver / editar";
+
+            editar.addEventListener("click", function () {
+                campoTipo.value = plantilla.tipo_bus;
+                cambiarTipo();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            });
+
+            fila.append(texto, editar);
+            grupo.appendChild(fila);
         });
 
-        const columnas = Number(
-            document.getElementById("columnas" + numero).value
-        );
+        listaGuardadas.appendChild(grupo);
+    }
 
-        document.getElementById("filas" + numero).max = String(
-            enteroEnRango(columnas, 1, 4)
-                ? Math.ceil(60 / columnas)
-                : 60
+    // Avisa de los tipos de bus que todavía no tienen plantilla.
+    const conPlantilla = new Set(
+        plantillasCooperativa.map(p => claveTipo(p.tipo_bus))
+    );
+
+    const sinPlantilla = [...new Set(
+        busesCooperativa
+            .filter(b => !conPlantilla.has(claveTipo(b.tipo_bus)))
+            .map(b => String(b.tipo_bus).trim())
+    )];
+
+    if (sinPlantilla.length) {
+        const aviso = document.createElement("div");
+
+        aviso.className = "alert alert-warning mt-3 mb-0";
+
+        aviso.textContent =
+            "Faltan plantillas para los buses de tipo: " +
+            sinPlantilla.join(", ") + ".";
+
+        listaGuardadas.appendChild(aviso);
+    }
+}
+
+function llenarSugerencias() {
+    const vistos = new Map();
+
+    [
+        ...busesCooperativa.map(bus => bus.tipo_bus),
+        ...plantillasCooperativa.map(plantilla => plantilla.tipo_bus)
+    ].forEach(function (tipo) {
+        const clave = claveTipo(tipo);
+
+        if (clave && !vistos.has(clave)) {
+            vistos.set(clave, String(tipo).trim());
+        }
+    });
+
+    listaTipos.replaceChildren(
+        ...[...vistos.values()].map(function (tipo) {
+            const opcion = document.createElement("option");
+
+            opcion.value = tipo;
+
+            return opcion;
+        })
+    );
+
+    renderizarGuardadas();
+}
+
+// Campos del formulario según una plantilla (o los valores iniciales).
+
+function aplicarCampos(plantilla) {
+    numeroPisos.value = plantilla ? String(plantilla.numero_pisos) : "1";
+
+    segundoPisoPreparado = plantilla?.numero_pisos === 2;
+
+    [1, 2].forEach(function (numero) {
+        const piso = plantilla?.pisos.find(p => p.numero === numero);
+
+        const cantidad = campo("cantidad", numero);
+        const filas = campo("filas", numero);
+        const columnas = campo("columnas", numero);
+        const central = campo("central", numero);
+
+        cantidad.value = piso
+            ? String(piso.asientos.length)
+            : cantidad.defaultValue;
+
+        filas.value = piso ? String(piso.filas) : filas.defaultValue;
+
+        columnas.value = piso
+            ? String(piso.columnas)
+            : columnas.defaultValue;
+
+        central.checked = piso
+            ? Boolean(piso.ultima_fila_5)
+            : central.defaultChecked;
+
+        columnas.readOnly = central.checked;
+
+        filas.max = String(
+            central.checked
+                ? 14
+                : Math.ceil(60 / Math.max(1, Number(columnas.value) || 4))
         );
     });
 
@@ -247,35 +428,55 @@ function restaurarCamposBus(borrador) {
     actualizarTotal();
 }
 
-function ajustarPiso(numero, desdeFilas = false) {
-    const campoCantidad = document.getElementById("cantidad" + numero);
-    const campoFilas = document.getElementById("filas" + numero);
+function ajustarPiso(numero, origen = "cantidad") {
+    const campoCantidad = campo("cantidad", numero);
+    const campoFilas = campo("filas", numero);
+    const campoColumnas = campo("columnas", numero);
+    const central = campo("central", numero).checked;
+
+    if (central) campoColumnas.value = "4";
+
+    campoColumnas.readOnly = central;
+
     const datos = leerPiso(numero);
 
     if (enteroEnRango(datos.columnas, 1, 4)) {
-        const maximoFilas = Math.ceil(60 / datos.columnas);
+        const maximoFilas = central
+            ? 14
+            : Math.ceil(60 / datos.columnas);
+
         campoFilas.max = String(maximoFilas);
 
-        if (
-            desdeFilas &&
-            enteroEnRango(datos.filas, 1, maximoFilas)
-        ) {
-            campoCantidad.value = String(
-                Math.min(datos.filas * datos.columnas, 60)
-            );
-        } else if (
-            !desdeFilas &&
-            enteroEnRango(datos.cantidad, 1, 60)
-        ) {
-            campoFilas.value = String(
-                Math.ceil(datos.cantidad / datos.columnas)
-            );
+        if (origen === "filas") {
+            if (enteroEnRango(datos.filas, 1, maximoFilas)) {
+                campoCantidad.value = String(
+                    central
+                        ? datos.filas * 4 + 1
+                        : Math.min(datos.filas * datos.columnas, 60)
+                );
+            }
+        } else if (enteroEnRango(datos.cantidad, 1, 60)) {
+            if (central && origen === "central") {
+                // Al activar la opción, sube al siguiente valor válido.
+                const filas = Math.min(
+                    14,
+                    Math.max(1, Math.ceil((datos.cantidad - 1) / 4))
+                );
+
+                campoFilas.value = String(filas);
+                campoCantidad.value = String(filas * 4 + 1);
+            } else {
+                campoFilas.value = String(
+                    central
+                        ? Math.max(1, Math.ceil((datos.cantidad - 1) / 4))
+                        : Math.ceil(datos.cantidad / datos.columnas)
+                );
+            }
         }
     }
 
     limpiarResumen();
     actualizarTotal();
-    guardarBorradorBus();
 }
 
 function cambiarNumeroPisos() {
@@ -286,19 +487,12 @@ function cambiarNumeroPisos() {
     segundo.disabled = !usaDosPisos;
 
     if (usaDosPisos && !segundoPisoPreparado) {
-        const cantidadAnterior = Number(
-            document.getElementById("cantidad1").value
-        );
+        campo("cantidad", 1).value = "21";
+        campo("central", 1).checked = true;
 
-        const total = enteroEnRango(cantidadAnterior, 1, 60)
-            ? Math.max(40, cantidadAnterior)
-            : 40;
-
-        document.getElementById("cantidad1").value =
-            String(Math.floor(total / 2));
-
-        document.getElementById("cantidad2").value =
-            String(Math.ceil(total / 2));
+        campo("cantidad", 2).value = "20";
+        campo("columnas", 2).value = "4";
+        campo("central", 2).checked = false;
 
         segundoPisoPreparado = true;
     }
@@ -310,221 +504,163 @@ function cambiarNumeroPisos() {
     }
 }
 
-// Consulta de buses y plantillas.
+// Cooperativa y tipo de bus.
 
-function llenarSelectorBuses() {
+function llenarSelectorCooperativas(cooperativas) {
     const opcionInicial = document.createElement("option");
 
     opcionInicial.value = "";
-    opcionInicial.textContent = "Selecciona un bus";
+    opcionInicial.textContent = "Selecciona una cooperativa";
 
-    selectorBus.replaceChildren(opcionInicial);
+    selectorCooperativa.replaceChildren(opcionInicial);
 
-    busesDisponibles.forEach(function (bus) {
+    cooperativas.forEach(function (cooperativa) {
         const opcion = document.createElement("option");
 
-        const cooperativa =
-            bus.cooperativas?.nombre ?? "Cooperativa no disponible";
+        opcion.value = cooperativa.id;
+        opcion.textContent = cooperativa.nombre;
 
-        opcion.value = bus.id;
-
-        opcion.textContent =
-            `${bus.placa} — ${cooperativa} (${bus.tipo_bus})`;
-
-        selectorBus.appendChild(opcion);
+        selectorCooperativa.appendChild(opcion);
     });
 }
 
-async function cargarBuses() {
-    const { data, error } = await supabase
-        .from("buses")
-        .select(
-            "id, placa, tipo_bus, cooperativa_id, cooperativas(nombre)"
-        )
-        .order("placa");
+async function cambiarCooperativa() {
+    const solicitud = ++solicitudCooperativa;
 
-    if (error) throw error;
+    cooperativaId = selectorCooperativa.value;
+    busesCooperativa = [];
+    plantillasCooperativa = [];
+    plantillaCargada = null;
 
-    busesDisponibles = data ?? [];
-    llenarSelectorBuses();
-}
+    campoTipo.value = "";
+    listaTipos.replaceChildren();
 
-function actualizarTextoResumen(bus) {
-    textoResumen.textContent =
-        "Bus " + bus.placa + ": " +
-        configuracionActual.numero_pisos +
-        (
-            configuracionActual.numero_pisos === 1
-                ? " piso, "
-                : " pisos, "
-        ) +
-        configuracionActual.total_asientos +
-        " asientos en total.";
-}
-
-async function cambiarBus() {
-    guardarBorradorBus();
-
-    const solicitud = ++solicitudPlantilla;
-
-    busEnEdicion = selectorBus.value;
     limpiarResumen();
+    aplicarCampos(null);
+    actualizarInfoBuses();
+    renderizarGuardadas();
 
-    mensaje.classList.add("d-none");
-    controles.disabled = false;
-    formulario.removeAttribute("aria-busy");
-
-    const bus = busesDisponibles.find(
-        bus => bus.id === busEnEdicion
-    );
-
-    let borrador = bus
-        ? configuracionesPorBus.get(bus.id)
-        : null;
-
-    let cargadaDesdeSupabase = false;
-
-    restaurarCamposBus(borrador);
-
-    if (!bus) return;
-
-    if (!borrador) {
-        controles.disabled = true;
-        formulario.setAttribute("aria-busy", "true");
-
-        mostrarMensaje(
-            "Cargando la plantilla del bus " + bus.placa + "..."
-        );
-
-        try {
-            const guardada = await obtenerPlantillaGuardada(bus.id);
-
-            // Evita aplicar una respuesta que corresponda a otro bus.
-            if (solicitud !== solicitudPlantilla) return;
-
-            versionesPorBus.set(
-                bus.id,
-                guardada?.actualizado_en ?? null
-            );
-
-            if (!guardada) {
-                mostrarMensaje(
-                    "Este bus todavía no tiene una plantilla guardada. " +
-                    "Configura sus asientos y genera la vista previa."
-                );
-
-                return;
-            }
-
-            borrador = {
-                numeroPisos: String(guardada.numero_pisos),
-
-                segundoPisoPreparado:
-                    guardada.numero_pisos === 2,
-
-                campos: [1, 2].map(function (numero) {
-                    const piso = guardada.pisos.find(
-                        piso => piso.numero === numero
-                    );
-
-                    return {
-                        cantidad: piso
-                            ? String(piso.asientos.length)
-                            : document.getElementById(
-                                "cantidad" + numero
-                            ).defaultValue,
-
-                        filas: piso
-                            ? String(piso.filas)
-                            : document.getElementById(
-                                "filas" + numero
-                            ).defaultValue,
-
-                        columnas: piso
-                            ? String(piso.columnas)
-                            : document.getElementById(
-                                "columnas" + numero
-                            ).defaultValue
-                    };
-                }),
-
-                configuracion: guardada,
-                vista: null
-            };
-
-            configuracionesPorBus.set(bus.id, borrador);
-
-            restaurarCamposBus(borrador);
-            cargadaDesdeSupabase = true;
-        } catch (error) {
-            if (solicitud !== solicitudPlantilla) return;
-
-            versionesPorBus.delete(bus.id);
-
-            console.error(
-                "No se pudo cargar la plantilla:",
-                error
-            );
-
-            mostrarMensaje(
-                "No se pudo cargar la plantilla. Selecciona otro bus " +
-                "y vuelve a elegir este para reintentar.",
-                "danger"
-            );
-
-            return;
-        } finally {
-            if (solicitud === solicitudPlantilla) {
-                controles.disabled = false;
-                formulario.removeAttribute("aria-busy");
-                actualizarBotonGuardar();
-            }
-        }
+    if (!cooperativaId) {
+        mostrarMensaje("Selecciona una cooperativa para empezar.");
+        return;
     }
 
-    if (!borrador.configuracion) {
+    controles.disabled = true;
+    formulario.setAttribute("aria-busy", "true");
+
+    mostrarMensaje("Cargando los buses y plantillas de la cooperativa...");
+
+    try {
+        const [buses, plantillas] = await Promise.all([
+            obtenerBusesDeCooperativa(cooperativaId),
+            obtenerPlantillasDeCooperativa(cooperativaId)
+        ]);
+
+        // Evita aplicar una respuesta de otra cooperativa.
+        if (solicitud !== solicitudCooperativa) return;
+
+        busesCooperativa = buses;
+        plantillasCooperativa = plantillas;
+
+        llenarSugerencias();
+
         mostrarMensaje(
-            "Borrador recuperado para el bus " + bus.placa +
-            ". Revisa los campos y genera la vista previa."
+            buses.length
+                ? "Escribe o elige el tipo de bus que quieres configurar."
+                : "Esta cooperativa todavía no tiene buses. " +
+                  "Puedes crear la plantilla de un tipo y se asignará " +
+                  "a los buses que registres con ese tipo.",
+            buses.length ? "info" : "warning"
+        );
+    } catch (error) {
+        if (solicitud !== solicitudCooperativa) return;
+
+        console.error("No se pudieron cargar los datos:", error);
+
+        mostrarMensaje(
+            "No se pudieron cargar los datos de la cooperativa. " +
+            "Vuelve a elegirla para reintentar.",
+            "danger"
+        );
+    } finally {
+        if (solicitud === solicitudCooperativa) {
+            controles.disabled = false;
+            formulario.removeAttribute("aria-busy");
+            actualizarBotonGuardar();
+        }
+    }
+}
+
+function cambiarTipo() {
+    limpiarResumen();
+
+    const tipo = campoTipo.value.trim();
+
+    plantillaCargada = tipo
+        ? plantillasCooperativa.find(
+            plantilla => claveTipo(plantilla.tipo_bus) === claveTipo(tipo)
+        ) ?? null
+        : null;
+
+    aplicarCampos(plantillaCargada);
+    actualizarInfoBuses();
+
+    if (!tipo) {
+        mostrarMensaje("Escribe o elige el tipo de bus.");
+        return;
+    }
+
+    if (!plantillaCargada) {
+        mostrarMensaje(
+            "El tipo «" + tipo + "» todavía no tiene plantilla. " +
+            "Configura sus asientos y genera la vista previa."
         );
 
         return;
     }
 
-    configuracionActual = structuredClone(
-        borrador.configuracion
-    );
+    configuracionActual = structuredClone({
+        cooperativa_id: cooperativaId,
+        tipo_bus: plantillaCargada.tipo_bus,
+        clave: claveTipo(plantillaCargada.tipo_bus),
+        numero_pisos: plantillaCargada.numero_pisos,
+        total_asientos: plantillaCargada.total_asientos,
+        pisos: plantillaCargada.pisos
+    });
 
-    cantidadBoletos.max = String(
-        configuracionActual.total_asientos
-    );
+    mostrarConfiguracion();
 
+    mostrarMensaje(
+        "Plantilla guardada cargada para el tipo «" +
+        plantillaCargada.tipo_bus + "»."
+    );
+}
+
+function actualizarTextoResumen() {
+    const buses = busesDeTipo(configuracionActual.clave).length;
+
+    textoResumen.textContent =
+        "Tipo «" + configuracionActual.tipo_bus + "»: " +
+        configuracionActual.numero_pisos +
+        (configuracionActual.numero_pisos === 1 ? " piso, " : " pisos, ") +
+        configuracionActual.total_asientos + " asientos en total. " +
+        (
+            buses
+                ? "Se aplicará a " + buses +
+                  (buses === 1 ? " bus." : " buses.")
+                : "Todavía no hay buses de este tipo."
+        );
+}
+
+function mostrarConfiguracion() {
+    cantidadBoletos.max = String(configuracionActual.total_asientos);
     cantidadBoletos.value = "1";
 
-    actualizarTextoResumen(bus);
+    actualizarTextoResumen();
     dibujarVistaPrevia();
     actualizarContador();
 
-    const vistaValida =
-        borrador.vista === "1" ||
-        (
-            configuracionActual.numero_pisos === 2 &&
-            ["2", "ambos"].includes(borrador.vista)
-        );
-
-    if (vistaValida) {
-        mostrarPiso(borrador.vista);
-    }
-
     resumen.classList.remove("d-none");
-
-    mostrarMensaje(
-        cargadaDesdeSupabase
-            ? "Plantilla guardada cargada para el bus " +
-              bus.placa + "."
-            : "Borrador recuperado para el bus " + bus.placa +
-              ". Los cambios nuevos todavía no se han guardado."
-    );
 }
 
 // Generación de los asientos.
@@ -538,11 +674,19 @@ function crearPisos(datos) {
     }
 
     datos.forEach(function (piso) {
+        const errorCentral = mensajeDePiso(piso);
+
+        if (errorCentral) throw new RangeError(errorCentral);
+
+        const filasEsperadas = piso.central
+            ? (piso.cantidad - 1) / 4
+            : Math.ceil(piso.cantidad / piso.columnas);
+
         if (
             !enteroEnRango(piso.cantidad, 1, 60) ||
             !enteroEnRango(piso.columnas, 1, 4) ||
             !Number.isInteger(piso.filas) ||
-            piso.filas !== Math.ceil(piso.cantidad / piso.columnas)
+            piso.filas !== filasEsperadas
         ) {
             throw new RangeError(
                 "Revisa los asientos, filas y columnas de cada piso."
@@ -550,9 +694,10 @@ function crearPisos(datos) {
         }
     });
 
-    const total = datos.reduce(function (suma, piso) {
-        return suma + piso.cantidad;
-    }, 0);
+    const total = datos.reduce(
+        (suma, piso) => suma + piso.cantidad,
+        0
+    );
 
     const minimo = datos.length === 2 ? 40 : 1;
 
@@ -571,21 +716,33 @@ function crearPisos(datos) {
 
         const asientos = Array.from(
             { length: piso.cantidad },
-            (_, indice) => ({
-                numero: numeroSiguiente++,
-                piso: numeroPiso,
-                fila: Math.floor(indice / piso.columnas) + 1,
-                columna: indice % piso.columnas + 1,
-                tipo: datos.length === 2 && numeroPiso === 1
-                    ? "vip"
-                    : "normal"
-            })
+            function (_, indice) {
+                // La última fila de 5 asientos ocupa también el hueco
+                // del pasillo: columnas 1 a 5.
+                const enFilaDeCinco =
+                    piso.central && indice >= (piso.filas - 1) * 4;
+
+                return {
+                    numero: numeroSiguiente++,
+                    piso: numeroPiso,
+                    fila: enFilaDeCinco
+                        ? piso.filas
+                        : Math.floor(indice / piso.columnas) + 1,
+                    columna: enFilaDeCinco
+                        ? indice - (piso.filas - 1) * 4 + 1
+                        : indice % piso.columnas + 1,
+                    tipo: datos.length === 2 && numeroPiso === 1
+                        ? "vip"
+                        : "normal"
+                };
+            }
         );
 
         return {
             numero: numeroPiso,
             filas: piso.filas,
             columnas: piso.columnas,
+            ultima_fila_5: piso.central,
             asientos
         };
     });
@@ -593,17 +750,17 @@ function crearPisos(datos) {
 
 // Prueba de selección de puestos.
 
-function alternarSeleccion(numero, limite, seleccionados) {
-    if (seleccionados.has(numero)) {
-        seleccionados.delete(numero);
+function alternarSeleccion(numero, limite, elegidos) {
+    if (elegidos.has(numero)) {
+        elegidos.delete(numero);
         return true;
     }
 
-    if (seleccionados.size >= limite) {
+    if (elegidos.size >= limite) {
         return false;
     }
 
-    seleccionados.add(numero);
+    elegidos.add(numero);
 
     return true;
 }
@@ -614,15 +771,15 @@ function actualizarContador(aviso = "") {
     let totalVip = 0;
 
     configuracionActual.pisos.forEach(function (piso) {
-        const vip = piso.asientos.filter(function (asiento) {
-            return asiento.tipo === "vip";
-        }).length;
+        const vip = piso.asientos.filter(
+            asiento => asiento.tipo === "vip"
+        ).length;
 
         const normales = piso.asientos.length - vip;
 
-        const elegidos = piso.asientos.filter(function (asiento) {
-            return seleccionados.has(asiento.numero);
-        }).length;
+        const elegidos = piso.asientos.filter(
+            asiento => seleccionados.has(asiento.numero)
+        ).length;
 
         const contadorPiso = document.getElementById(
             "seleccionPiso" + piso.numero
@@ -674,20 +831,25 @@ function actualizarContador(aviso = "") {
         aviso;
 }
 
+function buscarAsiento(boton) {
+    const piso = configuracionActual?.pisos.find(
+        p => p.numero === Number(boton.dataset.piso)
+    );
+
+    return {
+        piso,
+        asiento: piso?.asientos.find(
+            a => a.numero === Number(boton.dataset.numero)
+        )
+    };
+}
+
 function actualizarBoton(boton) {
-    const numero = Number(boton.dataset.numero);
-
-    const piso = configuracionActual?.pisos.find(function (piso) {
-        return piso.numero === Number(boton.dataset.piso);
-    });
-
-    const asiento = piso?.asientos.find(function (asiento) {
-        return asiento.numero === numero;
-    });
+    const { asiento } = buscarAsiento(boton);
 
     if (!asiento) return;
 
-    const elegido = seleccionados.has(numero);
+    const elegido = seleccionados.has(asiento.numero);
     const tipo = asiento.tipo === "vip" ? "VIP" : "Normal";
 
     boton.dataset.tipo = asiento.tipo;
@@ -697,7 +859,7 @@ function actualizarBoton(boton) {
 
     boton.setAttribute(
         "aria-label",
-        "Asiento " + numero +
+        "Asiento " + asiento.numero +
         ", piso " + asiento.piso +
         ", " + tipo + ", " +
         (elegido ? "seleccionado" : "sin seleccionar")
@@ -755,6 +917,48 @@ function mostrarPiso(vista) {
         });
 }
 
+// Posición visual (0, 1, 2...) de un asiento dentro de su fila.
+// Si el piso tiene fila de 5, la cuadrícula tiene 5 ranuras y la del
+// medio es el pasillo; solo la última fila usa esa ranura con un asiento.
+function ranuraDe(piso, asiento) {
+    if (piso.ultima_fila_5) {
+        if (asiento.fila === piso.filas) return asiento.columna - 1;
+
+        return asiento.columna <= 2
+            ? asiento.columna - 1
+            : asiento.columna;
+    }
+
+    const centro = Math.ceil(piso.columnas / 2);
+
+    return asiento.columna - 1 +
+        (piso.columnas > 1 && asiento.columna > centro ? 1 : 0);
+}
+
+function crearBotonAsiento(asiento, piso) {
+    const boton = document.createElement("button");
+    const etiqueta = document.createElement("small");
+    const numero = document.createElement("strong");
+
+    boton.type = "button";
+    boton.className = "plantilla-asiento";
+
+    boton.dataset.numero = String(asiento.numero);
+    boton.dataset.piso = String(piso.numero);
+
+    etiqueta.textContent = "Asiento";
+    numero.textContent = String(asiento.numero);
+
+    boton.append(etiqueta, numero);
+    actualizarBoton(boton);
+
+    boton.addEventListener("click", function () {
+        seleccionarAsiento(boton);
+    });
+
+    return boton;
+}
+
 function crearMapaPiso(piso) {
     const panel = document.createElement("section");
     const titulo = document.createElement("h3");
@@ -784,7 +988,8 @@ function crearMapaPiso(piso) {
     detalle.textContent =
         piso.asientos.length + " asientos: del " +
         piso.asientos[0].numero + " al " +
-        piso.asientos[piso.asientos.length - 1].numero + ".";
+        piso.asientos[piso.asientos.length - 1].numero + "." +
+        (piso.ultima_fila_5 ? " Última fila de 5 asientos." : "");
 
     contador.id = "seleccionPiso" + piso.numero;
     contador.className = "small mb-3";
@@ -807,20 +1012,36 @@ function crearMapaPiso(piso) {
     frente.append(etiquetaFrente, referencia);
     dibujo.appendChild(frente);
 
-    const centro = Math.ceil(piso.columnas / 2);
+    const hayPasillo = piso.columnas > 1;
 
-    const anchos = Array(piso.columnas)
-        .fill("minmax(0, 1fr)");
+    const ranuras = piso.ultima_fila_5
+        ? 5
+        : piso.columnas + (hayPasillo ? 1 : 0);
 
-    if (piso.columnas > 1) {
-        anchos.splice(centro, 0, "1rem");
-    }
+    const indicePasillo = piso.ultima_fila_5
+        ? 2
+        : hayPasillo
+            ? Math.ceil(piso.columnas / 2)
+            : -1;
+
+    const anchos = Array.from({ length: ranuras }, function (_, indice) {
+        return indice === indicePasillo && !piso.ultima_fila_5
+            ? "1rem"
+            : "minmax(0, 1fr)";
+    }).join(" ");
 
     for (let fila = 1; fila <= piso.filas; fila++) {
         const filaVisual = document.createElement("div");
+        const celdas = Array(ranuras).fill(null);
+
+        piso.asientos
+            .filter(asiento => asiento.fila === fila)
+            .forEach(function (asiento) {
+                celdas[ranuraDe(piso, asiento)] = asiento;
+            });
 
         filaVisual.className = "plantilla-fila";
-        filaVisual.style.gridTemplateColumns = anchos.join(" ");
+        filaVisual.style.gridTemplateColumns = anchos;
 
         filaVisual.setAttribute("role", "group");
 
@@ -829,50 +1050,22 @@ function crearMapaPiso(piso) {
             "Piso " + piso.numero + ", fila " + fila
         );
 
-        for (let columna = 1; columna <= piso.columnas; columna++) {
-            const indice =
-                (fila - 1) * piso.columnas + columna - 1;
-
-            const asiento = piso.asientos[indice];
-
+        celdas.forEach(function (asiento, indice) {
             if (asiento) {
-                const boton = document.createElement("button");
-                const etiqueta = document.createElement("small");
-                const numero = document.createElement("strong");
-
-                boton.type = "button";
-                boton.className = "plantilla-asiento";
-
-                boton.dataset.numero = String(asiento.numero);
-                boton.dataset.piso = String(piso.numero);
-
-                etiqueta.textContent = "Asiento";
-                numero.textContent = String(asiento.numero);
-
-                boton.append(etiqueta, numero);
-                actualizarBoton(boton);
-
-                boton.addEventListener("click", function () {
-                    seleccionarAsiento(boton);
-                });
-
-                filaVisual.appendChild(boton);
-            } else {
-                const hueco = document.createElement("span");
-
-                hueco.setAttribute("aria-hidden", "true");
-                filaVisual.appendChild(hueco);
+                filaVisual.appendChild(crearBotonAsiento(asiento, piso));
+                return;
             }
 
-            if (columna === centro && piso.columnas > 1) {
-                const pasillo = document.createElement("span");
+            const hueco = document.createElement("span");
 
-                pasillo.className = "plantilla-pasillo";
-                pasillo.setAttribute("aria-hidden", "true");
+            hueco.setAttribute("aria-hidden", "true");
 
-                filaVisual.appendChild(pasillo);
+            if (indice === indicePasillo) {
+                hueco.className = "plantilla-pasillo";
             }
-        }
+
+            filaVisual.appendChild(hueco);
+        });
 
         dibujo.appendChild(filaVisual);
     }
@@ -945,37 +1138,42 @@ function dibujarVistaPrevia() {
 function navegarAsientos(evento) {
     if (evento.altKey || evento.ctrlKey || evento.metaKey) return;
 
-    const desplazamientos = {
+    const direcciones = {
         ArrowLeft: [0, -1],
         ArrowRight: [0, 1],
         ArrowUp: [-1, 0],
         ArrowDown: [1, 0]
     };
 
-    const desplazamiento = desplazamientos[evento.key];
+    const direccion = direcciones[evento.key];
 
-    const boton = evento.target.closest(
-        "button[data-numero]"
-    );
+    const boton = evento.target.closest("button[data-numero]");
 
-    if (!desplazamiento || !boton || !configuracionActual) return;
+    if (!direccion || !boton || !configuracionActual) return;
 
-    const piso = configuracionActual.pisos.find(function (piso) {
-        return piso.numero === Number(boton.dataset.piso);
-    });
-
-    const actual = piso?.asientos.find(function (asiento) {
-        return asiento.numero === Number(boton.dataset.numero);
-    });
+    const { piso, asiento: actual } = buscarAsiento(boton);
 
     if (!actual) return;
 
     evento.preventDefault();
 
-    const destino = piso.asientos.find(function (asiento) {
-        return asiento.fila === actual.fila + desplazamiento[0] &&
-            asiento.columna === actual.columna + desplazamiento[1];
+    const [dFila, dRanura] = direccion;
+    const ranuraActual = ranuraDe(piso, actual);
+
+    const candidatos = piso.asientos.filter(function (asiento) {
+        if (dFila) return asiento.fila === actual.fila + dFila;
+
+        return asiento.fila === actual.fila &&
+            (ranuraDe(piso, asiento) - ranuraActual) * dRanura > 0;
     });
+
+    // El más cercano en horizontal (o el siguiente en la fila).
+    candidatos.sort(function (a, b) {
+        return Math.abs(ranuraDe(piso, a) - ranuraActual) -
+            Math.abs(ranuraDe(piso, b) - ranuraActual);
+    });
+
+    const destino = candidatos[0];
 
     if (!destino) return;
 
@@ -985,29 +1183,18 @@ function navegarAsientos(evento) {
     )?.focus();
 }
 
-// Guardado y actualización en Supabase.
+// Guardado en Supabase.
 
 async function guardarPlantillaActual() {
-    if (guardandoPlantilla || controles.disabled) return;
+    if (guardando || controles.disabled) return;
 
     if (
         !configuracionActual ||
-        configuracionActual.bus_id !== selectorBus.value
+        configuracionActual.cooperativa_id !== cooperativaId ||
+        configuracionActual.clave !== claveTipo(campoTipo.value)
     ) {
         mostrarMensaje(
-            "Genera la vista previa del bus antes de guardar.",
-            "warning"
-        );
-
-        return;
-    }
-
-    const busId = configuracionActual.bus_id;
-
-    if (!versionesPorBus.has(busId)) {
-        mostrarMensaje(
-            "Primero carga la plantilla del bus. Selecciona otro bus " +
-            "y vuelve a este para reintentar.",
+            "Genera la vista previa de este tipo de bus antes de guardar.",
             "warning"
         );
 
@@ -1019,9 +1206,9 @@ async function guardarPlantillaActual() {
     if (!formulario.reportValidity()) return;
 
     const configuracion = structuredClone(configuracionActual);
-    const versionEsperada = versionesPorBus.get(busId);
+    const versionEsperada = plantillaCargada?.actualizado_en ?? null;
 
-    guardandoPlantilla = true;
+    guardando = true;
     controles.disabled = true;
 
     formulario.setAttribute("aria-busy", "true");
@@ -1031,60 +1218,96 @@ async function guardarPlantillaActual() {
     mostrarMensaje("Guardando la plantilla...");
 
     try {
-        const guardada = await guardarPlantillaEnSupabase(
+        const guardada = await guardarPlantillaDeTipo(
+            cooperativaId,
             configuracion,
             versionEsperada
         );
 
-        if (
-            !guardada?.actualizado_en ||
-            guardada.bus_id !== busId
-        ) {
+        if (!guardada?.actualizado_en || !guardada.id) {
             throw new Error("Respuesta de guardado incompleta.");
         }
 
-        versionesPorBus.set(
-            busId,
-            guardada.actualizado_en
-        );
-
-        configuracionActual = {
-            ...configuracion,
+        plantillaCargada = {
             id: guardada.id,
-            actualizado_en: guardada.actualizado_en
+            cooperativa_id: cooperativaId,
+            tipo_bus: configuracion.tipo_bus,
+            numero_pisos: configuracion.numero_pisos,
+            total_asientos: configuracion.total_asientos,
+            actualizado_en: guardada.actualizado_en,
+            pisos: configuracion.pisos
         };
 
-        guardarBorradorBus();
+        plantillasCooperativa = [
+            ...plantillasCooperativa.filter(
+                plantilla =>
+                    claveTipo(plantilla.tipo_bus) !== configuracion.clave
+            ),
+            plantillaCargada
+        ];
+
+        // Actualiza la cantidad de buses con esta plantilla.
+        try {
+            busesCooperativa =
+                await obtenerBusesDeCooperativa(cooperativaId);
+        } catch (errorBuses) {
+            console.error("No se pudo refrescar la lista de buses:", errorBuses);
+        }
+
+        llenarSugerencias();   // también actualiza la lista de guardadas
+        actualizarInfoBuses();
+        actualizarTextoResumen();
+
+        const asignados = Number(guardada.buses_asignados ?? 0);
 
         mostrarMensaje(
-            "Plantilla guardada correctamente. Puedes recargar " +
-            "la página y volver a seleccionar este bus.",
+            "Plantilla de «" + configuracion.tipo_bus + "» guardada. " +
+            (
+                asignados
+                    ? "La usan " + asignados +
+                      (asignados === 1 ? " bus." : " buses.")
+                    : "Todavía no hay buses de este tipo; se asignará " +
+                      "a los que registres."
+            ),
             "success"
         );
+
+        // El mensaje está arriba: llévalo a la vista para que se note.
+        mensaje.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
-        console.error(
-            "Error al guardar la plantilla:",
-            error
-        );
+        console.error("Error al guardar la plantilla:", error);
 
         if (error?.code === "40001") {
-            versionesPorBus.delete(busId);
-            configuracionesPorBus.delete(busId);
+            // Otra sesión cambió la plantilla: hay que volver a cargarla.
+            try {
+                plantillasCooperativa =
+                    await obtenerPlantillasDeCooperativa(cooperativaId);
+            } catch (errorRecarga) {
+                console.error("No se pudo recargar:", errorRecarga);
+            }
+
+            campoTipo.value = "";
+            plantillaCargada = null;
+
+            limpiarResumen();
+            aplicarCampos(null);
+            actualizarInfoBuses();
+            renderizarGuardadas();
 
             mostrarMensaje(
-                "La plantilla cambió en otra sesión. Revisa tus cambios " +
-                "antes de seleccionar otro bus y volver a este " +
-                "para cargar la versión actual.",
+                "La plantilla cambió en otra sesión. Vuelve a elegir el " +
+                "tipo de bus para cargar la versión actual.",
                 "warning"
             );
         } else if (error?.code === "42501") {
             mostrarMensaje(
-                "Tu cuenta no tiene permiso para guardar la plantilla " +
-                "de este bus.",
+                "Tu cuenta no tiene permiso para guardar plantillas " +
+                "de esta cooperativa.",
                 "danger"
             );
         } else if (error?.code === "22023") {
             mostrarMensaje(
+                error.message ||
                 "Revisa la cantidad de asientos, las filas y las columnas " +
                 "de cada piso y genera otra vez la vista previa.",
                 "warning"
@@ -1097,7 +1320,7 @@ async function guardarPlantillaActual() {
             );
         }
     } finally {
-        guardandoPlantilla = false;
+        guardando = false;
         controles.disabled = false;
 
         formulario.removeAttribute("aria-busy");
@@ -1119,16 +1342,8 @@ formulario.addEventListener("submit", function (evento) {
 
     if (!formulario.reportValidity()) return;
 
-    const busSeleccionado = busesDisponibles.find(function (bus) {
-        return bus.id === selectorBus.value;
-    });
-
-    if (!busSeleccionado) {
-        mostrarMensaje(
-            "Selecciona un bus disponible.",
-            "warning"
-        );
-
+    if (!cooperativaId) {
+        mostrarMensaje("Selecciona una cooperativa.", "warning");
         return;
     }
 
@@ -1140,12 +1355,17 @@ formulario.addEventListener("submit", function (evento) {
 
         const pisos = crearPisos(datos);
 
-        const total = pisos.reduce(function (suma, piso) {
-            return suma + piso.asientos.length;
-        }, 0);
+        const total = pisos.reduce(
+            (suma, piso) => suma + piso.asientos.length,
+            0
+        );
+
+        const tipo = campoTipo.value.trim();
 
         configuracionActual = {
-            bus_id: busSeleccionado.id,
+            cooperativa_id: cooperativaId,
+            tipo_bus: tipo,
+            clave: claveTipo(tipo),
             numero_pisos: pisos.length,
             total_asientos: total,
             pisos
@@ -1153,19 +1373,8 @@ formulario.addEventListener("submit", function (evento) {
 
         seleccionados.clear();
 
-        cantidadBoletos.max = String(total);
-        cantidadBoletos.value = "1";
-
-        busEnEdicion = busSeleccionado.id;
-        actualizarTextoResumen(busSeleccionado);
-
-        dibujarVistaPrevia();
-        actualizarContador();
-
-        resumen.classList.remove("d-none");
+        mostrarConfiguracion();
         mensaje.classList.add("d-none");
-
-        guardarBorradorBus();
 
         document.getElementById("tituloResumen").focus();
     } catch (error) {
@@ -1175,52 +1384,36 @@ formulario.addEventListener("submit", function (evento) {
 
 // Eventos.
 
-selectorBus.addEventListener("change", cambiarBus);
+selectorCooperativa.addEventListener("change", cambiarCooperativa);
 
-numeroPisos.addEventListener(
-    "change",
-    cambiarNumeroPisos
-);
+campoTipo.addEventListener("change", cambiarTipo);
+campoTipo.addEventListener("input", actualizarBotonGuardar);
+
+numeroPisos.addEventListener("change", cambiarNumeroPisos);
 
 [1, 2].forEach(function (numero) {
-    document
-        .getElementById("cantidad" + numero)
-        .addEventListener("input", function () {
-            ajustarPiso(numero);
-        });
+    campo("cantidad", numero).addEventListener("input", function () {
+        ajustarPiso(numero);
+    });
 
-    document
-        .getElementById("columnas" + numero)
-        .addEventListener("input", function () {
-            ajustarPiso(numero);
-        });
+    campo("columnas", numero).addEventListener("input", function () {
+        ajustarPiso(numero);
+    });
 
-    document
-        .getElementById("filas" + numero)
-        .addEventListener("input", function () {
-            ajustarPiso(numero, true);
-        });
+    campo("filas", numero).addEventListener("input", function () {
+        ajustarPiso(numero, "filas");
+    });
+
+    campo("central", numero).addEventListener("change", function () {
+        ajustarPiso(numero, "central");
+    });
 });
 
-mapaPlantilla.addEventListener(
-    "keydown",
-    navegarAsientos
-);
+mapaPlantilla.addEventListener("keydown", navegarAsientos);
 
-cantidadBoletos.addEventListener(
-    "input",
-    limpiarSeleccion
-);
-
-botonLimpiar.addEventListener(
-    "click",
-    limpiarSeleccion
-);
-
-botonGuardar.addEventListener(
-    "click",
-    guardarPlantillaActual
-);
+cantidadBoletos.addEventListener("input", limpiarSeleccion);
+botonLimpiar.addEventListener("click", limpiarSeleccion);
+botonGuardar.addEventListener("click", guardarPlantillaActual);
 
 // Inicio y comprobación del acceso.
 
@@ -1242,23 +1435,31 @@ async function iniciar() {
             return;
         }
 
-        mostrarMensaje("Cargando buses disponibles...");
+        mostrarMensaje("Cargando cooperativas...");
 
-        await cargarBuses();
+        const cooperativas = await obtenerCooperativasPermitidas(rol);
 
-        if (busesDisponibles.length === 0) {
+        if (cooperativas.length === 0) {
             mostrarMensaje(
                 rol === "administrador"
-                    ? "No hay buses registrados. Registra uno desde la gestión de buses."
-                    : "No hay buses disponibles para esta cuenta. Solicita al administrador que revise tu asignación.",
+                    ? "No hay cooperativas registradas. Crea una primero."
+                    : "Tu cuenta no está asignada a ninguna cooperativa. " +
+                      "Solicita al administrador que revise tu asignación.",
                 "warning"
             );
 
             return;
         }
 
+        llenarSelectorCooperativas(cooperativas);
         controles.disabled = false;
-        mensaje.classList.add("d-none");
+
+        if (cooperativas.length === 1) {
+            selectorCooperativa.value = cooperativas[0].id;
+            await cambiarCooperativa();
+        } else {
+            mostrarMensaje("Selecciona la cooperativa para empezar.");
+        }
 
         actualizarBotonGuardar();
     } catch (error) {
@@ -1268,11 +1469,12 @@ async function iniciar() {
         );
 
         mostrarMensaje(
-            "No se pudieron cargar los buses. Revisa tu conexión y vuelve a intentar.",
+            "No se pudieron cargar las cooperativas. Revisa tu conexión y vuelve a intentar.",
             "danger"
         );
     }
 }
 
 actualizarTotal();
+renderizarGuardadas();
 iniciar();

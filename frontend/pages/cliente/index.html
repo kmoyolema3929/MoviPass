@@ -5,28 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Cliente - MoviPass</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
 </head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>Panel de Cliente</h1>
-            <!-- Botón de cerrar sesión -->
-            <button id="btnCerrarSesion" class="btn btn-danger">Cerrar Sesión</button>
-        </div>
-        
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <p>Si estás viendo esta pantalla, significa que la guarda de seguridad te reconoció como cliente autorizado.</p>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass - Cliente</a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="buscar.html" class="btn btn-outline-light btn-sm d-none d-sm-inline">Buscar viajes</a>
+                <a href="../compra/historial.html" class="btn btn-outline-light btn-sm d-none d-sm-inline">Mis compras</a>
+                <a href="../../index.html" class="btn btn-outline-light btn-sm">Cerrar Sesión</a>
             </div>
         </div>
-    </div>
+    </nav>
 
-    <!-- Script de seguridad para proteger la ruta -->
+    <main class="container my-5 flex-grow-1">
+        <h1 class="h2 mb-1">Hola, <span id="nombreCliente">cliente</span></h1>
+        <p class="text-muted mb-4">Desde aquí puedes buscar viajes, comprar tus boletos y revisar el estado de tus compras.</p>
+
+        <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center d-flex flex-column">
+                        <h2 class="display-5 mb-3 text-primary">🔍</h2>
+                        <h3 class="h5 card-title">Buscar viajes</h3>
+                        <p class="card-text text-muted small">Compara horarios, cooperativas y precios; elige el viaje que más te convenga.</p>
+                        <a href="buscar.html" class="btn btn-primary w-100 mt-auto">Buscar ahora</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center d-flex flex-column">
+                        <h2 class="display-5 mb-3 text-success">🎫</h2>
+                        <h3 class="h5 card-title">Mis compras</h3>
+                        <p class="card-text text-muted small">Consulta tus boletos, su estado y sube el comprobante cuando lo necesites.</p>
+                        <a href="../compra/historial.html" class="btn btn-success w-100 mt-auto">Ver mis compras</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center d-flex flex-column">
+                        <h2 class="display-5 mb-3 text-info">📊</h2>
+                        <h3 class="h5 card-title">Compras activas</h3>
+                        <p class="card-text text-muted small">Compras que aún esperan comprobante o validación de un oficinista.</p>
+                        <p class="display-6 fw-bold mb-0" id="comprasActivas">0</p>
+                        <a href="../compra/historial.html" class="btn btn-info text-white w-100 mt-3">Revisar estado</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-light border shadow-sm" role="alert">
+            <h2 class="h5 alert-heading">ℹ️ ¿Cómo compro?</h2>
+            <ol class="mb-0 ps-3">
+                <li>Busca tu viaje por origen, destino y fecha.</li>
+                <li>Elige tus asientos y completa los datos de los pasajeros.</li>
+                <li>Reserva y sube tu comprobante de transferencia o depósito.</li>
+                <li>Un oficinista validará tu pago y podrás mostrar tu boleto con código QR.</li>
+            </ol>
+        </div>
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
         import { exigirRoles } from '../../js/guardas.js';
-        
-        // Bloquea la página exigiendo que el rol sea exclusivamente "cliente"
-        exigirRoles(['cliente']);
+        import { supabase } from '../../js/supabaseClient.js';
+
+        async function iniciar() {
+            const rol = await exigirRoles(['cliente']);
+            if (!rol) return;
+
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                const nombre = (user?.user_metadata?.nombres || user?.email || 'cliente')
+                    .toString()
+                    .split(' ')[0];
+                document.getElementById('nombreCliente').textContent = nombre;
+
+                if (!user) return;
+
+                const { count, error } = await supabase
+                    .from('compras')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('comprador_id', user.id)
+                    .in('estado', ['pendiente_comprobante', 'pendiente_validacion']);
+
+                if (error) throw error;
+                document.getElementById('comprasActivas').textContent = String(count ?? 0);
+            } catch (error) {
+                console.error('No se pudo cargar la información del cliente:', error);
+            }
+        }
+
+        iniciar();
     </script>
 </body>
 </html>

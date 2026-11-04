@@ -1,5 +1,30 @@
 import { supabase } from './supabaseClient.js';
 
+/**
+ * Ciudades que tienen al menos una frecuencia activa.
+ * Se usan para llenar los selectores de origen y destino.
+ * @returns {Promise<string[]>}
+ */
+export async function obtenerCiudades() {
+    const { data, error } = await supabase
+        .from('frecuencias')
+        .select('origen, destino')
+        .eq('activa', true);
+
+    if (error) throw error;
+
+    const ciudades = new Set();
+
+    for (const frecuencia of data ?? []) {
+        if (frecuencia.origen) ciudades.add(String(frecuencia.origen).trim());
+        if (frecuencia.destino) ciudades.add(String(frecuencia.destino).trim());
+    }
+
+    return [...ciudades]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'es'));
+}
+
 export async function buscarViajes({ origen, destino, fecha }) {
     const { data, error } = await supabase
         .from('viajes')

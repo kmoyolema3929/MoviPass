@@ -13,6 +13,7 @@ const nombre = document.getElementById("nombre");
 const ruc = document.getElementById("ruc");
 const direccion = document.getElementById("direccion");
 const telefono = document.getElementById("telefono");
+const estado = document.getElementById("estado");
 
 const correo = document.getElementById("correo");
 const clave = document.getElementById("clave");
@@ -28,7 +29,9 @@ const btnActualizar = document.getElementById("btnActualizar");
 const btnCerrarSesion = document.getElementById("btnCerrarSesion");
 
 const campos = [nombre, ruc, direccion, telefono];
-const columnas = "id, nombre, ruc, direccion, telefono";
+
+// ¡AQUÍ ESTÁ LA CORRECCIÓN! Se agregó "estado" a las columnas
+const columnas = "id, nombre, ruc, direccion, telefono, estado";
 
 let cooperativas = [];
 let ocupado = false;
@@ -81,7 +84,7 @@ function mostrarFilaInformativa(texto) {
     const fila = document.createElement("tr");
     const celda = document.createElement("td");
 
-    celda.colSpan = 5;
+    celda.colSpan = 6;
     celda.className = "text-center text-muted py-4";
     celda.textContent = texto;
 
@@ -113,9 +116,17 @@ function mostrarCooperativas() {
             fila.appendChild(celda);
         });
 
+        // Celda de Estado
+        const tdEstado = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = cooperativa.estado === 'activa' ? 'badge bg-success' : 'badge bg-danger';
+        badge.textContent = cooperativa.estado === 'activa' ? 'Activa' : 'Suspendida';
+        tdEstado.appendChild(badge);
+        fila.appendChild(tdEstado);
+
+        // Celda de Acciones
         const acciones = document.createElement("td");
         const botones = document.createElement("div");
-
         botones.className = "d-flex flex-wrap gap-2";
 
         const editar = document.createElement("button");
@@ -123,13 +134,18 @@ function mostrarCooperativas() {
         editar.className = "btn btn-outline-primary btn-sm";
         editar.textContent = "Editar";
         editar.disabled = ocupado;
-        editar.setAttribute(
-            "aria-label",
-            "Editar " + cooperativa.nombre
-        );
-
         editar.addEventListener("click", function () {
             editarCooperativa(cooperativa.id);
+        });
+
+        // Botón de Suspender / Activar
+        const suspender = document.createElement("button");
+        suspender.type = "button";
+        suspender.className = cooperativa.estado === 'activa' ? "btn btn-outline-warning btn-sm" : "btn btn-outline-success btn-sm";
+        suspender.textContent = cooperativa.estado === 'activa' ? "Suspender" : "Activar";
+        suspender.disabled = ocupado;
+        suspender.addEventListener("click", function () {
+            cambiarEstadoCooperativa(cooperativa.id, cooperativa.estado);
         });
 
         const eliminar = document.createElement("button");
@@ -137,26 +153,52 @@ function mostrarCooperativas() {
         eliminar.className = "btn btn-outline-danger btn-sm";
         eliminar.textContent = "Eliminar";
         eliminar.disabled = ocupado;
-        eliminar.setAttribute(
-            "aria-label",
-            "Eliminar " + cooperativa.nombre
-        );
-
         eliminar.addEventListener("click", function () {
             eliminarCooperativa(cooperativa.id);
         });
 
-        botones.append(editar, eliminar);
+        botones.append(editar, suspender, eliminar);
         acciones.appendChild(botones);
         fila.appendChild(acciones);
         tabla.appendChild(fila);
     });
 }
 
+// Función para cambiar el estado
+async function cambiarEstadoCooperativa(id, estadoActual) {
+    if (ocupado) return;
+    
+    const nuevoEstado = estadoActual === 'activa' ? 'suspendida' : 'activa';
+    const accion = nuevoEstado === 'activa' ? 'activar' : 'suspender';
+    
+    if (!confirm(`¿Estás seguro de ${accion} esta cooperativa?`)) return;
+
+    cambiarEstado(true); // Bloquea botones
+
+    try {
+        const { error } = await supabase
+            .from("cooperativas")
+            .update({ estado: nuevoEstado })
+            .eq("id", id);
+
+        if (error) throw error;
+
+        // Actualizamos la lista local
+        cooperativas = cooperativas.map(c => c.id === id ? { ...c, estado: nuevoEstado } : c);
+        
+        mostrarCooperativas();
+        mostrarMensaje(`Cooperativa ${nuevoEstado === 'activa' ? 'activada' : 'suspendida'} correctamente.`);
+    } catch (error) {
+        mostrarError(error);
+    } finally {
+        cambiarEstado(false);
+    }
+}
+
 async function listarCooperativas() {
     const { data, error } = await supabase
         .from("cooperativas")
-        .select(columnas)
+        .select(columnas) // <-- Ahora sí trae el estado
         .order("nombre", { ascending: true });
 
     if (error) {

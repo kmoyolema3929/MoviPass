@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscar Viajes - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Iconos de Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .search-card {
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            background: #fff;
+        }
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 10;
+        }
+        .form-control-icon {
+            padding-left: 45px;
+            height: 50px;
+            border-radius: 12px;
+            border: 1.5px solid #e2e8f0;
+        }
+        .form-control-icon:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+        }
+        .btn-search {
+            height: 50px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+    <!-- Barra de Navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass - Cliente</a>
+            <div class="d-flex">
+                <a href="index.html" class="btn btn-outline-light btn-sm">Volver al panel</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 flex-grow-1">
+        
+        <!-- Título -->
+        <div class="row justify-content-center text-center mb-5">
+            <div class="col-md-8">
+                <h1 class="display-6 fw-bold text-primary mb-2">¿A dónde quieres viajar?</h1>
+                <p class="lead text-muted">Encuentra los mejores horarios y precios para tu próximo viaje.</p>
+            </div>
+        </div>
+
+        <!-- Tarjeta del buscador -->
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card search-card">
+                    <div class="card-body p-4 p-md-5">
+                        <form id="form-busqueda" class="row g-3" novalidate>
+                            
+                            <div class="col-12">
+                                <div id="errores-busqueda" class="alert alert-danger mb-0" role="alert" tabindex="-1" hidden></div>
+                            </div>
+
+                            <!-- Origen -->
+                            <div class="col-12 col-md-6 col-lg-3">
+                                <label for="origen" class="form-label fw-bold small text-uppercase text-muted">Origen</label>
+                                <div class="position-relative">
+                                    <i class="bi bi-geo-alt search-icon"></i>
+                                    <select id="origen" name="origen" class="form-select form-control-icon" required>
+                                        <option value="" selected disabled>¿De dónde sales?</option>
+                                        <option value="Ambato">Ambato</option>
+                                        <option value="Quito">Quito</option>
+                                        <option value="Guayaquil">Guayaquil</option>
+                                        <option value="Cuenca">Cuenca</option>
+                                        <option value="Loja">Loja</option>
+                                        <option value="Riobamba">Riobamba</option>
+                                        <option value="Latacunga">Latacunga</option>
+                                        <option value="Baños">Baños</option>
+                                        <option value="Puyo">Puyo</option>
+                                        <option value="Santo Domingo">Santo Domingo</option>
+                                        <option value="Manta">Manta</option>
+                                        <option value="Portoviejo">Portoviejo</option>
+                                        <option value="Machala">Machala</option>
+                                        <option value="Esmeraldas">Esmeraldas</option>
+                                        <option value="Ibarra">Ibarra</option>
+                                        <option value="Tulcán">Tulcán</option>
+                                        <option value="Salinas">Salinas</option>
+                                        <option value="Quevedo">Quevedo</option>
+                                        <option value="Milagro">Milagro</option>
+                                        <option value="Babahoyo">Babahoyo</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Destino -->
+                            <div class="col-12 col-md-6 col-lg-3">
+                                <label for="destino" class="form-label fw-bold small text-uppercase text-muted">Destino</label>
+                                <div class="position-relative">
+                                    <i class="bi bi-geo-fill search-icon"></i>
+                                    <select id="destino" name="destino" class="form-select form-control-icon" required>
+                                        <option value="" selected disabled>¿A dónde vas?</option>
+                                        <option value="Ambato">Ambato</option>
+                                        <option value="Quito">Quito</option>
+                                        <option value="Guayaquil">Guayaquil</option>
+                                        <option value="Cuenca">Cuenca</option>
+                                        <option value="Loja">Loja</option>
+                                        <option value="Riobamba">Riobamba</option>
+                                        <option value="Latacunga">Latacunga</option>
+                                        <option value="Baños">Baños</option>
+                                        <option value="Puyo">Puyo</option>
+                                        <option value="Santo Domingo">Santo Domingo</option>
+                                        <option value="Manta">Manta</option>
+                                        <option value="Portoviejo">Portoviejo</option>
+                                        <option value="Machala">Machala</option>
+                                        <option value="Esmeraldas">Esmeraldas</option>
+                                        <option value="Ibarra">Ibarra</option>
+                                        <option value="Tulcán">Tulcán</option>
+                                        <option value="Salinas">Salinas</option>
+                                        <option value="Quevedo">Quevedo</option>
+                                        <option value="Milagro">Milagro</option>
+                                        <option value="Babahoyo">Babahoyo</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Fecha -->
+                            <div class="col-12 col-md-6 col-lg-3">
+                                <label for="fecha" class="form-label fw-bold small text-uppercase text-muted">Fecha de viaje</label>
+                                <div class="position-relative">
+                                    <i class="bi bi-calendar-event search-icon"></i>
+                                    <input id="fecha" name="fecha" type="date" class="form-control form-control-icon" required>
+                                </div>
+                            </div>
+
+                            <!-- Botón Buscar -->
+                            <div class="col-12 col-md-6 col-lg-3 d-flex align-items-end">
+                                <button id="buscar-viajes" type="submit" class="btn btn-primary btn-search w-100">
+                                    <i class="bi bi-search me-2"></i>Buscar Viajes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Resultados -->
+        <section id="resultados-busqueda" class="row justify-content-center mt-5" hidden>
+            <div class="col-lg-10">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 id="titulo-resultados" class="h4 fw-bold mb-0">Viajes disponibles</h2>
+                    <span class="badge bg-primary rounded-pill" id="contador-resultados"></span>
+                </div>
+                
+                <!-- Filtros -->
+                <div id="filtros-resultados" class="row g-3 mb-4 p-3 bg-white rounded-4 shadow-sm" hidden>
+                    <div class="col-md-6">
+                        <label for="filtro-cooperativa" class="form-label small fw-bold text-muted">Cooperativa</label>
+                        <select id="filtro-cooperativa" class="form-select form-select-sm">
+                            <option value="">Todas las cooperativas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="filtro-tipo-bus" class="form-label small fw-bold text-muted">Tipo de bus</label>
+                        <select id="filtro-tipo-bus" class="form-select form-select-sm">
+                            <option value="">Todos los tipos de bus</option>
+                        </select>
+                    </div>
+                </div>
+
+                <p id="estado-resultados" role="status" aria-live="polite" class="text-muted fw-semibold"></p>
+                
+                <div id="tarjetas-viajes" class="row g-4"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="../../js/busqueda.js"></script>
+    <script type="module" src="../../js/resultadosBusqueda.js"></script>
+</body>
+</html>

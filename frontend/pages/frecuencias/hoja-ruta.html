@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoja de ruta - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .hoja-ruta th:first-child,
+        .hoja-ruta td:first-child { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 13rem; }
+        .hoja-ruta thead th:first-child { background: #212529; z-index: 2; }
+        .hoja-ruta select { min-width: 9rem; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark" style="background-color: var(--primary-color, #0d6efd);">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="../cooperativa/index.html">MoviPass - Cooperativa</a>
+            <div class="d-flex gap-2">
+                <a id="btnVolver" href="../cooperativa/index.html" class="btn btn-outline-light btn-sm">&larr; Volver al panel</a>
+                <button id="btnCerrarSesion" type="button" class="btn btn-light btn-sm">Cerrar sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h1 class="h3 mb-1">Hoja de ruta</h1>
+                <p class="text-muted mb-0">Asigna un bus a cada frecuencia, día por día. Un bus solo puede hacer una frecuencia al día.</p>
+            </div>
+            <a href="gestor-frecuencias.html" class="btn btn-outline-primary">Gestionar frecuencias</a>
+        </div>
+
+        <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="cooperativa" class="form-label">Cooperativa</label>
+                        <select id="cooperativa" class="form-select" disabled>
+                            <option value="">Cargando...</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label for="fechaInicio" class="form-label">Válida a partir de</label>
+                        <input type="date" id="fechaInicio" class="form-control">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label for="numeroDias" class="form-label">Días</label>
+                        <select id="numeroDias" class="form-select">
+                            <option value="3">3 días</option>
+                            <option value="5">5 días</option>
+                            <option value="7" selected>7 días</option>
+                            <option value="10">10 días</option>
+                            <option value="14">14 días</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-grid">
+                        <button id="btnAutomatico" type="button" class="btn btn-success" disabled>
+                            Rellenar con rotación
+                        </button>
+                    </div>
+                </div>
+                <p class="form-text mb-0 mt-2">
+                    No se crean hojas con más de 14 días de anticipación, por si se elimina una frecuencia.
+                    El relleno automático rota los buses un lugar cada día; los buses que sobran quedan en parada.
+                </p>
+            </div>
+        </div>
+
+        <div id="avisos"></div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div id="contenedorHoja" class="table-responsive">
+                    <p class="text-center py-3 text-muted mb-0">Selecciona una cooperativa.</p>
+                </div>
+            </div>
+        </div>
+        <p class="small text-muted mt-3 mb-0">
+            Para cambiar un bus de lugar, primero déjalo en "sin bus" donde estaba. Los días pasados no se pueden modificar,
+            y un viaje con boletos vendidos no se puede quitar.
+        </p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="hoja-ruta.js"></script>
+</body>
+</html>

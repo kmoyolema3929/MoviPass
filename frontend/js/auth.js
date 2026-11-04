@@ -33,10 +33,25 @@ export async function obtenerRol() {
 }
 
 /**
- * Cierra la sesión del usuario actual y redirige al login.
+ * Cierra la sesión del usuario actual y redirige.
+ * Si el servidor no responde, igual se borra la sesión local para que el
+ * usuario no quede "atrapado" con la sesión abierta en este navegador.
  * @param {string} [redireccion='/pages/login.html'] Ruta a la que redirigir.
  */
 export async function cerrarSesion(redireccion = '/pages/login.html') {
-  await supabase.auth.signOut();
-  window.location.href = redireccion;
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  } catch (error) {
+    console.error('No se pudo cerrar la sesión en el servidor:', error);
+
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (errorLocal) {
+      console.error('Tampoco se pudo borrar la sesión local:', errorLocal);
+    }
+  } finally {
+    // replace() evita que el botón "atrás" vuelva a una página autenticada.
+    window.location.replace(redireccion);
+  }
 }

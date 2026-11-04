@@ -1,124 +1,142 @@
 import { mostrarAlerta } from './alertas.js';
-// Importar Supabase
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import { supabase } from './supabaseClient.js';
+import { obtenerRol } from './auth.js';
 
-// Importar credenciales seguras
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+// Panel de cada rol (rutas relativas a /pages/login.html)
+const PANEL_POR_ROL = {
+    administrador: 'administrador/index.html',
+    cooperativa: 'cooperativa/index.html',
+    oficinista: 'oficinista/index.html',
+    cliente: 'cliente/index.html',
+    bus: 'bus/buses.html'
+};
 
-// Inicializar cliente
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/**
+ * Redirige al panel del rol. Devuelve false si el rol no tiene panel.
+ */
+function irAlPanel(rol) {
+    const destino = PANEL_POR_ROL[rol];
+    if (!destino) return false;
+    window.location.href = destino;
+    return true;
+}
 
-// Verificar si la sesión ya está activa al cargar la página
-async function verificarSesion() {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session) {
-        // Si hay sesión, buscamos su rol y lo redirigimos directo
-        const { data: perfil } = await supabase
-            .from('perfiles')
-            .select('rol')
-            .eq('id', session.user.id)
-            .single();
-            
-        if (perfil) {
-            window.location.href = `${perfil.rol}/index.html`;
-        }
+/**
+ * Destino al que volver tras el login (lo envía guardas.js cuando alguien
+ * intenta abrir una página sin sesión). Solo se acepta una ruta del mismo
+ * sitio dentro de /pages/, para evitar redirecciones externas.
+ */
+function obtenerRetorno() {
+    const valor = new URLSearchParams(window.location.search).get('redirect');
+    if (!valor) return null;
+
+    try {
+        const url = new URL(valor, window.location.href);
+        if (url.origin !== window.location.origin) return null;
+        if (!url.pathname.includes('/pages/')) return null;
+        return url.href;
+    } catch {
+        return null;
     }
 }
 
-// Ejecutar la verificación inmediatamente
-verificarSesion();
+/**
+ * Después de iniciar sesión: vuelve a la página pedida si el usuario es
+ * cliente; en los demás casos se abre su panel habitual.
+ */
+function irAlDestino(rol) {
+    const retorno = obtenerRetorno();
 
-// Seleccionar el formulario de login
+    if (rol === 'cliente' && retorno) {
+        window.location.replace(retorno);
+        return true;
+    }
+
+    return irAlPanel(rol);
+}
+
+// Si ya hay una sesión activa, se envía directo a su panel
+async function verificarSesion() {
+    try {
+        const rol = await obtenerRol(); // null si no hay sesión
+        if (rol) {
+            irAlDestino(rol);
+        }
+    } catch (error) {
+        console.error('No se pudo verificar la sesión:', error);
+    }
+}
+
+// Solo ejecutamos la verificación si NO estamos en la página de login manual
+// (Para evitar que un admin logueado sea redirigido antes de hacer clic)
+if (document.getElementById('formLogin')) {
+    verificarSesion();
+}
+
 const formLogin = document.getElementById('formLogin');
 
 if (formLogin) {
+    const btnLogin = document.getElementById('btnLogin');
+    const textoOriginal = btnLogin.textContent;
+
     formLogin.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const email = document.getElementById('emailInput').value;
+
+        // El correo se limpia y se pasa a minúsculas; la contraseña NO se modifica
+        const email = document.getElementById('emailInput').value.trim().toLowerCase();
         const password = document.getElementById('passwordInput').value;
-        
-        const btn = document.querySelector('button[type="submit"]');
-        const originalText = btn.textContent;
-        btn.textContent = 'Iniciando sesión...';
-        btn.disabled = true;
+
+        btnLogin.textContent = 'Iniciando sesión...';
+        btnLogin.disabled = true;
+        let redirigiendo = false;
 
         try {
             // 1. Iniciar sesión con correo y contraseña
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
+            const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
             if (authError) {
-                mostrarAlerta('Correo o contraseña incorrectos. Inténtalo de nuevo.', 'danger');
-                return; // Detenemos la ejecución aquí si hay error
-            }
-
-            // 2. Si el login es exitoso, buscamos el rol en la tabla perfiles
-            const userId = authData.user.id;
-            
-            const { data: perfilData, error: perfilError } = await supabase
-                .from('perfiles')
-                .select('rol')
-                .eq('id', userId)
-                .single();
-
-            if (perfilError) {
-                console.error('Error al obtener el rol:', perfilError);
-                mostrarAlerta('Inicio de sesión exitoso, pero hubo un error al cargar tu perfil.', 'warning');
-            } else {
-                // Redirigir al usuario según su rol exacto
-                const rol = perfilData.rol;
-                
-                switch (rol) {
-                    case 'administrador':
-                        window.location.href = 'administrador/index.html';
-                        break;
-                    case 'cooperativa':
-                        window.location.href = 'cooperativa/index.html';
-                        break;
-                    case 'oficinista':
-                        window.location.href = 'oficinista/index.html';
-                        break;
-                    case 'cliente':
-                        window.location.href = 'cliente/index.html';
-                        break;
-                    case 'bus':
-                        window.location.href = 'bus/index.html';
-                        break;
-                    default:
-                        mostrarAlerta('Error: Tu rol no tiene una pantalla asignada.', 'danger');
-                        // Cerramos sesión por seguridad si el rol es inválido
-                        await supabase.auth.signOut();
-                        break;
+                if (authError.message.includes('Email not confirmed')) {
+                    mostrarAlerta('Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.', 'warning');
+                } else {
+                    mostrarAlerta('Correo o contraseña incorrectos. Inténtalo de nuevo.', 'danger');
                 }
+                return;
             }
 
+            // 2. Buscar el rol del usuario en la tabla perfiles
+            const rol = await obtenerRol();
+
+            if (!rol || !PANEL_POR_ROL[rol]) {
+                // Sin rol válido no se deja la sesión abierta
+                await supabase.auth.signOut();
+                mostrarAlerta('Tu cuenta no tiene un rol asignado. Contacta al administrador.', 'danger');
+                return;
+            }
+
+            // 3. Redirigir según el rol (o a la página que se quería abrir)
+            redirigiendo = irAlDestino(rol);
         } catch (error) {
-            console.error('Error inesperado:', error);
+            console.error('Error inesperado al iniciar sesión:', error);
+            mostrarAlerta('No se pudo iniciar sesión. Revisa tu conexión e inténtalo de nuevo.', 'danger');
         } finally {
-            btn.textContent = originalText;
-            btn.disabled = false;
+            // Si se está redirigiendo, el botón queda bloqueado para evitar doble clic
+            if (!redirigiendo) {
+                btnLogin.textContent = textoOriginal;
+                btnLogin.disabled = false;
+            }
         }
     });
 
-    // ==============================================================
-    // Lógica para mostrar/ocultar contraseña en el login
-    // ==============================================================
+    // Mostrar / ocultar contraseña
     const btnTogglePass = document.getElementById('btnTogglePass');
     const passwordInput = document.getElementById('passwordInput');
 
     if (btnTogglePass && passwordInput) {
         btnTogglePass.addEventListener('click', () => {
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                btnTogglePass.textContent = '🙈'; // Ojo cerrado
-            } else {
-                passwordInput.type = 'password';
-                btnTogglePass.textContent = '👁️'; // Ojo abierto
-            }
+            const visible = passwordInput.type === 'text';
+            passwordInput.type = visible ? 'password' : 'text';
+            btnTogglePass.textContent = visible ? '👁️' : '🙈';
+            btnTogglePass.setAttribute('aria-pressed', String(!visible));
         });
     }
 }

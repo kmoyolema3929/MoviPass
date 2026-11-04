@@ -3,139 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inicio - MoviPass</title>
-    
+    <meta name="description" content="MoviPass: busca, reserva y compra tus pasajes de bus en Ecuador. Elige tu asiento y recibe tu boleto digital.">
+    <title>MoviPass | Tu viaje, sin complicaciones</title>
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Estilos personalizados -->
     <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        /* Se usan las variables de styles.css (con respaldo) para que el color sea igual en todas las páginas */
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color, #0d6efd) 0%, #0a58ca 100%);
+            color: white;
+            padding: 80px 0 100px;
+            border-radius: 0 0 50px 50px;
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .paso-numero {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary-color, #0d6efd);
+            color: #fff;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: .75rem;
+        }
+    </style>
 </head>
-<body>
+<body class="d-flex flex-column min-vh-100">
 
-    <!-- Barra de Navegación -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary-color);">
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary-color, #0d6efd);">
         <div class="container">
             <a class="navbar-brand fw-bold" href="index.html">MoviPass</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Mostrar menú">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link active" href="index.html">Inicio</a></li>
-                    <li class="nav-item"><a class="nav-link" href="login.html">Iniciar Sesión</a></li>
+                <ul class="navbar-nav ms-auto align-items-lg-center">
+                    <li class="nav-item"><a class="nav-link active" aria-current="page" href="index.html">Inicio</a></li>
                 </ul>
+
+                <!-- Esta zona la rellena js/navSesion.js según haya sesión o no.
+                     Por defecto (sin sesión) muestra Iniciar sesión y Registrarse. -->
+                <div id="navSesion" class="d-flex align-items-lg-center gap-2 ms-lg-3 mt-2 mt-lg-0">
+                    <a class="btn btn-outline-light" href="login.html">Iniciar sesión</a>
+                    <a class="btn btn-light text-primary fw-bold" href="registro.html">Registrarse</a>
+                </div>
             </div>
         </div>
     </nav>
 
-    <!-- Contenedor Principal (Inicio) -->
-    <main class="container my-5">
-        
-        <!-- Título de bienvenida -->
-        <div class="row justify-content-center text-center mb-5">
-            <div class="col-md-8">
-                <h1 class="fw-bold text-primary" style="color: var(--primary-color) !important;">Bienvenido a MoviPass</h1>
-                <p class="lead text-muted">Encuentra, reserva y compra tus pasajes de bus al mejor precio y sin filas.</p>
-            </div>
-        </div>
+    <main class="flex-grow-1">
 
-        
-<!-- Tarjeta del buscador de viajes -->
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="card tarjeta-busqueda">
-    <div class="card-body">
-                <form id="form-busqueda"
-                        class="row g-3 align-items-end"
-                        aria-label="Búsqueda de viajes"
-                        novalidate>
-                        <div class="col-12">
-                        <div id="errores-busqueda"
-                            class="alert alert-danger mb-0"
-                            role="alert"
-                            tabindex="-1"
-                            hidden>
-                        </div>
-                    </div>
-                    <!-- Origen -->
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label for="origen" class="form-label fw-bold">Origen</label>
-                        <select id="origen" name="origen" class="form-select" required>
-                            <option value="" selected disabled>¿De dónde sales?</option>
-                            <option value="1">Ambato</option>
-                            <option value="2">Quito</option>
-                            <option value="3">Guayaquil</option>
-                        </select>
-                    </div>
-
-                    <!-- Destino -->
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label for="destino" class="form-label fw-bold">Destino</label>
-                        <select id="destino" name="destino" class="form-select" required>
-                            <option value="" selected disabled>¿A dónde vas?</option>
-                            <option value="1">Ambato</option>
-                            <option value="2">Quito</option>
-                            <option value="3">Guayaquil</option>
-                        </select>
-                    </div>
-
-                    <!-- Fecha de viaje -->
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label for="fecha" class="form-label fw-bold">Fecha de viaje</label>
-                        <input id="fecha" name="fecha" type="date"
-                               class="form-control" required>
-                    </div>
-
-                    <!-- Botón Buscar -->
-                    <div class="col-12 col-md-6 col-lg-3 d-grid">
-                        <button id="buscar-viajes" type="submit"
-                                class="btn btn-primary">
-                                 Buscar
-                        </button>
-                    </div>
-
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-        <section id="resultados-busqueda" class="row justify-content-center mt-4"
-                 aria-labelledby="titulo-resultados" hidden>
-            <div class="col-lg-10">
-                <h2 id="titulo-resultados" class="h4">Viajes disponibles</h2>
-                <div id="filtros-resultados" class="row g-3 mb-3" hidden>
-                    <div class="col-12 col-md-6">
-                        <label for="filtro-cooperativa" class="form-label">Cooperativa</label>
-                        <select id="filtro-cooperativa" class="form-select" aria-controls="tarjetas-viajes">
-                            <option value="">Todas las cooperativas</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <label for="filtro-tipo-bus" class="form-label">Tipo de bus</label>
-                        <select id="filtro-tipo-bus" class="form-select" aria-controls="tarjetas-viajes">
-                            <option value="">Todos los tipos de bus</option>
-                        </select>
-                    </div>
+        <!-- Hero -->
+        <header class="hero-section text-center">
+            <div class="container">
+                <h1 class="display-4 fw-bold mb-3">Viaja por Ecuador sin complicaciones</h1>
+                <p class="lead mb-4">Encuentra, reserva y compra tus pasajes de bus. Elige tu asiento y recibe tu boleto digital.</p>
+                <div id="ctaHero" class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                    <a href="registro.html" class="btn btn-warning btn-lg px-5 fw-bold text-dark">Crear cuenta</a>
+                    <a href="login.html" class="btn btn-outline-light btn-lg px-5">Iniciar sesión</a>
                 </div>
-                <p id="estado-resultados" role="status" aria-live="polite" aria-atomic="true"></p>
-                <div id="tarjetas-viajes" class="row g-3"></div>
+            </div>
+        </header>
+
+        <!-- Características -->
+        <section class="container my-5 py-4">
+            <div class="row text-center g-4">
+                <div class="col-md-4">
+                    <div class="feature-icon" aria-hidden="true">🔍</div>
+                    <h2 class="h4">Búsqueda fácil</h2>
+                    <p class="text-muted">Compara los horarios de todas las cooperativas por origen, destino y fecha.</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-icon" aria-hidden="true">💳</div>
+                    <h2 class="h4">Paga como prefieras</h2>
+                    <p class="text-muted">Transferencia o depósito subiendo tu comprobante, o en efectivo en la oficina de la cooperativa.</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-icon" aria-hidden="true">📱</div>
+                    <h2 class="h4">Boleto digital</h2>
+                    <p class="text-muted">Recibe tu boleto con código QR y muéstralo al chofer el día del viaje.</p>
+                </div>
             </div>
         </section>
+
+        <!-- Cómo funciona (pasos de la compra) -->
+        <section class="bg-light py-5">
+            <div class="container text-center">
+                <h2 class="mb-4">¿Cómo funciona?</h2>
+                <div class="row g-4">
+                    <div class="col-6 col-md-3">
+                        <div class="paso-numero">1</div>
+                        <h3 class="h6">Crea tu cuenta y busca</h3>
+                        <p class="small text-muted">Regístrate e indica origen, destino y fecha.</p>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="paso-numero">2</div>
+                        <h3 class="h6">Elige tus asientos</h3>
+                        <p class="small text-muted">Selecciona tu puesto en el bus.</p>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="paso-numero">3</div>
+                        <h3 class="h6">Realiza el pago</h3>
+                        <p class="small text-muted">Sube tu comprobante; un oficinista lo valida.</p>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="paso-numero">4</div>
+                        <h3 class="h6">Viaja con tu boleto</h3>
+                        <p class="small text-muted">Preséntalo al subir al bus.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Para cada tipo de usuario -->
+        <section class="container my-5 py-4">
+            <h2 class="text-center mb-4">Una plataforma para cada rol</h2>
+            <div class="row g-4">
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h3 class="h5 card-title">Cliente</h3>
+                            <p class="card-text small text-muted">Busca viajes, selecciona asientos y compra tus boletos.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h3 class="h5 card-title">Cooperativa</h3>
+                            <p class="card-text small text-muted">Gestiona buses, frecuencias, paradas y hojas de ruta.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h3 class="h5 card-title">Oficinista</h3>
+                            <p class="card-text small text-muted">Vende boletos en oficina y valida los comprobantes de pago.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h3 class="h5 card-title">Administrador</h3>
+                            <p class="card-text small text-muted">Administra las cooperativas y los usuarios del sistema.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
-    <!-- Pie de Página -->
-    <footer class="text-white text-center py-3 mt-auto" style="background-color: var(--secondary-color);">
+    <!-- Pie de página -->
+    <footer class="bg-dark text-white text-center py-4">
         <div class="container">
             <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
         </div>
     </footer>
 
- <script type="module" src="../js/busqueda.js"></script>
- <script type="module" src="../js/resultadosBusqueda.js"></script>
-
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Muestra "Hola, nombre / Cerrar sesión" si hay una sesión activa -->
+    <script type="module" src="../js/navSesion.js"></script>
 </body>
 </html>

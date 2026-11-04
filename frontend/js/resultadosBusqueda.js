@@ -71,8 +71,10 @@ function crearTarjeta(viaje) {
     cuerpo.appendChild(datos);
 
     const enlace = crearElemento('a', 'btn btn-primary mt-auto', 'Seleccionar asientos');
-    const parametros = new URLSearchParams({ viaje_id: viaje.id });
-    enlace.href = `seleccion-asientos.html?${parametros}`;
+    
+    // CORRECCIÓN: Ahora la ruta sube un nivel (../) para encontrar la página en pages/
+    enlace.href = `../seleccion-asientos.html?viaje_id=${viaje.id}`;
+    
     enlace.setAttribute('aria-label', `Seleccionar asientos: ${viaje.cooperativaNombre}, ${viaje.origen} a ${viaje.destino}, ${viaje.hora.slice(0, 5)}`);
     cuerpo.appendChild(enlace);
     tarjeta.appendChild(cuerpo);

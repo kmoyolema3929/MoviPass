@@ -1,159 +1,216 @@
-import { supabase as supabaseClient } from "../../js/supabaseClient.js";
+import { supabase } from '../../js/supabaseClient.js';
+import { exigirRoles } from '../../js/guardas.js';
+import { obtenerContextoGestion, textoError } from '../../js/contextoUsuario.js';
+import { mostrarAlerta } from '../../js/alertas.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('selectFrecuencia').addEventListener('change', renderizarParadas);
-});
+const select = document.getElementById('selectFrecuencia');
+const tbody = document.getElementById('tablaParadas');
+const form = document.getElementById('formParada');
+const btnNueva = document.getElementById('btnNuevaParada');
+const btnGuardar = document.getElementById('btnGuardarParada');
+const aviso = document.getElementById('avisoSinCompartidas');
+const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalParada'));
 
-// Función para listar/renderizar paradas desde Supabase
-async function renderizarParadas() {
-    const frecuenciaId = document.getElementById('selectFrecuencia').value;
-    const tbody = document.getElementById('tablaParadas');
+function filaInformativa(texto, clase = 'text-muted') {
+    tbody.replaceChildren();
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.className = `text-center py-3 ${clase}`;
+    td.textContent = texto;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+}
 
-    // Limpieza segura del contenedor sin usar innerHTML
+/* ---------- Frecuencias compartidas (solo ellas pueden tener paradas) ---------- */
+
+async function cargarFrecuencias(rol, cooperativas) {
+    let consulta = supabase
+        .from('frecuencias')
+        .select('id, origen, destino, hora, activa, cooperativas ( nombre )')
+        .eq('tipo', 'compartida')
+        .order('origen', { ascending: true })
+        .order('hora', { ascending: true });
+
+    if (rol === 'cooperativa') {
+        consulta = consulta.in('cooperativa_id', cooperativas.map((c) => c.id));
+    }
+
+    const { data, error } = await consulta;
+    if (error) throw error;
+
+    select.replaceChildren();
+
+    if (!data || data.length === 0) {
+        const op = document.createElement('option');
+        op.value = '';
+        op.textContent = 'No hay frecuencias compartidas';
+        select.appendChild(op);
+        aviso.classList.remove('d-none');
+        return;
+    }
+
+    const primera = document.createElement('option');
+    primera.value = '';
+    primera.textContent = 'Selecciona una frecuencia...';
+    select.appendChild(primera);
+
+    data.forEach((f) => {
+        const op = document.createElement('option');
+        op.value = f.id;
+        const coop = f.cooperativas?.nombre ? ` - ${f.cooperativas.nombre}` : '';
+        op.textContent = `${f.origen} → ${f.destino} (${String(f.hora).slice(0, 5)})${coop}${f.activa ? '' : ' [desactivada]'}`;
+        select.appendChild(op);
+    });
+
+    select.disabled = false;
+}
+
+/* ---------- Paradas ---------- */
+
+async function cargarParadas() {
+    btnNueva.disabled = !select.value;
+
+    if (!select.value) {
+        filaInformativa('Selecciona una frecuencia para ver sus paradas.');
+        return;
+    }
+
+    filaInformativa('Cargando paradas...');
+
+    const { data, error } = await supabase
+        .from('paradas')
+        .select('id, nombre, hora_estimada')
+        .eq('frecuencia_id', select.value)
+        .order('hora_estimada', { ascending: true });
+
+    if (error) {
+        console.error('Error al cargar las paradas:', error);
+        filaInformativa('No se pudieron cargar las paradas.', 'text-danger');
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        filaInformativa('Esta frecuencia aún no tiene paradas.');
+        return;
+    }
+
     tbody.replaceChildren();
 
-    // 1. Corrección sugerida por la líder: Verificación de ID seleccionado
-    if (!frecuenciaId) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 4;
-        td.className = 'text-center py-3 text-muted';
-        td.textContent = 'Seleccione una frecuencia para ver sus paradas.';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-        return;
-    }
-
-    // Consulta remota a la tabla 'paradas' en Supabase
-    let paradas = [];
-    if (supabaseClient) {
-        const { data, error } = await supabaseClient
-            .from('paradas')
-            .select('*')
-            .eq('frecuencia_id', frecuenciaId)
-            .order('hora_estimada', { ascending: true });
-
-        if (error) {
-            console.error('Error al obtener paradas de Supabase:', error);
-        } else {
-            paradas = data || [];
-        }
-    }
-
-    if (paradas.length === 0) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 4;
-        td.className = 'text-center py-3 text-muted';
-        td.textContent = 'No hay paradas registradas para esta frecuencia.';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-        return;
-    }
-
-    // 2. Corrección sugerida por la líder: Declaración completa de celdas y armado de filas
-    paradas.forEach((item, index) => {
+    data.forEach((p, i) => {
         const tr = document.createElement('tr');
 
-        const tdIndex = document.createElement('td');
-        tdIndex.textContent = index + 1;
+        const tdIndice = document.createElement('td');
+        tdIndice.textContent = i + 1;
 
         const tdNombre = document.createElement('td');
-        tdNombre.textContent = item.nombre;
+        tdNombre.textContent = p.nombre;
 
         const tdHora = document.createElement('td');
-        tdHora.textContent = item.hora_estimada || item.hora;
+        tdHora.textContent = String(p.hora_estimada).slice(0, 5);
 
         const tdAcciones = document.createElement('td');
         tdAcciones.className = 'text-center';
 
-        const btnEliminar = document.createElement('button');
-        btnEliminar.className = 'btn btn-sm btn-outline-danger';
-        btnEliminar.textContent = 'Eliminar';
-        btnEliminar.onclick = () => eliminarParada(item.id);
+        const eliminar = document.createElement('button');
+        eliminar.type = 'button';
+        eliminar.className = 'btn btn-sm btn-outline-danger';
+        eliminar.textContent = 'Eliminar';
+        eliminar.addEventListener('click', () => eliminarParada(p));
+        tdAcciones.appendChild(eliminar);
 
-        tdAcciones.appendChild(btnEliminar);
-
-        tr.append(tdIndex, tdNombre, tdHora, tdAcciones);
+        tr.append(tdIndice, tdNombre, tdHora, tdAcciones);
         tbody.appendChild(tr);
     });
 }
 
-// Manejar el envío del formulario para agregar una parada en Supabase
-document.getElementById('formParada').addEventListener('submit', async function(e) {
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // 3. Corrección sugerida por la líder: Validación y return del formulario
-    if (!this.checkValidity()) {
-        e.stopPropagation();
-        this.classList.add('was-validated');
+    document.getElementById('nombreParada').value = document.getElementById('nombreParada').value.trim();
+
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
         return;
     }
 
-    // 4. Corrección sugerida por la líder: Captura de variables de los inputs
-    const frecuenciaId = document.getElementById('selectFrecuencia').value;
-    const nombreParada = document.getElementById('nombreParada').value.trim();
-    const horaEstimada = document.getElementById('horaEstimada').value;
-
-    if (!frecuenciaId) {
-        alert('Por favor seleccione una frecuencia primero.');
+    if (!select.value) {
+        mostrarAlerta('Selecciona primero una frecuencia.', 'warning');
         return;
     }
 
-    const btnSubmit = this.querySelector('button[type="submit"]');
-    const textoOriginal = btnSubmit.textContent;
-    btnSubmit.disabled = true;
-    btnSubmit.textContent = 'Guardando...';
+    const textoOriginal = btnGuardar.textContent;
+    btnGuardar.disabled = true;
+    btnGuardar.textContent = 'Guardando...';
 
-    // Inserción en Supabase
-    if (supabaseClient) {
-        const { error } = await supabaseClient
-            .from('paradas')
-            .insert([{
-                frecuencia_id: frecuenciaId,
-                nombre: nombreParada,
-                hora_estimada: horaEstimada
-            }]);
+    try {
+        const { error } = await supabase.from('paradas').insert({
+            frecuencia_id: Number(select.value),
+            nombre: document.getElementById('nombreParada').value,
+            hora_estimada: document.getElementById('horaEstimada').value
+        });
 
-        if (error) {
-            alert('Error al guardar la parada en Supabase: ' + error.message);
-            btnSubmit.disabled = false;
-            btnSubmit.textContent = textoOriginal;
-            return;
-        }
+        if (error) throw error;
+
+        modal.hide();
+        form.reset();
+        form.classList.remove('was-validated');
+        await cargarParadas();
+        mostrarAlerta('Parada agregada.', 'success');
+    } catch (error) {
+        console.error('Error al guardar la parada:', error);
+        mostrarAlerta(textoError(error), 'danger');
+    } finally {
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = textoOriginal;
     }
-
-    var modalElement = document.getElementById('modalParada');
-    var modalInstance = bootstrap.Modal.getInstance(modalElement);
-    if (modalInstance) {
-        modalInstance.hide();
-    }
-
-    this.reset();
-    this.classList.remove('was-validated');
-    await renderizarParadas();
-
-    btnSubmit.disabled = false;
-    btnSubmit.textContent = textoOriginal;
 });
 
-// Función para eliminar una parada por ID en Supabase
-async function eliminarParada(id) {
-    if (!confirm('¿Está seguro de que desea eliminar esta parada?')) {
+async function eliminarParada(parada) {
+    if (!confirm(`¿Eliminar la parada "${parada.nombre}"?`)) return;
+
+    const { error } = await supabase.from('paradas').delete().eq('id', parada.id);
+
+    if (error) {
+        mostrarAlerta(textoError(error), 'danger');
         return;
     }
 
-    if (supabaseClient) {
-        const { error } = await supabaseClient
-            .from('paradas')
-            .delete()
-            .eq('id', id);
+    await cargarParadas();
+    mostrarAlerta('Parada eliminada.', 'success');
+}
 
-        if (error) {
-            alert('Error al eliminar la parada: ' + error.message);
+/* ---------- Inicio ---------- */
+
+select.addEventListener('change', cargarParadas);
+
+btnNueva.addEventListener('click', () => {
+    form.reset();
+    form.classList.remove('was-validated');
+    modal.show();
+});
+
+async function iniciar() {
+    const rol = await exigirRoles(['administrador', 'cooperativa']);
+    if (!rol) return;
+
+    document.getElementById('btnVolver').href = `../${rol}/index.html`;
+
+    try {
+        const contexto = await obtenerContextoGestion();
+
+        if (contexto.rol === 'cooperativa' && contexto.cooperativas.length === 0) {
+            select.replaceChildren(new Option('Sin cooperativa asignada', ''));
+            filaInformativa('Tu cuenta aún no está asignada a una cooperativa. Contacta al administrador.', 'text-danger');
             return;
         }
-    }
 
-    await renderizarParadas();
+        await cargarFrecuencias(contexto.rol, contexto.cooperativas);
+    } catch (error) {
+        console.error('Error al iniciar la página de paradas:', error);
+        filaInformativa('No se pudieron cargar las frecuencias.', 'text-danger');
+        mostrarAlerta(textoError(error), 'danger');
+    }
 }
+
+iniciar();

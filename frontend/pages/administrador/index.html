@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administrador - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <!-- El logo te lleva al index general (página pública) -->
+            <a class="navbar-brand fw-bold" href="../index.html">MoviPass - Admin</a>
+            <div class="d-flex">
+                <span class="navbar-text text-white me-3 d-none d-md-block">Administrador</span>
+                <!-- Cierra la sesión en Supabase y luego redirige al index general -->
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 flex-grow-1">
+        <h1 class="h2 mb-4">Panel de Administrador</h1>
+        <p class="text-muted mb-4">Gestiona las cooperativas y asigna sus cuentas de gerente.</p>
+
+        <div class="row g-4 mb-5">
+            <!-- Gestión de Cooperativas -->
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-primary">🏢</h1>
+                        <h5 class="card-title">Cooperativas</h5>
+                        <p class="card-text text-muted small">Crea, edita o suspende las empresas de transporte.</p>
+                        <a href="../cooperativa/cooperativas.html" class="btn btn-primary w-100">Gestionar Cooperativas</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestión de Gerentes -->
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-success">👨‍💼</h1>
+                        <h5 class="card-title">Gerentes</h5>
+                        <p class="card-text text-muted small">Asigna o revoca el acceso a los gerentes de cada cooperativa.</p>
+                        <a href="gestor-gerentes.html" class="btn btn-success w-100">Gestionar Gerentes</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista general -->
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-info">📊</h1>
+                        <h5 class="card-title">Vista general</h5>
+                        <p class="card-text text-muted small">Consulta todas las cooperativas con sus gerentes y buses.</p>
+                        <a href="vista-general.html" class="btn btn-info text-white w-100">Ver cooperativas</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-light border shadow-sm" role="alert">
+            <h5 class="alert-heading">ℹ️ Nota sobre los Roles</h5>
+            <p class="mb-0">
+                Como <strong>Administrador</strong>, tu función es crear las cooperativas y asignarles sus gerentes.
+                La gestión operativa (registrar buses, vender boletos) corresponde a cada Cooperativa y sus Oficinistas.
+            </p>
+        </div>
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { exigirRoles } from '../../js/guardas.js';
+
+        // Solo el administrador puede ver esta página.
+        // guardas.js también conecta el botón #btnCerrarSesion.
+        exigirRoles(['administrador']);
+    </script>
+</body>
+</html>

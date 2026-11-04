@@ -3,84 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MoviPass | Resumen de Compra</title>
+  <title>MoviPass | Resumen de compra</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/styles.css">
 </head>
-<body class="bg-body-tertiary">
+<body class="bg-light d-flex flex-column min-vh-100">
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-dark bg-dark">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
-      <span class="navbar-brand fw-bold">MoviPass</span>
-      <span class="navbar-text small">Compra de boletos</span>
+      <a class="navbar-brand fw-bold" href="../index.html">MoviPass</a>
+      <div class="d-flex align-items-center gap-2">
+        <a href="historial.html" class="btn btn-outline-light btn-sm d-none d-sm-inline">Mis compras</a>
+        <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+      </div>
     </div>
   </nav>
 
-  <main class="container py-4">
+  <main class="container py-4 py-md-5 flex-grow-1">
     <h1 class="h3 mb-4">Resumen de tu compra</h1>
 
+    <div id="alertContainer" role="alert" aria-live="polite"></div>
+
     <div class="row g-4">
-      <!-- Columna Izquierda -->
       <div class="col-12 col-lg-7">
-        <!-- Tarjeta de Información del Viaje -->
         <div class="card shadow-sm mb-4">
-          <div class="card-header bg-white fw-semibold">Detalles del Viaje</div>
-            <div class="card-body">
+          <div class="card-header bg-white fw-semibold">Detalles del viaje</div>
+          <div class="card-body">
             <p class="mb-1"><strong>Ruta:</strong> <span id="rutaViaje"></span></p>
             <p class="mb-1"><strong>Fecha:</strong> <span id="fechaViaje"></span></p>
-            <p class="mb-0"><strong>Hora de salida:</strong> <span id="horaViaje"></span></p>
+            <p class="mb-1"><strong>Hora de salida:</strong> <span id="horaViaje"></span></p>
+            <p class="mb-1"><strong>Bus:</strong> <span id="busViaje"></span></p>
+            <p class="mb-0"><strong>Cooperativa:</strong> <span id="cooperativaViaje"></span></p>
           </div>
         </div>
 
-        <!-- Formulario de Pasajeros -->
-        <div class="card shadow-sm">
-          <div class="card-header bg-white fw-semibold">Datos de los Pasajeros</div>
-          <div class="card-body">
-            <form id="formPasajeros" class="needs-validation" novalidate>
-              <div class="mb-4 p-3 border rounded bg-light">
-                <h6 class="mb-3 text-primary">Pasajero para Asiento 1C</h6>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label for="nombre1" class="form-label">Nombres</label>
-                    <input type="text" class="form-control" id="nombre1" required minlength="3">
-                    <div class="invalid-feedback">Ingrese los nombres.</div>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="apellido1" class="form-label">Apellidos</label>
-                    <input type="text" class="form-control" id="apellido1" required minlength="3">
-                    <div class="invalid-feedback">Ingrese los apellidos.</div>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="cedula1" class="form-label">Cédula</label>
-                    <input type="text" class="form-control" id="cedula1" required pattern="\d{10}">
-                    <div class="invalid-feedback">Ingrese una cédula válida de 10 dígitos.</div>
-                  </div>
-                </div>
+        <form id="formCompra" novalidate>
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold">Método de pago</div>
+            <div class="card-body">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="metodoPago" id="metodoTransferencia" value="transferencia" required>
+                <label class="form-check-label" for="metodoTransferencia">
+                  Transferencia bancaria
+                </label>
               </div>
-              <button type="submit" class="btn btn-success w-100">Continuar al Pago</button>
-            </form>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="metodoPago" id="metodoDeposito" value="deposito" required>
+                <label class="form-check-label" for="metodoDeposito">
+                  Depósito bancario
+                </label>
+              </div>
+              <p class="small text-muted mt-3 mb-0">
+                Al continuar, tus asientos quedan reservados por 3 horas. Debes subir el comprobante antes de ese plazo.
+              </p>
+            </div>
           </div>
-        </div>
+
+          <div class="card shadow-sm">
+            <div class="card-header bg-white fw-semibold">Datos de los pasajeros</div>
+            <div class="card-body">
+              <div id="listaPasajeros"></div>
+              <p class="small text-muted mb-0">Si un niño no tiene cédula, usa la de su representante.</p>
+            </div>
+          </div>
+        </form>
       </div>
 
-      <!-- Columna Derecha: Resumen de Asientos y Total -->
       <div class="col-12 col-lg-5">
         <div class="card shadow-sm sticky-lg-top" style="top: 1rem;">
-          <div class="card-header fw-semibold">Asientos Seleccionados</div>
+          <div class="card-header bg-white fw-semibold">Asientos seleccionados</div>
           <div class="card-body">
-            <ul class="list-group list-group-flush mb-3" id="listaAsientosResumen">
-               <!-- Aquí JS inyectará los asientos -->
-            </ul>
+            <ul class="list-group list-group-flush mb-3" id="listaAsientosResumen"></ul>
             <div class="d-flex justify-content-between fs-5 mt-3 border-top pt-3">
               <span>Total a pagar</span>
-              <strong class="text-primary" id="totalPagar">$12.50</strong>
+              <strong class="text-primary" id="totalPagar">$0.00</strong>
+            </div>
+          </div>
+          <div class="card-footer bg-white">
+            <div class="d-grid">
+              <button type="submit" form="formCompra" class="btn btn-success btn-lg" id="btnContinuarPago">
+                Reservar y continuar al pago
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
   </main>
-  <script src="../../js/resumen-compra.js"></script>
 
+  <footer class="bg-secondary text-white text-center py-3 mt-auto">
+    <div class="container">
+      <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="../../js/resumen-compra.js"></script>
 </body>
 </html>

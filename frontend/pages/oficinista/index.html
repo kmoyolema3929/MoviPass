@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Oficinista - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+    <!-- Barra de Navegación (mismo estilo que el resto de la app) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="../index.html">MoviPass - Oficinista</a>
+            <div class="d-flex align-items-center gap-2">
+                <span class="navbar-text text-white me-2 d-none d-md-block">Oficinista</span>
+                <!-- guardas.js cierra la sesión y redirige a pages/index.html -->
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 flex-grow-1">
+        <h1 class="h2 mb-1">Panel de Oficinista</h1>
+        <p class="text-muted mb-4">
+            Bienvenido a <strong id="nombreCoop">tu cooperativa</strong>.
+            Desde aquí puedes gestionar las ventas y validar los pagos de los clientes.
+        </p>
+
+        <!-- Tarjetas de Gestión -->
+        <div class="row g-4 mb-5">
+            
+            <!-- Tarjeta 1: Validar Pagos -->
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-primary">💳</h1>
+                        <h5 class="card-title">Validar Pagos</h5>
+                        <p class="card-text text-muted small">Revisa y aprueba los comprobantes de transferencia subidos por los clientes.</p>
+                        <a href="validar-pagos.html" class="btn btn-primary w-100">Ir a Validar Pagos</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tarjeta 2: Vender Boletos -->
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-success">🎫</h1>
+                        <h5 class="card-title">Vender Boletos</h5>
+                        <p class="card-text text-muted small">Vende boletos en efectivo a los clientes que llegan a la oficina.</p>
+                        <a href="vender.html" class="btn btn-success w-100">Ir a Vender</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tarjeta 3: Historial -->
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-info">📊</h1>
+                        <h5 class="card-title">Historial de Ventas</h5>
+                        <p class="card-text text-muted small">Consulta el historial de ventas y pagos validados en tu turno.</p>
+                        <a href="historial.html" class="btn btn-info w-100 text-white">Ver Historial</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Nota Informativa -->
+        <div class="alert alert-light border shadow-sm" role="alert">
+            <h5 class="alert-heading">ℹ️ Nota sobre tus funciones</h5>
+            <p class="mb-0">
+                Como <strong>Oficinista</strong>, tu función principal es atender a los clientes en la oficina. 
+                Puedes vender boletos en efectivo y validar los pagos por transferencia que los clientes suban desde la aplicación.
+            </p>
+        </div>
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { exigirRoles } from '../../js/guardas.js';
+        import { obtenerContextoGestion } from '../../js/contextoUsuario.js';
+
+        async function iniciar() {
+            // Solo el oficinista puede ver esta página.
+            // guardas.js también conecta el botón #btnCerrarSesion.
+            const rol = await exigirRoles(['oficinista']);
+            if (!rol) return;
+
+            try {
+                const { cooperativas } = await obtenerContextoGestion();
+                const cooperativa = cooperativas[0];
+
+                if (cooperativa?.nombre) {
+                    document.getElementById('nombreCoop').textContent = cooperativa.nombre;
+                }
+            } catch (error) {
+                console.error('No se pudo cargar la cooperativa del oficinista:', error);
+                // La página sigue funcionando; cada módulo mostrará su propio aviso.
+            }
+        }
+
+        iniciar();
+    </script>
+</body>
+</html>
