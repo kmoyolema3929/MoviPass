@@ -6,6 +6,8 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 ### Agregado
+- Filtros combinables por cooperativa y tipo de bus sobre las tarjetas de búsqueda, con opciones obtenidas de los resultados, actualización sin recargar y reinicio al realizar otra búsqueda (#43).
+- Tarjetas responsivas con Bootstrap 5 para los resultados de búsqueda, datos del viaje, estado de carga, mensaje sin coincidencias y enlace de selección de asientos con el identificador del viaje (#42).
 - Estructura inicial del repositorio y carpetas del proyecto.
 - Documentación base: README, CONTRIBUTING, SECURITY, SUPPORT y CODE_OF_CONDUCT.
 - Licencia GPL v3 y archivo de citación (CITATION.cff).
@@ -16,11 +18,24 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Configuración de Netlify (`netlify.toml` y `scripts/generar-config.sh`) para publicar el frontend.
 - Archivo `frontend/js/config.example.js` con la configuración de Supabase para el frontend.
 - Excepción de la líder: puede subir directamente a `develop` los cambios de la documentación inicial, sin rama ni Pull Request (decisión D-005).
-- Decisiones D-004 (issues de GitHub para la gestión de cambios) y D-005 (rama predeterminada y aprobación por comité) en `docs/DECISIONES.md`.
+- Decisiones D-004 (issues de GitHub para la gestión de cambios), D-005 (rama predeterminada y aprobación por comité) y D-006 (organización de issues y Pull Requests para la auditoría) en `docs/DECISIONES.md`.
+- Etiquetas de prioridad (`prioridad: baja`, `media`, `alta` y `crítica`) y de módulo (`módulo: base`, `autenticación`, `cooperativas y buses`, `frecuencias y rutas`, `búsqueda y asientos`, `compra y pago`, `oficinista y configuración` y `documentación`) para los reportes de auditoría (decisión D-006).
+- Sección de títulos y etiquetas en `docs/CONTROL_DE_CAMBIOS.md`, con la fórmula `[TIPO] Módulo: verbo y qué se hace` (decisión D-006).
+- Sitio publicado en `https://movipass.netlify.app` y enlace agregado al README (issue #5).
+- Variables `SUPABASE_URL` y `SUPABASE_ANON_KEY` cargadas en el panel de Netlify (issue #5).
+- Se documentan las opciones de seguridad elegidas al crear el proyecto de Supabase (Data API, exposición automática de tablas y RLS automático) en `docs/DECISIONES.md` (decisión D-009).
+- CRUD completo de paradas intermedias sincronizado con Supabase para el módulo de Frecuencias y Rutas (Issue #35).
+- Creación de migración SQL para la tabla `paradas` con restricciones de clave foránea y políticas RLS (Issue #35).
+- Aplicación de migración SQL pendiente para la tabla `frecuencias` y habilitación de políticas RLS en Supabase (Issue #64).
+- Conexión de la búsqueda de viajes con Supabase por origen, destino y fecha, incluyendo datos de cooperativa y tipo de bus, manejo de errores, migración de viajes y capturas de pruebas (#41).
+- Pruebas de regresión de la búsqueda para comprobar la fecha local, las validaciones, los resultados y la recuperación ante errores de red (#41). Se ejecutan con `node --test tests/busqueda.test.cjs`, sin conexión a Supabase.
+- Creación de la interfaz HTML y lógica de consulta en Supabase para el módulo de generación de hojas de ruta (Issue #36).
+- Implementación de la interfaz HTML de gestión y lógica backend en Supabase para el CRUD de hojas de ruta con validación de boletos (Issue #37).
 
 ### Cambiado
+- La página de selección de asientos lee `viaje_id` desde la URL y lo conserva al continuar al resumen de compra (#42).
 - El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security) (PR #2, decisión D-001).
-- El backend pasa de Java con Spring Boot a Supabase (PostgreSQL, Auth y Storage) (decisión D-002).
+- El backend pasa de Java con Spring Boot a Supabase (PostgreSQL, Auth y Storage) (PR #14, decisión D-002).
 - Se ajusta el proceso de revisión de Pull Requests: el autor fusiona tras la aprobación, se exige comentar la revisión y las ramas se conservan tras fusionar (PR #4).
 - Se actualizan el README, `.env.example`, `.gitignore` y `SECURITY.md` con cada cambio de stack.
 - La rama predeterminada del repositorio pasa a ser `develop`, para que los issues se cierren al fusionar los Pull Requests. `main` queda solo para versiones estables (decisión D-005).
@@ -30,6 +45,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Se actualizan `docs/FLUJO_GIT.md`, `CONTRIBUTING.md` y `CODEOWNERS` con el nuevo proceso de aprobación.
 - Las ramas se conservan tras fusionar solo en el trabajo de código (`feature/*`, `release/*` y `hotfix/*`); la documentación inicial no lleva rama propia.
 - La gestión de cambios y de errores se hace con issues de GitHub. Se actualizan las plantillas de issues y de pull requests, `CONTRIBUTING.md` y `docs/CONTROL_DE_CAMBIOS.md` (decisión D-004).
+- Se reescribe `docs/CONTROL_DE_CAMBIOS.md`: sin Jira, decide una persona del comité y el estado de las solicitudes se lleva en el tablero (decisión D-004).
+- La plantilla de Pull Request agrega casillas para `Closes #n`, etiquetas, milestone y responsable iguales a los del issue, y migraciones (decisión D-006).
+- Los issues #1 a #13 se reescriben con títulos y etiquetas normalizados, y los del Sprint 0 (#5 a #12) se adaptan a Supabase y se reparten entre los seis integrantes (decisión D-006).
+- Las descripciones de las etiquetas existentes pasan a español.
+- Netlify solo publica desde la rama `main` y se desactivan los Deploy Previews y los Branch deploys, para cuidar los créditos del plan gratuito (decisión D-008).
+- La decisión D-003 pasa a estado "Reemplazada por D-008" en `docs/DECISIONES.md`.
 
 ### Eliminado
 - Carpetas vacías del backend de Node.js.
@@ -39,3 +60,4 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Ramas ya fusionadas en `develop`: `feature/ajuste-revision-prs`, `feature/cambio-stack-spring-boot` y `feature/cambio-stack-supabase`.
 - Campos y referencias a Jira (`CAM-n`) de las plantillas y de la guía de contribución.
 - Carpeta `docs/capturas/jira/`.
+- Etiquetas sin uso: `accessibility`, `good first issue`, `help wanted` y `question`.

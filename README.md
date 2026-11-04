@@ -57,7 +57,7 @@ Para ejecutar la aplicación, abre la carpeta `frontend/` en VS Code, haz clic d
 La guía completa, con solución de problemas, está en [docs/GUIA_INSTALACION.md](docs/GUIA_INSTALACION.md).
 
 ## Aplicación publicada
-Dirección en Netlify: _(se completa al publicar el sitio)_
+Dirección en Netlify: https://movipass.netlify.app
 
 ## Estructura del repositorio
 ```

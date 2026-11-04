@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista General - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass - Admin</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 flex-grow-1">
+        <h1 class="h2 mb-1">Vista General de Cooperativas</h1>
+        <p class="text-muted mb-4">Consulta cada cooperativa con su gerente y sus buses. Solo lectura.</p>
+
+        <div id="alertContainer" class="mb-3"></div>
+
+        <div class="row g-3 mb-4" id="resumen"></div>
+
+        <input type="search" id="buscador" class="form-control mb-3" placeholder="Buscar cooperativa por nombre...">
+
+        <div id="listado" class="accordion">
+            <div class="text-center text-muted py-5">Cargando...</div>
+        </div>
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container"><p class="mb-0">&copy; 2026 MoviPass.</p></div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { exigirRoles } from '../../js/guardas.js';
+        import { supabase } from '../../js/supabaseClient.js';
+
+        // Solo el administrador. guardas.js conecta #btnCerrarSesion.
+        const rol = await exigirRoles(['administrador']);
+
+        const listado = document.getElementById('listado');
+        const resumen = document.getElementById('resumen');
+        const buscador = document.getElementById('buscador');
+
+        // Columnas de "buses" que se muestran si existen (se detectan solas)
+        const COLUMNAS_BUS = ['placa', 'numero', 'nombre', 'marca', 'modelo', 'tipo', 'grupo', 'capacidad', 'estado'];
+
+        // Crea un elemento con texto seguro (textContent evita inyección HTML)
+        function el(tag, clase, texto) {
+            const e = document.createElement(tag);
+            if (clase) e.className = clase;
+            if (texto !== undefined && texto !== null) e.textContent = texto;
+            return e;
+        }
+
+        function mostrarError(msg) {
+            const a = el('div', 'alert alert-danger', msg);
+            document.getElementById('alertContainer').replaceChildren(a);
+        }
+
+        function tarjetaResumen(titulo, valor, clase) {
+            const col = el('div', 'col-md-4');
+            const card = el('div', 'card shadow-sm border-0 text-center');
+            const body = el('div', 'card-body');
+            body.append(el('div', `display-6 fw-bold ${clase}`, valor), el('div', 'text-muted small', titulo));
+            card.append(body);
+            col.append(card);
+            return col;
+        }
+
+        function tablaBuses(buses) {
+            if (buses.length === 0) return el('p', 'text-muted mb-0', 'Esta cooperativa aún no tiene buses registrados.');
+
+            const columnas = COLUMNAS_BUS.filter(c => buses.some(b => b[c] !== undefined && b[c] !== null));
+            const contenedor = el('div', 'table-responsive');
+            const tabla = el('table', 'table table-sm table-striped align-middle mb-0');
+            const thead = el('thead');
+            const trh = el('tr');
+            columnas.forEach(c => trh.append(el('th', '', c.charAt(0).toUpperCase() + c.slice(1))));
+            thead.append(trh);
+            const tbody = el('tbody');
+            buses.forEach(b => {
+                const tr = el('tr');
+                columnas.forEach(c => tr.append(el('td', '', b[c] ?? '—')));
+                tbody.append(tr);
+            });
+            tabla.append(thead, tbody);
+            contenedor.append(tabla);
+            return contenedor;
+        }
+
+        function itemCooperativa(coop, gerentes, buses, indice) {
+            const item = el('div', 'accordion-item');
+            item.dataset.nombre = (coop.nombre || '').toLowerCase();
+
+            const idCol = `coop-${indice}`;
+            const h = el('h2', 'accordion-header');
+            const btn = el('button', 'accordion-button collapsed');
+            btn.type = 'button';
+            btn.dataset.bsToggle = 'collapse';
+            btn.dataset.bsTarget = `#${idCol}`;
+
+            const titulo = el('span', 'fw-bold me-3', coop.nombre || 'Sin nombre');
+            const bBuses = el('span', 'badge text-bg-primary me-2', `${buses.length} bus${buses.length === 1 ? '' : 'es'}`);
+            const bGer = gerentes.length
+                ? el('span', 'badge text-bg-success', `${gerentes.length} gerente${gerentes.length === 1 ? '' : 's'}`)
+                : el('span', 'badge text-bg-warning text-dark', 'Sin gerente');
+            btn.append(titulo, bBuses, bGer);
+            h.append(btn);
+
+            const col = el('div', 'accordion-collapse collapse');
+            col.id = idCol;
+            const body = el('div', 'accordion-body');
+
+            body.append(el('h6', 'fw-bold', 'Gerente'));
+            if (gerentes.length === 0) {
+                body.append(el('p', 'text-muted', 'Aún no tiene un gerente asignado.'));
+            } else {
+                const ul = el('ul', 'mb-3');
+                gerentes.forEach(g => {
+                    const nombre = `${g.nombres || ''} ${g.apellidos || ''}`.trim() || 'Sin nombre';
+                    ul.append(el('li', '', g.cedula ? `${nombre} (CI: ${g.cedula})` : nombre));
+                });
+                body.append(ul);
+            }
+
+            body.append(el('h6', 'fw-bold', 'Buses'), tablaBuses(buses));
+            col.append(body);
+            item.append(h, col);
+            return item;
+        }
+
+        async function cargar() {
+            // Consultas separadas y unión en JS (evita depender del nombre de las relaciones)
+            const [coops, asign, perfiles, buses] = await Promise.all([
+                supabase.from('cooperativas').select('*').order('nombre'),
+                supabase.from('cooperativas_usuarios').select('cooperativa_id, perfil_id'),
+                supabase.from('perfiles').select('id, nombres, apellidos, cedula'),
+                supabase.from('buses').select('*')
+            ]);
+
+            const fallo = [coops, asign, perfiles, buses].find(r => r.error);
+            if (fallo) {
+                console.error(fallo.error);
+                mostrarError('No se pudieron cargar todos los datos: ' + fallo.error.message);
+                listado.replaceChildren();
+                return;
+            }
+
+            const perfilPorId = new Map(perfiles.data.map(p => [p.id, p]));
+
+            const filas = coops.data.map(c => ({
+                coop: c,
+                gerentes: asign.data
+                    .filter(a => a.cooperativa_id === c.id)
+                    .map(a => perfilPorId.get(a.perfil_id))
+                    .filter(Boolean),
+                buses: buses.data.filter(b => b.cooperativa_id === c.id)
+            }));
+
+            // Resumen
+            resumen.replaceChildren(
+                tarjetaResumen('Cooperativas', filas.length, 'text-primary'),
+                tarjetaResumen('Buses en total', filas.reduce((n, f) => n + f.buses.length, 0), 'text-success'),
+                tarjetaResumen('Cooperativas sin gerente', filas.filter(f => f.gerentes.length === 0).length, 'text-warning')
+            );
+
+            // Listado
+            if (filas.length === 0) {
+                listado.replaceChildren(el('div', 'text-center text-muted py-5', 'Aún no hay cooperativas creadas.'));
+                return;
+            }
+            listado.replaceChildren(...filas.map((f, i) => itemCooperativa(f.coop, f.gerentes, f.buses, i)));
+        }
+
+        buscador.addEventListener('input', () => {
+            const q = buscador.value.trim().toLowerCase();
+            listado.querySelectorAll('.accordion-item').forEach(it => {
+                it.classList.toggle('d-none', q !== '' && !it.dataset.nombre.includes(q));
+            });
+        });
+
+        if (rol) cargar();
+    </script>
+</body>
+</html>

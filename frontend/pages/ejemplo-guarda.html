@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ejemplo de guarda de rol</title>
+</head>
+<body>
+  <p id="estado">Verificando acceso...</p>
+
+  <main id="contenido" hidden>
+    <h1>Panel del administrador</h1>
+    <p>Tu sesión tiene permiso para ver esta página.</p>
+  </main>
+
+  <script type="module">
+    import { exigirRoles } from '../js/guardas.js';
+    import { obtenerRol } from '../js/auth.js';
+
+    async function verificarAcceso() {
+      try {
+        await exigirRoles(
+          ['administrador'],
+          './login.html',
+          './sin-acceso.html'
+        );
+
+        const rol = await obtenerRol();
+
+        if (rol === 'administrador') {
+          document.getElementById('estado').hidden = true;
+          document.getElementById('contenido').hidden = false;
+        }
+      } catch (error) {
+        document.getElementById('estado').textContent =
+          'No se pudo verificar el acceso. Revisa la configuración.';
+        console.error(error);
+      }
+    }
+
+    verificarAcceso();
+  </script>
+</body>
+</html>

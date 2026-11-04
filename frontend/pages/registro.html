@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - MoviPass</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<!-- d-flex + flex-column + min-vh-100: el footer queda abajo y la tarjeta centrada -->
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary-color);">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Mostrar menú">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="login.html">Iniciar sesión</a></li>
+                    <li class="nav-item"><a class="nav-link active" aria-current="page" href="registro.html">Registrarse</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenedor principal (registro) -->
+    <main class="container flex-grow-1 d-flex align-items-center justify-content-center py-5">
+        <div class="row w-100 justify-content-center">
+            <div class="col-12 col-md-10 col-lg-7 col-xl-6">
+
+                <div class="card shadow border-0 rounded-4">
+                    <div class="card-body p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <h1 class="h2 fw-bold" style="color: var(--primary-color);">Crea tu cuenta</h1>
+                            <p class="text-muted mb-0">Únete a MoviPass y compra tus pasajes al instante</p>
+                        </div>
+
+                        <!-- Validación nativa del navegador + validación en js/registro.js -->
+                        <form id="formRegistro" class="row g-3">
+                            <div id="alertContainer" class="col-12" role="alert" aria-live="polite"></div>
+
+                            <!-- Nombres y apellidos -->
+                            <div class="col-md-6">
+                                <label for="nombresInput" class="form-label fw-bold">Nombres</label>
+                                <input type="text" class="form-control" id="nombresInput" name="nombres"
+                                       placeholder="Ej. Juan Carlos" autocomplete="given-name" minlength="2" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="apellidosInput" class="form-label fw-bold">Apellidos</label>
+                                <input type="text" class="form-control" id="apellidosInput" name="apellidos"
+                                       placeholder="Ej. Pérez Gómez" autocomplete="family-name" minlength="2" required>
+                            </div>
+
+                            <!-- Cédula y teléfono -->
+                            <div class="col-md-6">
+                                <label for="cedulaInput" class="form-label fw-bold">Cédula</label>
+                                <input type="text" class="form-control" id="cedulaInput" name="cedula"
+                                       placeholder="10 dígitos" inputmode="numeric" maxlength="10"
+                                       pattern="[0-9]{10}" title="Debe contener 10 números" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="telefonoInput" class="form-label fw-bold">Teléfono</label>
+                                <input type="tel" class="form-control" id="telefonoInput" name="telefono"
+                                       placeholder="0991234567" inputmode="numeric" maxlength="10"
+                                       pattern="09[0-9]{8}" title="10 dígitos, empieza con 09"
+                                       autocomplete="tel" required>
+                            </div>
+
+                            <!-- Correo -->
+                            <div class="col-12">
+                                <label for="emailRegistro" class="form-label fw-bold">Correo electrónico</label>
+                                <input type="email" class="form-control" id="emailRegistro" name="email"
+                                       placeholder="ejemplo@correo.com" autocomplete="email" required>
+                            </div>
+
+                            <!-- Contraseña -->
+                            <div class="col-12 mb-2">
+                                <label for="passRegistro" class="form-label fw-bold">Contraseña</label>
+                                <input type="password" class="form-control" id="passRegistro" name="password"
+                                       placeholder="Mínimo 8 caracteres" minlength="8"
+                                       autocomplete="new-password" required>
+                            </div>
+
+                            <!-- Botón -->
+                            <div class="col-12 d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg"
+                                        style="background-color: var(--primary-color); border: none;">
+                                    Registrarse
+                                </button>
+                            </div>
+
+                            <!-- Link al login -->
+                            <div class="col-12 text-center mt-3">
+                                <span class="text-muted">¿Ya tienes una cuenta?
+                                    <a href="login.html" style="color: var(--primary-color);">Inicia sesión aquí</a>
+                                </span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Pie de página -->
+    <footer class="text-white text-center py-3 mt-auto" style="background-color: var(--secondary-color);">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Lógica de Supabase para el registro -->
+    <script type="module" src="../js/registro.js"></script>
+</body>
+</html>

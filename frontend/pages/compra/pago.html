@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoviPass | Pago con transferencia</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="../index.html">MoviPass</a>
+      <div class="d-flex align-items-center gap-2">
+        <a href="historial.html" class="btn btn-outline-light btn-sm d-none d-sm-inline">Mis compras</a>
+        <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4 py-md-5 flex-grow-1">
+    <h1 class="h3 mb-4">Completa tu pago</h1>
+
+    <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8">
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white fw-semibold">Resumen de la compra</div>
+          <div class="card-body">
+            <div id="resumenCompra"></div>
+          </div>
+        </div>
+
+        <div id="avisoEstado" class="alert alert-info d-none" role="alert"></div>
+
+        <div class="card shadow-sm">
+          <div class="card-header bg-white fw-semibold text-center py-3">
+            <h2 class="h5 mb-0">Sube tu comprobante de pago</h2>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small text-center mb-4">
+              Realiza la transferencia o el depósito a la cuenta de la cooperativa y sube el comprobante
+              en formato imagen (JPG, PNG, WEBP) o PDF. Tamaño máximo: 5 MB.
+            </p>
+
+            <form id="formPago" class="needs-validation" novalidate>
+              <div class="mb-4">
+                <label for="comprobante" class="form-label fw-bold">Selecciona tu comprobante</label>
+                <input class="form-control" type="file" id="comprobante"
+                       accept="image/jpeg,image/png,image/webp,application/pdf" required>
+                <div class="invalid-feedback">
+                  Por favor, selecciona un archivo válido (imagen o PDF).
+                </div>
+              </div>
+
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg" id="btnSubirPago">
+                  Confirmar pago
+                </button>
+                <a href="historial.html" class="btn btn-outline-secondary">Cancelar y volver a mis compras</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-secondary text-white text-center py-3 mt-auto">
+    <div class="container">
+      <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="../../js/pago.js"></script>
+</body>
+</html>

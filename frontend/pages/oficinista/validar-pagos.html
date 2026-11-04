@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validar pagos - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass - Oficinista</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al panel</a>
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-4 my-md-5 flex-grow-1">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h1 class="h3 mb-1">Validar pagos</h1>
+                <p class="text-muted mb-0">Depósitos y transferencias con comprobante, pendientes de aprobación.</p>
+            </div>
+            <button id="btnActualizar" type="button" class="btn btn-outline-primary">Actualizar</button>
+        </div>
+
+        <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+        <section class="mb-4">
+            <h2 class="h5">Pendientes de validación <span id="contadorPendientes" class="badge bg-primary">0</span></h2>
+            <div id="listaPendientes">
+                <p class="text-muted">Cargando...</p>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="h5">Esperando comprobante del cliente <span id="contadorEspera" class="badge bg-secondary">0</span></h2>
+            <p class="small text-muted">El cliente tiene 3 horas para subirlo; si no, los asientos se liberan solos.</p>
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Viaje</th>
+                                    <th>Asientos</th>
+                                    <th>Método</th>
+                                    <th>Total</th>
+                                    <th>Vence</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaEspera">
+                                <tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Modal: ver comprobante -->
+    <div class="modal fade" id="modalComprobante" tabindex="-1" aria-labelledby="modalComprobanteLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="modalComprobanteLabel">Comprobante de pago</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body text-center" id="contenidoComprobante"></div>
+                <div class="modal-footer">
+                    <a id="enlaceComprobante" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary">Abrir en otra pestaña</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: rechazar pago -->
+    <div class="modal fade" id="modalRechazo" tabindex="-1" aria-labelledby="modalRechazoLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="modalRechazoLabel">Rechazar pago</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Los asientos quedarán libres otra vez.</p>
+                    <label for="motivoRechazo" class="form-label">Motivo del rechazo</label>
+                    <textarea id="motivoRechazo" class="form-control" rows="3" maxlength="300"
+                              placeholder="Ej. El monto no coincide con el total"></textarea>
+                    <div class="invalid-feedback">Escribe el motivo (mínimo 3 letras).</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="btnConfirmarRechazo">Rechazar pago</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="validar-pagos.js"></script>
+</body>
+</html>
