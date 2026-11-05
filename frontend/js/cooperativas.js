@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { cerrarSesion } from "./auth.js";
 
 const tabla = document.getElementById("tablaCooperativas");
 const formulario = document.getElementById("formCooperativa");
@@ -422,6 +423,16 @@ async function verificarAcceso() {
     ocultarMensaje();
 }
 
+// Si el navegador restaura esta página desde el historial (botón "atrás"),
+// se vuelve a comprobar la sesión antes de mostrar cualquier dato.
+window.addEventListener("pageshow", function (evento) {
+    if (!evento.persisted) return;
+
+    gestion.classList.add("d-none");
+    seccionAcceso.classList.add("d-none");
+    verificarAcceso().catch(mostrarError);
+});
+
 formAcceso.addEventListener("submit", async function (evento) {
     evento.preventDefault();
 
@@ -455,23 +466,9 @@ btnCerrarSesion.addEventListener("click", async function () {
 
     btnCerrarSesion.disabled = true;
 
-    try {
-        const { error } = await supabase.auth.signOut();
-
-        if (error) {
-            throw error;
-        }
-
-        modal.hide();
-        limpiarFormulario();
-        formAcceso.reset();
-
-        await verificarAcceso();
-    } catch (error) {
-        mostrarError(error);
-    } finally {
-        btnCerrarSesion.disabled = false;
-    }
+    // auth.js cierra la sesión (con respaldo local si el servidor falla) y usa
+    // replace() para que el botón "atrás" no vuelva a esta página.
+    await cerrarSesion();
 });
 
 btnNueva.addEventListener("click", function () {

@@ -50,6 +50,24 @@ function crearElemento(etiqueta, clases, texto) {
     return elemento;
 }
 
+/**
+ * Ruta de la selección de asientos. Se calcula desde la página actual:
+ *  - index raíz (/index.html)          -> pages/seleccion-asientos.html
+ *  - cualquier página dentro de /pages -> ../seleccion-asientos.html
+ * Así el mismo script sirve para el index público y para el panel del cliente.
+ */
+function rutaSeleccionAsientos() {
+    const base = document.baseURI;
+    if (!base) return 'seleccion-asientos.html'; // respaldo para pruebas/entornos sin URL
+
+    const url = new URL(base);
+    const relativa = /\/pages\//.test(url.pathname)
+        ? '../seleccion-asientos.html'
+        : 'pages/seleccion-asientos.html';
+
+    return new URL(relativa, url).href;
+}
+
 function crearTarjeta(viaje) {
     const columna = crearElemento('div', 'col-12 col-md-6 col-xl-4');
     const tarjeta = crearElemento('article', 'card h-100 shadow-sm');
@@ -71,10 +89,11 @@ function crearTarjeta(viaje) {
     cuerpo.appendChild(datos);
 
     const enlace = crearElemento('a', 'btn btn-primary mt-auto', 'Seleccionar asientos');
-    
-    // CORRECCIÓN: Ahora la ruta sube un nivel (../) para encontrar la página en pages/
-    enlace.href = `../seleccion-asientos.html?viaje_id=${viaje.id}`;
-    
+
+    // La ruta se calcula desde la página actual, así funciona tanto en el
+    // index raíz como en pages/cliente/buscar.html.
+    enlace.href = `${rutaSeleccionAsientos()}?viaje_id=${encodeURIComponent(viaje.id)}`;
+
     enlace.setAttribute('aria-label', `Seleccionar asientos: ${viaje.cooperativaNombre}, ${viaje.origen} a ${viaje.destino}, ${viaje.hora.slice(0, 5)}`);
     cuerpo.appendChild(enlace);
     tarjeta.appendChild(cuerpo);

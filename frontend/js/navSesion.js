@@ -3,6 +3,18 @@ import { obtenerSesion, obtenerRol, cerrarSesion } from './auth.js';
 const zonaSesion = document.getElementById('navSesion');
 const ctaHero = document.getElementById('ctaHero');
 
+// Paneles de cada rol, calculados desde la ubicación de este archivo
+// (frontend/js/navSesion.js) para que funcionen desde el index raíz.
+const PANEL_POR_ROL = {
+    administrador: new URL('../pages/administrador/index.html', import.meta.url).href,
+    cooperativa: new URL('../pages/cooperativa/index.html', import.meta.url).href,
+    oficinista: new URL('../pages/oficinista/index.html', import.meta.url).href,
+    cliente: new URL('../pages/cliente/index.html', import.meta.url).href,
+    bus: new URL('../pages/bus/buses.html', import.meta.url).href,
+};
+
+const RUTA_INICIO = new URL('../index.html', import.meta.url).href;
+
 function crearBoton(texto, clase, href) {
     const el = document.createElement(href ? 'a' : 'button');
     el.className = clase;
@@ -20,11 +32,10 @@ function pintarSesionActiva(user, rol) {
     saludo.className = 'navbar-text text-white me-2';
     saludo.textContent = `Hola, ${nombre}`;
 
-    // El panel depende del rol: administrador/, cooperativa/, oficinista/, cliente/ o bus/
-    const panel = rol ? `${rol}/index.html` : null;
+    const panel = rol ? PANEL_POR_ROL[rol] : null;
 
     const btnSalir = crearBoton('Cerrar sesión', 'btn btn-outline-light');
-    btnSalir.addEventListener('click', () => cerrarSesion('index.html'));
+    btnSalir.addEventListener('click', () => cerrarSesion(RUTA_INICIO));
 
     zonaSesion.replaceChildren(saludo);
     if (panel) zonaSesion.append(crearBoton('Mi panel', 'btn btn-light text-primary fw-bold', panel));

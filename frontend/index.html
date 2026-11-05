@@ -9,7 +9,7 @@
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="css/styles.css">
     <style>
         /* Se usan las variables de styles.css (con respaldo) para que el color sea igual en todas las páginas */
         .hero-section {
@@ -49,13 +49,15 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
                     <li class="nav-item"><a class="nav-link active" aria-current="page" href="index.html">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#como-funciona">Cómo funciona</a></li>
+                    <li class="nav-item"><a class="nav-link" href="pages/login.html">Iniciar sesión</a></li>
                 </ul>
 
                 <!-- Esta zona la rellena js/navSesion.js según haya sesión o no.
                      Por defecto (sin sesión) muestra Iniciar sesión y Registrarse. -->
                 <div id="navSesion" class="d-flex align-items-lg-center gap-2 ms-lg-3 mt-2 mt-lg-0">
-                    <a class="btn btn-outline-light" href="login.html">Iniciar sesión</a>
-                    <a class="btn btn-light text-primary fw-bold" href="registro.html">Registrarse</a>
+                    <a class="btn btn-outline-light" href="pages/login.html">Iniciar sesión</a>
+                    <a class="btn btn-light text-primary fw-bold" href="pages/registro.html">Registrarse</a>
                 </div>
             </div>
         </div>
@@ -67,10 +69,10 @@
         <header class="hero-section text-center">
             <div class="container">
                 <h1 class="display-4 fw-bold mb-3">Viaja por Ecuador sin complicaciones</h1>
-                <p class="lead mb-4">Encuentra, reserva y compra tus pasajes de bus. Elige tu asiento y recibe tu boleto digital.</p>
+                <p class="lead mb-4">Reserva y compra tus pasajes de bus. Elige tu asiento y recibe tu boleto digital.</p>
                 <div id="ctaHero" class="d-flex flex-column flex-sm-row justify-content-center gap-3">
-                    <a href="registro.html" class="btn btn-warning btn-lg px-5 fw-bold text-dark">Crear cuenta</a>
-                    <a href="login.html" class="btn btn-outline-light btn-lg px-5">Iniciar sesión</a>
+                    <a href="pages/registro.html" class="btn btn-warning btn-lg px-5 fw-bold text-dark">Crear cuenta</a>
+                    <a href="pages/login.html" class="btn btn-outline-light btn-lg px-5">Iniciar sesión</a>
                 </div>
             </div>
         </header>
@@ -80,7 +82,7 @@
             <div class="row text-center g-4">
                 <div class="col-md-4">
                     <div class="feature-icon" aria-hidden="true">🔍</div>
-                    <h2 class="h4">Búsqueda fácil</h2>
+                    <h2 class="h4">Horarios claros</h2>
                     <p class="text-muted">Compara los horarios de todas las cooperativas por origen, destino y fecha.</p>
                 </div>
                 <div class="col-md-4">
@@ -97,7 +99,7 @@
         </section>
 
         <!-- Cómo funciona (pasos de la compra) -->
-        <section class="bg-light py-5">
+        <section id="como-funciona" class="bg-light py-5">
             <div class="container text-center">
                 <h2 class="mb-4">¿Cómo funciona?</h2>
                 <div class="row g-4">
@@ -177,6 +179,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Muestra "Hola, nombre / Cerrar sesión" si hay una sesión activa -->
-    <script type="module" src="../js/navSesion.js"></script>
+    <script type="module" src="js/navSesion.js"></script>
 </body>
 </html>
