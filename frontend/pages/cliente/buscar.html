@@ -47,8 +47,10 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand fw-bold" href="index.html">MoviPass - Cliente</a>
-            <div class="d-flex">
+            <div class="d-flex gap-2">
                 <a href="index.html" class="btn btn-outline-light btn-sm">Volver al panel</a>
+                <!-- guardas.js cierra la sesión de Supabase y vuelve al inicio -->
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
             </div>
         </div>
     </nav>
@@ -196,6 +198,12 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        // Solo un cliente con sesión puede buscar desde su panel.
+        // guardas.js también conecta el botón #btnCerrarSesion.
+        import { exigirRoles } from '../../js/guardas.js';
+        await exigirRoles(['cliente']);
+    </script>
     <script type="module" src="../../js/busqueda.js"></script>
     <script type="module" src="../../js/resultadosBusqueda.js"></script>
 </body>

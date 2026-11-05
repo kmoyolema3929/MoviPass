@@ -20,15 +20,20 @@
             <a class="navbar-brand fw-bold" href="../cooperativa/index.html">
                 MoviPass - Cooperativa
             </a>
+            <!-- guardas.js cierra la sesión y vuelve al index raíz -->
+            <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">
+                Cerrar Sesión
+            </button>
         </div>
     </nav>
 
     <main class="container my-4 my-md-5">
-        <h1 class="h2">Plantillas de asientos por tipo de bus</h1>
+        <h1 class="h2">Plantillas de asientos</h1>
 
         <p class="text-muted mb-4">
-            Define la distribución de asientos una sola vez por tipo de bus.
-            Todos los buses de ese tipo en tu cooperativa usan la misma plantilla.
+            Define la distribución de asientos una sola vez por tipo de bus:
+            todos los buses de ese tipo en tu cooperativa usan la misma plantilla.
+            Si un bus necesita una distribución distinta, dale una plantilla propia.
         </p>
 
         <div
@@ -100,6 +105,68 @@
 
                                         <div class="invalid-feedback">
                                             Escribe o elige el tipo de bus.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Alcance: todos los buses de un tipo o un solo bus -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-12">
+                                        <span class="form-label d-block">
+                                            Aplicar la plantilla a
+                                        </span>
+
+                                        <div class="form-check form-check-inline">
+                                            <input
+                                                class="form-check-input"
+                                                type="radio"
+                                                name="alcance"
+                                                id="alcanceTipo"
+                                                value="tipo"
+                                                checked
+                                            >
+
+                                            <label
+                                                class="form-check-label"
+                                                for="alcanceTipo"
+                                            >
+                                                Todos los buses de un tipo
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check form-check-inline">
+                                            <input
+                                                class="form-check-input"
+                                                type="radio"
+                                                name="alcance"
+                                                id="alcanceBus"
+                                                value="bus"
+                                            >
+
+                                            <label
+                                                class="form-check-label"
+                                                for="alcanceBus"
+                                            >
+                                                Un solo bus
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-md-6" id="grupoBus" hidden>
+                                        <label for="busObjetivo" class="form-label">
+                                            Bus
+                                        </label>
+
+                                        <select
+                                            id="busObjetivo"
+                                            name="busObjetivo"
+                                            class="form-select"
+                                        >
+                                            <option value="">Selecciona un bus</option>
+                                        </select>
+
+                                        <div class="invalid-feedback">
+                                            Selecciona un bus.
                                         </div>
                                     </div>
                                 </div>
@@ -354,6 +421,15 @@
                                 </p>
 
                                 <div class="d-grid d-sm-flex gap-2 justify-content-sm-end mt-4">
+                                    <button
+                                        type="button"
+                                        id="quitarIndividual"
+                                        class="btn btn-outline-danger"
+                                        hidden
+                                    >
+                                        Volver a la plantilla del tipo
+                                    </button>
+
                                     <button type="submit" class="btn btn-primary">
                                         Generar vista previa
                                     </button>

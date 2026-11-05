@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient.js';
 import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
 import { dinero, formatearFecha, formatearHora } from './validaciones.js';
+import { leerViajeId, urlResumenCompra } from './rutasCompra.js';
 
 const MAX_ASIENTOS = 10;
 const $ = (id) => document.getElementById(id);
@@ -276,14 +277,14 @@ $('btnContinuar').addEventListener('click', () => {
 
     sessionStorage.setItem('compraDraft', JSON.stringify(borrador));
 
-    window.location.href = `compra/resumen-compra.html?viaje_id=${encodeURIComponent(viaje.id)}`;
+    window.location.href = urlResumenCompra(viaje.id);
 });
 
 async function iniciar() {
     const rol = await exigirRoles(['cliente']);
     if (!rol) return;
 
-    const viajeId = new URLSearchParams(window.location.search).get('viaje_id');
+    const viajeId = leerViajeId(window.location.search);
 
     if (!viajeId) {
         $('mapaAsientos').replaceChildren(

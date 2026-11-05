@@ -94,6 +94,8 @@ function convertirPlantilla(fila) {
     return {
         id: fila.id,
         cooperativa_id: fila.cooperativa_id,
+        // null = plantilla del tipo; con valor = plantilla propia de ese bus.
+        bus_id: fila.bus_id ?? null,
         tipo_bus: fila.tipo_bus,
         numero_pisos: fila.numero_pisos,
         total_asientos: fila.total_asientos,
@@ -103,7 +105,8 @@ function convertirPlantilla(fila) {
     };
 }
 
-// Plantillas (una por tipo de bus) de UNA cooperativa.
+// Plantillas de UNA cooperativa: una por tipo de bus y, opcionalmente,
+// una propia por cada bus con distribución especial.
 export async function obtenerPlantillasDeCooperativa(cooperativaId) {
     if (!cooperativaId) return [];
 
@@ -112,6 +115,7 @@ export async function obtenerPlantillasDeCooperativa(cooperativaId) {
         .select(`
             id,
             cooperativa_id,
+            bus_id,
             tipo_bus,
             numero_pisos,
             total_asientos,
@@ -129,15 +133,10 @@ export async function obtenerPlantillasDeCooperativa(cooperativaId) {
     return (data ?? []).map(convertirPlantilla);
 }
 
-// Guarda la plantilla del tipo de bus y la asigna a todos los buses
-// de ese tipo. La base de datos genera los números y tipos de asiento.
-export async function guardarPlantillaDeTipo(
-    cooperativaId,
-    configuracion,
-    actualizadoEnEsperado = null
-) {
+// Convierte la configuración de la vista previa en la distribución
+// que espera la base de datos. La base genera los asientos.
+function armarDistribucion(configuracion) {
     if (
-        !cooperativaId ||
         !configuracion?.tipo_bus ||
         !Array.isArray(configuracion.pisos) ||
         configuracion.pisos.length === 0 ||
@@ -146,7 +145,7 @@ export async function guardarPlantillaDeTipo(
         throw new Error("Genera una vista previa válida antes de guardar.");
     }
 
-    const distribucion = configuracion.pisos.map(function (piso) {
+    return configuracion.pisos.map(function (piso) {
         return {
             cantidad: piso.asientos.length,
             filas: piso.filas,
@@ -154,18 +153,66 @@ export async function guardarPlantillaDeTipo(
             ultima_fila_5: piso.ultima_fila_5 === true
         };
     });
+}
 
-    const { data, error } = await supabase.rpc(
-        "guardar_plantilla_bus",
-        {
-            p_cooperativa_id: cooperativaId,
-            p_tipo_bus: configuracion.tipo_bus,
-            p_distribucion: distribucion,
-            p_actualizado_en_esperado: actualizadoEnEsperado
-        }
-    );
+// Guarda la plantilla del tipo de bus y la asigna a los buses de ese
+// tipo que no tengan plantilla propia.
+export async function guardarPlantillaDeTipo(
+    cooperativaId,
+    configuracion,
+    actualizadoEnEsperado = null
+) {
+    if (!cooperativaId) {
+        throw new Error("Genera una vista previa válida antes de guardar.");
+    }
 
-    // Se conserva el código original para manejar permisos y conflictos.
+    const { data, error } = await supabase.rpc("guardar_plantilla_bus", {
+        p_cooperativa_id: cooperativaId,
+        p_tipo_bus: configuracion?.tipo_bus,
+        p_distribucion: armarDistribucion(configuracion),
+        p_actualizado_en_esperado: actualizadoEnEsperado
+    });
+
+    // El código del error se conserva para manejar permisos y conflictos.
+    if (error) throw error;
+
+    return data;
+}
+
+// Guarda una plantilla propia para UN solo bus.
+export async function guardarPlantillaIndividual(
+    cooperativaId,
+    busId,
+    configuracion,
+    actualizadoEnEsperado = null
+) {
+    if (!cooperativaId || !busId) {
+        throw new Error("Elige el bus antes de guardar.");
+    }
+
+    const { data, error } = await supabase.rpc("guardar_plantilla_individual", {
+        p_cooperativa_id: cooperativaId,
+        p_bus_id: busId,
+        p_distribucion: armarDistribucion(configuracion),
+        p_actualizado_en_esperado: actualizadoEnEsperado
+    });
+
+    if (error) throw error;
+
+    return data;
+}
+
+// Quita la plantilla propia: el bus vuelve a usar la de su tipo.
+export async function quitarPlantillaIndividual(cooperativaId, busId) {
+    if (!cooperativaId || !busId) {
+        throw new Error("Elige el bus antes de continuar.");
+    }
+
+    const { data, error } = await supabase.rpc("quitar_plantilla_individual", {
+        p_cooperativa_id: cooperativaId,
+        p_bus_id: busId
+    });
+
     if (error) throw error;
 
     return data;

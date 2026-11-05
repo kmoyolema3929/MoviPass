@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes de la Cooperativa - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass - Cooperativa</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+                <!-- guardas.js cierra la sesión y vuelve al inicio -->
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 flex-grow-1">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+            <div>
+                <h1 class="h2 mb-1">Reportes de <span id="nombreCoop">tu cooperativa</span></h1>
+                <p class="text-muted mb-0">
+                    Resumen de flota, frecuencias, próximos viajes y ventas. Solo se muestran datos de tu cooperativa.
+                </p>
+            </div>
+            <div class="d-flex align-items-end gap-2">
+                <div>
+                    <label for="periodo" class="form-label small fw-semibold mb-1">Periodo de ventas</label>
+                    <select id="periodo" class="form-select form-select-sm">
+                        <option value="7">Últimos 7 días</option>
+                        <option value="30" selected>Últimos 30 días</option>
+                        <option value="90">Últimos 90 días</option>
+                        <option value="todo">Todo el historial</option>
+                    </select>
+                </div>
+                <button id="btnRecargar" type="button" class="btn btn-outline-primary btn-sm">Actualizar</button>
+            </div>
+        </div>
+
+        <div id="alertContainer" class="mb-3"></div>
+
+        <div class="row g-3 mb-2" id="resumen"></div>
+        <p id="estadoCarga" class="text-muted small" role="status" aria-live="polite"></p>
+
+        <div id="contenido">
+            <div class="row g-4">
+                <div class="col-xl-7">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h5 mb-0">Próximos viajes</h2>
+                                <span class="badge text-bg-light border">Hasta 20</span>
+                            </div>
+                            <div id="tablaViajes"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-5">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h5 mb-0">Pagos por validar</h2>
+                                <span id="badgePendientes" class="badge text-bg-warning text-dark">0</span>
+                            </div>
+                            <div id="tablaPendientes"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mt-1">
+                <div class="col-xl-7">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <h2 class="h5 mb-3">Frecuencias</h2>
+                            <div id="tablaFrecuencias"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-5">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <h2 class="h5 mb-3">Buses</h2>
+                            <div id="tablaBuses"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Últimas ventas del periodo</h2>
+                        <span class="text-muted small">Máximo 15 registros</span>
+                    </div>
+                    <div id="tablaVentas"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container"><p class="mb-0">&copy; 2026 MoviPass.</p></div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { exigirRoles } from '../../js/guardas.js';
+        import { supabase } from '../../js/supabaseClient.js';
+        import { dinero, fechaLocalISO, formatearFecha, formatearHora } from '../../js/validaciones.js';
+
+        // Solo el gerente (rol 'cooperativa'). guardas.js conecta #btnCerrarSesion.
+        const rol = await exigirRoles(['cooperativa']);
+
+        const $ = (id) => document.getElementById(id);
+        const MAX_VIAJES = 20;
+        const MAX_VENTAS = 15;
+
+        const ESTADOS = {
+            aprobada: ['Aprobada', 'text-bg-success'],
+            rechazada: ['Rechazada', 'text-bg-danger'],
+            vencida: ['Vencida', 'text-bg-secondary'],
+            pendiente_validacion: ['Por validar', 'text-bg-warning text-dark'],
+            pendiente_comprobante: ['Sin comprobante', 'text-bg-info text-dark']
+        };
+
+        const METODOS = {
+            efectivo: 'Efectivo',
+            deposito: 'Depósito',
+            transferencia: 'Transferencia'
+        };
+
+        let cooperativa = null;
+
+        /** Crea un elemento con texto seguro (evita inyección de HTML). */
+        function el(tag, clase, texto) {
+            const e = document.createElement(tag);
+            if (clase) e.className = clase;
+            if (texto !== undefined && texto !== null) e.textContent = texto;
+            return e;
+        }
+
+        function badge(texto, clase) {
+            return el('span', `badge ${clase}`, texto);
+        }
+
+        function mostrarMensaje(mensaje, tipo = 'danger') {
+            const contenedor = $('alertContainer');
+            contenedor.replaceChildren(el('div', `alert alert-${tipo} border shadow-sm mb-0`, mensaje));
+        }
+
+        function limpiarMensaje() {
+            $('alertContainer').replaceChildren();
+        }
+
+        function fechaHora(iso) {
+            const f = new Date(iso);
+            const dos = (n) => String(n).padStart(2, '0');
+            return `${dos(f.getDate())}/${dos(f.getMonth() + 1)}/${f.getFullYear()} ${dos(f.getHours())}:${dos(f.getMinutes())}`;
+        }
+
+        /** Tabla sencilla: las celdas pueden ser texto o nodos del DOM. */
+        function crearTabla(encabezados, filas, mensajeVacio) {
+            if (filas.length === 0) {
+                return el('p', 'text-muted mb-0', mensajeVacio);
+            }
+
+            const contenedor = el('div', 'table-responsive');
+            const tabla = el('table', 'table table-sm table-hover align-middle mb-0');
+
+            const thead = el('thead');
+            const trh = el('tr');
+            encabezados.forEach((encabezado) => trh.append(el('th', 'text-nowrap', encabezado)));
+            thead.append(trh);
+
+            const tbody = el('tbody');
+            filas.forEach((fila) => {
+                const tr = el('tr');
+                fila.forEach((celda) => {
+                    const td = el('td');
+                    if (celda instanceof Node) td.append(celda);
+                    else td.textContent = celda ?? '—';
+                    tr.append(td);
+                });
+                tbody.append(tr);
+            });
+
+            tabla.append(thead, tbody);
+            contenedor.append(tabla);
+            return contenedor;
+        }
+
+        function tarjeta(titulo, valor, detalle, clase) {
+            const col = el('div', 'col-6 col-lg-3');
+            const card = el('div', 'card border-0 shadow-sm h-100');
+            const body = el('div', 'card-body');
+
+            body.append(
+                el('div', 'text-muted small text-uppercase fw-semibold mb-1', titulo),
+                el('div', `display-6 fw-bold ${clase}`, valor),
+                el('div', 'text-muted small', detalle)
+            );
+
+            card.append(body);
+            col.append(card);
+            return col;
+        }
+
+        async function obtenerCooperativa() {
+            const { data: sesion, error: errorSesion } = await supabase.auth.getUser();
+            if (errorSesion) throw errorSesion;
+            if (!sesion?.user) return null;
+
+            const { data, error } = await supabase
+                .from('cooperativas_usuarios')
+                .select('cooperativa_id, cooperativas(nombre)')
+                .eq('perfil_id', sesion.user.id)
+                .limit(1)
+                .maybeSingle();
+
+            if (error) throw error;
+            if (!data) return null;
+
+            return { id: data.cooperativa_id, nombre: data.cooperativas?.nombre };
+        }
+
+        /** Devuelve la fecha de inicio del periodo elegido, o null para "todo". */
+        function inicioPeriodo() {
+            const valor = $('periodo').value;
+            if (valor === 'todo') return null;
+
+            const dias = Number(valor);
+            if (!Number.isFinite(dias) || dias <= 0) return null;
+
+            const inicio = new Date();
+            inicio.setHours(0, 0, 0, 0);
+            inicio.setDate(inicio.getDate() - (dias - 1));
+            return inicio;
+        }
+
+        function sumar(numeros) {
+            return numeros.reduce((total, n) => total + Number(n || 0), 0);
+        }
+
+        function rutaDeCompra(compra) {
+            const viaje = compra.viajes;
+            if (!viaje?.frecuencias) return '—';
+
+            const f = viaje.frecuencias;
+            return `${f.origen} → ${f.destino} · ${formatearFecha(viaje.fecha)} ${formatearHora(f.hora)}`;
+        }
+
+        async function cargar() {
+            if (!cooperativa?.id) return;
+
+            limpiarMensaje();
+            $('estadoCarga').textContent = 'Cargando reportes…';
+
+            try {
+                const [busesRes, frecuenciasRes, comprasRes] = await Promise.all([
+                    supabase
+                        .from('buses')
+                        .select('id, placa, tipo_bus, chasis, carroceria, creado_en')
+                        .eq('cooperativa_id', cooperativa.id)
+                        .order('placa'),
+                    supabase
+                        .from('frecuencias')
+                        .select('id, origen, destino, hora, activa, tipo, numero_resolucion, precio_base')
+                        .eq('cooperativa_id', cooperativa.id)
+                        .order('hora'),
+                    supabase
+                        .from('compras')
+                        .select(`
+                            id, estado, metodo_pago, subtotal, total, creado_en, viaje_id,
+                            viajes ( fecha, frecuencias ( origen, destino, hora ) ),
+                            boletos ( id, viaje_id, estado, precio, tipo_pasajero )
+                        `)
+                        .eq('cooperativa_id', cooperativa.id)
+                        .order('creado_en', { ascending: false })
+                        .limit(1000)
+                ]);
+
+                const fallo = [busesRes, frecuenciasRes, comprasRes].find((r) => r.error);
+                if (fallo) throw fallo.error;
+
+                const buses = busesRes.data ?? [];
+                const frecuencias = frecuenciasRes.data ?? [];
+                const compras = comprasRes.data ?? [];
+                const idsFrecuencias = frecuencias.map((f) => f.id);
+                const hoy = fechaLocalISO();
+
+                const [hojasRes, viajesRes] = await Promise.all([
+                    idsFrecuencias.length
+                        ? supabase
+                            .from('hojas_ruta')
+                            .select('id, frecuencia_id, bus_id, fecha, estado')
+                            .in('frecuencia_id', idsFrecuencias)
+                        : Promise.resolve({ data: [], error: null }),
+                    idsFrecuencias.length
+                        ? supabase
+                            .from('viajes')
+                            .select('id, fecha, precio, frecuencia_id, bus_id')
+                            .in('frecuencia_id', idsFrecuencias)
+                            .gte('fecha', hoy)
+                            .order('fecha', { ascending: true })
+                            .limit(200)
+                        : Promise.resolve({ data: [], error: null })
+                ]);
+
+                const falloHojas = [hojasRes, viajesRes].find((r) => r.error);
+                if (falloHojas) throw falloHojas.error;
+
+                const hojas = hojasRes.data ?? [];
+                const viajes = viajesRes.data ?? [];
+
+                pintar({
+                    buses,
+                    frecuencias,
+                    compras,
+                    hojas,
+                    viajes,
+                    hoy
+                });
+
+                $('estadoCarga').textContent = `Actualizado: ${fechaHora(new Date().toISOString())}`;
+            } catch (error) {
+                console.error('No se pudieron cargar los reportes:', error);
+                $('estadoCarga').textContent = '';
+                mostrarMensaje('No se pudieron cargar los reportes: ' + (error?.message ?? 'error desconocido'));
+            }
+        }
+
+        function pintar({ buses, frecuencias, compras, hojas, viajes, hoy }) {
+            const inicio = inicioPeriodo();
+            const comprasPeriodo = inicio
+                ? compras.filter((c) => new Date(c.creado_en) >= inicio)
+                : compras;
+
+            const aprobadas = comprasPeriodo.filter((c) => c.estado === 'aprobada');
+            const ingresos = sumar(aprobadas.map((c) => c.total));
+            const boletosVendidos = aprobadas.reduce(
+                (n, c) => n + (c.boletos ?? []).filter((b) => b.estado === 'emitido').length,
+                0
+            );
+            const pendientesValidacion = compras.filter((c) => c.estado === 'pendiente_validacion');
+            const pendientesComprobante = compras.filter((c) => c.estado === 'pendiente_comprobante');
+            const frecuenciasActivas = frecuencias.filter((f) => f.activa).length;
+            const viajesProgramados = hojas.filter((h) => h.fecha >= hoy && h.estado === 'Programado').length;
+
+            // ---------- Tarjetas de resumen ----------
+            $('resumen').replaceChildren(
+                tarjeta(
+                    'Ingresos aprobados',
+                    dinero(ingresos),
+                    `${aprobadas.length} venta${aprobadas.length === 1 ? '' : 's'} en el periodo`,
+                    'text-success'
+                ),
+                tarjeta(
+                    'Boletos vendidos',
+                    String(boletosVendidos),
+                    'Pasajeros con boleto emitido',
+                    'text-primary'
+                ),
+                tarjeta(
+                    'Pagos por validar',
+                    String(pendientesValidacion.length),
+                    `${pendientesComprobante.length} esperando comprobante`,
+                    pendientesValidacion.length > 0 ? 'text-warning' : 'text-secondary'
+                ),
+                tarjeta(
+                    'Flota y frecuencias',
+                    `${buses.length} buses`,
+                    `${frecuenciasActivas} de ${frecuencias.length} frecuencias activas · ${viajesProgramados} viajes programados`,
+                    'text-dark'
+                )
+            );
+
+            const frecuenciaPorId = new Map(frecuencias.map((f) => [f.id, f]));
+            const busPorId = new Map(buses.map((b) => [b.id, b]));
+
+            // ---------- Próximos viajes ----------
+            const ocupadosPorViaje = new Map();
+            compras.forEach((compra) => {
+                (compra.boletos ?? [])
+                    .filter((b) => b.estado === 'reservado' || b.estado === 'emitido')
+                    .forEach((b) => {
+                        ocupadosPorViaje.set(b.viaje_id, (ocupadosPorViaje.get(b.viaje_id) ?? 0) + 1);
+                    });
+            });
+
+            const proximos = [...viajes].sort((a, b) => {
+                const horaA = frecuenciaPorId.get(a.frecuencia_id)?.hora ?? '';
+                const horaB = frecuenciaPorId.get(b.frecuencia_id)?.hora ?? '';
+                return a.fecha.localeCompare(b.fecha) || String(horaA).localeCompare(String(horaB));
+            });
+
+            const filasViajes = proximos.slice(0, MAX_VIAJES).map((viaje) => {
+                const frecuencia = frecuenciaPorId.get(viaje.frecuencia_id);
+                const bus = busPorId.get(viaje.bus_id);
+                const ocupados = ocupadosPorViaje.get(viaje.id) ?? 0;
+
+                return [
+                    viaje.fecha === hoy
+                        ? badge('Hoy', 'text-bg-primary')
+                        : formatearFecha(viaje.fecha),
+                    frecuencia ? formatearHora(frecuencia.hora) : '—',
+                    frecuencia ? `${frecuencia.origen} → ${frecuencia.destino}` : '—',
+                    bus?.placa ?? '—',
+                    dinero(viaje.precio),
+                    String(ocupados)
+                ];
+            });
+
+            $('tablaViajes').replaceChildren(
+                crearTabla(
+                    ['Fecha', 'Hora', 'Ruta', 'Bus', 'Precio', 'Ocupados'],
+                    filasViajes,
+                    'No hay viajes programados desde hoy.'
+                )
+            );
+
+            // ---------- Pagos por validar ----------
+            $('badgePendientes').textContent = String(pendientesValidacion.length);
+            $('badgePendientes').className = pendientesValidacion.length
+                ? 'badge text-bg-warning text-dark'
+                : 'badge text-bg-success';
+
+            const filasPendientes = pendientesValidacion.slice(0, 10).map((compra) => [
+                fechaHora(compra.creado_en),
+                rutaDeCompra(compra),
+                METODOS[compra.metodo_pago] ?? compra.metodo_pago,
+                dinero(compra.total)
+            ]);
+
+            $('tablaPendientes').replaceChildren(
+                crearTabla(
+                    ['Compra', 'Viaje', 'Método', 'Total'],
+                    filasPendientes,
+                    'No hay pagos pendientes de validación.'
+                )
+            );
+
+            // ---------- Frecuencias ----------
+            const hojasPorFrecuencia = new Map();
+            hojas.forEach((hoja) => {
+                hojasPorFrecuencia.set(hoja.frecuencia_id, (hojasPorFrecuencia.get(hoja.frecuencia_id) ?? 0) + 1);
+            });
+
+            const filasFrecuencias = frecuencias.map((frecuencia) => [
+                `${frecuencia.origen} → ${frecuencia.destino}`,
+                formatearHora(frecuencia.hora),
+                frecuencia.tipo === 'compartida'
+                    ? badge('Compartida', 'text-bg-info text-dark')
+                    : badge('Directa', 'text-bg-light border text-dark'),
+                frecuencia.numero_resolucion || '—',
+                dinero(frecuencia.precio_base),
+                frecuencia.activa
+                    ? badge('Activa', 'text-bg-success')
+                    : badge('Inactiva', 'text-bg-secondary'),
+                String(hojasPorFrecuencia.get(frecuencia.id) ?? 0)
+            ]);
+
+            $('tablaFrecuencias').replaceChildren(
+                crearTabla(
+                    ['Ruta', 'Hora', 'Tipo', 'Resolución', 'Precio base', 'Estado', 'Hojas'],
+                    filasFrecuencias,
+                    'Aún no hay frecuencias registradas.'
+                )
+            );
+
+            // ---------- Buses ----------
+            const hojasPorBus = new Map();
+            hojas.forEach((hoja) => {
+                hojasPorBus.set(hoja.bus_id, (hojasPorBus.get(hoja.bus_id) ?? 0) + 1);
+            });
+
+            const filasBuses = buses.map((bus) => [
+                bus.placa,
+                bus.tipo_bus,
+                bus.carroceria,
+                bus.chasis,
+                String(hojasPorBus.get(bus.id) ?? 0)
+            ]);
+
+            $('tablaBuses').replaceChildren(
+                crearTabla(
+                    ['Placa', 'Tipo', 'Carrocería', 'Chasis', 'Hojas'],
+                    filasBuses,
+                    'Aún no hay buses registrados.'
+                )
+            );
+
+            // ---------- Últimas ventas ----------
+            const filasVentas = comprasPeriodo.slice(0, MAX_VENTAS).map((compra) => {
+                const [textoEstado, claseEstado] = ESTADOS[compra.estado] ?? [compra.estado, 'text-bg-secondary'];
+                const boletos = (compra.boletos ?? []).filter((b) => b.estado !== 'anulado').length;
+
+                return [
+                    fechaHora(compra.creado_en),
+                    rutaDeCompra(compra),
+                    METODOS[compra.metodo_pago] ?? compra.metodo_pago,
+                    String(boletos),
+                    badge(textoEstado, claseEstado),
+                    dinero(compra.total)
+                ];
+            });
+
+            $('tablaVentas').replaceChildren(
+                crearTabla(
+                    ['Fecha', 'Viaje', 'Método', 'Boletos', 'Estado', 'Total'],
+                    filasVentas,
+                    'No hay ventas en el periodo seleccionado.'
+                )
+            );
+        }
+
+        async function iniciar() {
+            if (!rol) return;
+
+            try {
+                cooperativa = await obtenerCooperativa();
+            } catch (error) {
+                console.error('No se pudo identificar la cooperativa:', error);
+                mostrarMensaje('No se pudo identificar tu cooperativa. Intenta recargar la página.');
+                return;
+            }
+
+            if (!cooperativa?.id) {
+                mostrarMensaje(
+                    'Tu usuario no tiene una cooperativa asignada. Pide al administrador que te asigne una para ver los reportes.',
+                    'warning'
+                );
+                return;
+            }
+
+            $('nombreCoop').textContent = cooperativa.nombre || 'tu cooperativa';
+            $('periodo').addEventListener('change', () => { void cargar(); });
+            $('btnRecargar').addEventListener('click', () => { void cargar(); });
+
+            await cargar();
+        }
+
+        iniciar();
+    </script>
+</body>
+</html>

@@ -11,7 +11,11 @@
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand fw-bold" href="index.html">MoviPass - Admin</a>
-            <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+                <!-- guardas.js cierra la sesión y vuelve al index raíz -->
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            </div>
         </div>
     </nav>
 
