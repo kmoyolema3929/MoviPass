@@ -5,7 +5,38 @@ Todos los cambios importantes de este proyecto se documentan en este archivo.
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
+
+## [0.1.1] - 2026-11-04
+Corrección publicada en `main` con la rama `hotfix/ajustes-finales` (PR #84).
+
 ### Agregado
+- Página de reportes de la cooperativa (`reportes.html`).
+- Registro de buses por lote (`buses-lote.js`).
+- Funciones de rutas de compra (`rutasCompra.js`).
+- Redirección de la portada antigua `/pages/index.html` a `/` en Netlify.
+- Cabeceras de seguridad en Netlify y desactivación de la caché del HTML, para que el botón «atrás» no muestre páginas con sesión después de cerrarla.
+
+### Cambiado
+- La portada pública pasa de `frontend/pages/index.html` a `frontend/index.html`.
+- Ajustes en guardas de sesión, navegación, plantillas de asientos, cooperativas, oficinistas y página principal del cliente.
+
+### Eliminado
+- Migración de la tabla de prueba (`20261015120000_crear_tabla_prueba.sql`).
+
+## [0.1.0] - 2026-11-04
+Primera versión publicada en `main` (PR #82, rama `release/v0.1.0`). Contiene el mismo código que `0.1.0-beta.1`.
+
+## [0.1.0-beta.1] - 2026-11-04
+Beta del Sprint 1: la aplicación es funcional, pero falta el módulo del chofer y hay errores por corregir.
+
+### Agregado
+- Panel del administrador: vista general y gestión de gerentes.
+- Gestión de oficinistas desde el panel de la cooperativa.
+- Panel del oficinista: venta de boletos en ventanilla, validación de pagos e historial de ventas.
+- Compra de boletos con tipos de pasajero, reserva de asientos, pago con comprobante (plazo de 3 horas) y emisión del boleto con código único para el QR.
+- Plantillas de asientos por tipo de bus.
+- Reglas y lógica de frecuencias y hojas de ruta, y acceso del oficinista a los datos de su cooperativa.
+- Corrección de las políticas RLS de Supabase.
 - Filtros combinables por cooperativa y tipo de bus sobre las tarjetas de búsqueda, con opciones obtenidas de los resultados, actualización sin recargar y reinicio al realizar otra búsqueda (#43).
 - Tarjetas responsivas con Bootstrap 5 para los resultados de búsqueda, datos del viaje, estado de carga, mensaje sin coincidencias y enlace de selección de asientos con el identificador del viaje (#42).
 - Estructura inicial del repositorio y carpetas del proyecto.
@@ -33,6 +64,8 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Implementación de la interfaz HTML de gestión y lógica backend en Supabase para el CRUD de hojas de ruta con validación de boletos (Issue #37).
 
 ### Cambiado
+- Se corrigen las rutas entre páginas, los paneles por rol y el flujo de compra.
+- Las páginas de hojas de ruta se unifican en `hoja-ruta.html` y `hoja-ruta.js`.
 - La página de selección de asientos lee `viaje_id` desde la URL y lo conserva al continuar al resumen de compra (#42).
 - El backend pasa de Node.js/Express a Java con Spring Boot (Maven, Flyway y Spring Security) (PR #2, decisión D-001).
 - El backend pasa de Java con Spring Boot a Supabase (PostgreSQL, Auth y Storage) (PR #14, decisión D-002).
@@ -53,6 +86,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - La decisión D-003 pasa a estado "Reemplazada por D-008" en `docs/DECISIONES.md`.
 
 ### Eliminado
+- Páginas antiguas de hojas de ruta (`hojas_ruta.html`, `hojas_ruta.js`, `hojas_ruta_crud.html` y `hojas_ruta_crud.js`).
 - Carpetas vacías del backend de Node.js.
 - Carpeta `database/`, reemplazada por `supabase/`.
 - Revisión rotativa de Pull Requests.
@@ -61,3 +95,8 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - Campos y referencias a Jira (`CAM-n`) de las plantillas y de la guía de contribución.
 - Carpeta `docs/capturas/jira/`.
 - Etiquetas sin uso: `accessibility`, `good first issue`, `help wanted` y `question`.
+
+[Sin publicar]: https://github.com/kmoyolema3929/MoviPass/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/kmoyolema3929/MoviPass/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/kmoyolema3929/MoviPass/compare/v0.1.0-beta.1...v0.1.0
+[0.1.0-beta.1]: https://github.com/kmoyolema3929/MoviPass/releases/tag/v0.1.0-beta.1
