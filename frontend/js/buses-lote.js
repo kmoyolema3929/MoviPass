@@ -2,6 +2,8 @@
 // Alta de varios buses a la vez, todos del mismo tipo, para el gerente de la cooperativa.
 // Se conecta desde buses.js con crearLote(...). No modifica el formulario de un solo bus.
 
+import { formatearPlacaPegada, normalizarPlaca, prepararCampoPlaca } from "./validaciones.js";
+
 const MAX_LOTE = 30;
 
 const CAMPOS = [
@@ -36,7 +38,7 @@ const PLANTILLA_MODAL = `
                         <table class="table table-sm align-middle mb-2">
                             <thead>
                                 <tr>
-                                    <th scope="col">Placa</th>
+                                    <th scope="col">Placa *</th>
                                     <th scope="col">Chasis</th>
                                     <th scope="col">Carrocería</th>
                                     <th scope="col"><span class="visually-hidden">Quitar</span></th>
@@ -116,12 +118,23 @@ export function crearLote({
 
             // Al corregir una placa se limpia el aviso de "repetida"
             if (nombre === "placa") {
+                campo.maxLength = 8;
+                prepararCampoPlaca(campo);
+
                 campo.addEventListener("input", function () {
                     campo.setCustomValidity("");
                 });
             }
 
             celda.appendChild(campo);
+
+            // Aviso junto a la casilla de placa (formato o repetida)
+            if (nombre === "placa") {
+                const aviso = document.createElement("div");
+                aviso.className = "invalid-feedback";
+                celda.appendChild(aviso);
+            }
+
             fila.appendChild(celda);
         });
 
@@ -180,7 +193,7 @@ export function crearLote({
             const fila = filasLote.rows[indice];
             if (!fila) return;
 
-            fila.querySelector('[data-campo="placa"]').value = placa.trim();
+            fila.querySelector('[data-campo="placa"]').value = formatearPlacaPegada(placa);
             fila.querySelector('[data-campo="chasis"]').value = chasis.trim();
             fila.querySelector('[data-campo="carroceria"]').value = carroceria.trim();
 
@@ -225,28 +238,36 @@ export function crearLote({
         }
 
         filasLote.querySelectorAll("input").forEach(function (campo) {
-            const limpio = campo.value.trim();
-
-            campo.value = campo.dataset.campo === "placa" ? limpio.toUpperCase() : limpio;
+            campo.value = campo.value.trim();
             campo.setCustomValidity("");
         });
 
-        // Placas repetidas dentro del lote o ya registradas en tu cooperativa
+        // Placas con formato no válido, repetidas dentro del lote o ya registradas en tu cooperativa
         const vistas = new Set();
 
         filasLote.querySelectorAll('[data-campo="placa"]').forEach(function (campo) {
-            const repetida = vistas.has(campo.value) ||
-                estado.buses.some(function (bus) { return bus.placa === campo.value; });
+            const { placa, valida } = normalizarPlaca(campo.value);
 
-            if (repetida) campo.setCustomValidity("Placa repetida.");
+            campo.value = placa;
 
-            vistas.add(campo.value);
+            const repetida = vistas.has(placa) ||
+                estado.buses.some(function (bus) { return bus.placa === placa; });
+
+            if (!valida) {
+                campo.setCustomValidity("Formato no válido. Usa ABC-1234.");
+            } else if (repetida) {
+                campo.setCustomValidity("Placa repetida.");
+            }
+
+            campo.nextElementSibling.textContent = campo.validationMessage;
+
+            vistas.add(placa);
         });
 
         formulario.classList.add("was-validated");
 
         if (!formulario.checkValidity()) {
-            mostrarError("Revisa las casillas marcadas en rojo: hay campos vacíos o placas repetidas.");
+            mostrarError("Revisa las casillas marcadas en rojo: hay campos vacíos, placas con formato no válido o placas repetidas.");
             return;
         }
 
