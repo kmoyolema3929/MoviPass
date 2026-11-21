@@ -92,6 +92,31 @@
     font-size: 0.75rem;
 }
 
+/* Baño: no es un asiento, no tiene número y no se vende. */
+.plantilla-asiento.plantilla-bano,
+.plantilla-asiento.plantilla-bano:hover {
+    background-color: #e2e3e5;
+    color: #41464b;
+    border-color: #6c757d;
+    border-style: dashed;
+    border-bottom-width: 2px;
+    border-radius: 0.5rem;
+}
+
+.plantilla-asiento.plantilla-bano strong {
+    font-size: 1.25rem;
+}
+
+/* Sin el modo "Marcar baño", el baño no se puede tocar. */
+.plantilla-asiento.plantilla-bano[aria-disabled="true"] {
+    cursor: not-allowed;
+}
+
+.plantilla-muestra.plantilla-muestra-bano {
+    background-color: #e2e3e5;
+    border: 2px dashed #6c757d;
+}
+
 .plantilla-muestra {
     display: inline-block;
     width: 1rem;

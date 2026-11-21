@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { celdasEspecialesDe, especialesPorPiso } from "./celdasEspeciales.js";
 
 // Cooperativas que el usuario puede gestionar:
 // el administrador ve todas; la cooperativa solo las que tiene asignadas.
@@ -72,9 +73,12 @@ function convertirPlantilla(fila) {
             .filter(asiento => asiento.piso === numero)
             .sort((a, b) => a.numero - b.numero);
 
+        // "cantidad" son las celdas del piso: asientos + baño.
+        const especiales = celdasEspecialesDe(piso);
+
         if (
             !Number.isInteger(piso.cantidad) ||
-            asientos.length !== piso.cantidad
+            asientos.length + especiales.length !== piso.cantidad
         ) {
             throw new Error(
                 "Los asientos guardados de «" + fila.tipo_bus +
@@ -87,6 +91,7 @@ function convertirPlantilla(fila) {
             filas: piso.filas,
             columnas: piso.columnas,
             ultima_fila_5: piso.ultima_fila_5 === true,
+            celdas_especiales: especiales,
             asientos
         };
     });
@@ -146,13 +151,51 @@ function armarDistribucion(configuracion) {
     }
 
     return configuracion.pisos.map(function (piso) {
-        return {
-            cantidad: piso.asientos.length,
+        const especiales = celdasEspecialesDe(piso);
+
+        const distribucion = {
+            cantidad: piso.asientos.length + especiales.length,
             filas: piso.filas,
             columnas: piso.columnas,
             ultima_fila_5: piso.ultima_fila_5 === true
         };
+
+        // Sin baño no se envía la lista: las plantillas sin baño quedan igual que antes.
+        if (especiales.length) {
+            distribucion.celdas_especiales = especiales.map(c => ({
+                fila: c.fila,
+                columna: c.columna,
+                tipo: c.tipo
+            }));
+        }
+
+        return distribucion;
     });
+}
+
+// Celdas especiales (baño) de la plantilla que usa un bus, por número de piso.
+// Los mapas de venta las muestran bloqueadas.
+export async function obtenerCeldasEspecialesDeBus(busId) {
+    if (!busId) return new Map();
+
+    const { data: bus, error } = await supabase
+        .from("buses")
+        .select("plantilla_id")
+        .eq("id", busId)
+        .maybeSingle();
+
+    if (error) throw error;
+    if (!bus?.plantilla_id) return new Map();
+
+    const { data: plantilla, error: errorPlantilla } = await supabase
+        .from("plantillas_bus")
+        .select("distribucion")
+        .eq("id", bus.plantilla_id)
+        .maybeSingle();
+
+    if (errorPlantilla) throw errorPlantilla;
+
+    return especialesPorPiso(plantilla?.distribucion);
 }
 
 // Guarda la plantilla del tipo de bus y la asigna a los buses de ese

@@ -7,6 +7,13 @@ import {
     guardarPlantillaIndividual,
     quitarPlantillaIndividual
 } from "./asientosService.js";
+import {
+    TIPOS_CELDA,
+    clavePosicion,
+    posicionesDePiso,
+    generarAsientos,
+    validarCeldasEspeciales
+} from "./celdasEspeciales.js";
 
 let cooperativaId = "";
 let busesCooperativa = [];
@@ -20,6 +27,12 @@ let alcance = "tipo";   // "tipo" o "bus"
 let busId = "";
 
 const seleccionados = new Set();
+
+// Celdas marcadas como baño en cada piso ("fila-columna").
+const banos = { 1: new Set(), 2: new Set() };
+
+// Qué hace tocar una celda de la vista previa: "prueba" o "bano".
+let modoMapa = "prueba";
 
 const formulario = document.getElementById("formPlantilla");
 const controles = document.getElementById("configuracion");
@@ -49,6 +62,10 @@ const grupoBus = document.getElementById("grupoBus");
 const selectorBus = document.getElementById("busObjetivo");
 const botonQuitar = document.getElementById("quitarIndividual");
 const radiosAlcance = document.querySelectorAll('input[name="alcance"]');
+
+const grupoModoMapa = document.getElementById("grupoModoMapa");
+const ayudaMapa = document.getElementById("ayudaMapa");
+const textoAyudaPrueba = ayudaMapa.textContent.trim().replace(/\s+/g, " ");
 
 // Utilidades.
 
@@ -105,6 +122,32 @@ function leerPiso(numero) {
         columnas: Number(campo("columnas", numero).value),
         central: campo("central", numero).checked
     };
+}
+
+function tieneBano(numero) {
+    return campo("banoSi", numero).checked;
+}
+
+// Celdas de baño del piso que existen en la distribución actual del formulario.
+function banosDePiso(piso) {
+    if (!tieneBano(piso.numero)) return [];
+
+    const posiciones = new Set(
+        posicionesDePiso({
+            cantidad: piso.cantidad,
+            filas: piso.filas,
+            columnas: piso.columnas,
+            ultima_fila_5: piso.central
+        }).map(p => clavePosicion(p.fila, p.columna))
+    );
+
+    return [...banos[piso.numero]]
+        .filter(clave => posiciones.has(clave))
+        .map(function (clave) {
+            const [fila, columna] = clave.split("-").map(Number);
+            return { fila, columna, tipo: "bano" };
+        })
+        .sort((a, b) => a.fila - b.fila || a.columna - b.columna);
 }
 
 // Con la última fila de 5 asientos: filas de 4 y una última de 5,
@@ -170,8 +213,9 @@ function validarCapacidadTotal() {
         });
 
         if (!hayError && cantidadesValidas) {
+            // El baño no cuenta como asiento.
             const total = datos.reduce(
-                (suma, piso) => suma + piso.cantidad,
+                (suma, piso) => suma + piso.cantidad - banosDePiso(piso).length,
                 0
             );
 
@@ -204,10 +248,15 @@ function actualizarTotal() {
         return enteroEnRango(piso.cantidad, 1, 60);
     });
 
+    const celdasBano = datos.reduce(
+        (suma, piso) => suma + banosDePiso(piso).length,
+        0
+    );
+
     const total = datos.reduce(
         (suma, piso) => suma + piso.cantidad,
         0
-    );
+    ) - celdasBano;
 
     const minimo = datos.length === 2 ? 40 : 1;
 
@@ -231,7 +280,13 @@ function actualizarTotal() {
         totalConfigurado.textContent = problema;
     } else {
         totalConfigurado.textContent =
-            "Total del bus: " + total + " asientos. " +
+            "Total del bus: " + total + " asientos" +
+            (
+                celdasBano
+                    ? " (sin contar " + celdasBano +
+                      (celdasBano === 1 ? " celda de baño). " : " celdas de baño). ")
+                    : ". "
+            ) +
             (
                 datos.length === 2
                     ? "Los dos pisos deben sumar entre 40 y 60."
@@ -487,9 +542,20 @@ function aplicarCampos(plantilla) {
         const columnas = campo("columnas", numero);
         const central = campo("central", numero);
 
+        // La cantidad son las celdas del piso: asientos + baño.
+        const especiales = piso?.celdas_especiales ?? [];
+
         cantidad.value = piso
-            ? String(piso.asientos.length)
+            ? String(piso.asientos.length + especiales.length)
             : cantidad.defaultValue;
+
+        banos[numero] = new Set(
+            especiales
+                .filter(c => c.tipo === "bano")
+                .map(c => clavePosicion(c.fila, c.columna))
+        );
+
+        campo(banos[numero].size ? "banoSi" : "banoNo", numero).checked = true;
 
         filas.value = piso ? String(piso.filas) : filas.defaultValue;
 
@@ -592,6 +658,124 @@ function cambiarNumeroPisos() {
     if (usaDosPisos) {
         ajustarPiso(2);
     }
+
+    actualizarModoMapa();
+}
+
+// Baño: "¿Este bus tiene baño?" de cada piso y el modo de la vista previa.
+
+function actualizarModoMapa() {
+    const pisos = Number(numeroPisos.value);
+    const hayBano = [1, 2].some(n => n <= pisos && tieneBano(n));
+
+    if (!hayBano) modoMapa = "prueba";
+
+    grupoModoMapa.hidden = !hayBano;
+
+    grupoModoMapa.querySelectorAll("button").forEach(function (boton) {
+        boton.setAttribute("aria-pressed", String(boton.dataset.modo === modoMapa));
+    });
+
+    ayudaMapa.textContent = modoMapa === "bano"
+        ? "Toca un asiento para convertirlo en baño, o toca un baño para " +
+          "volver a hacerlo asiento. Los números de los asientos se ajustan solos."
+        : textoAyudaPrueba;
+
+    mapaPlantilla
+        .querySelectorAll(".plantilla-bano")
+        .forEach(function (boton) {
+            boton.setAttribute("aria-disabled", String(modoMapa !== "bano"));
+        });
+}
+
+function cambiarModoMapa(modo) {
+    modoMapa = modo;
+    actualizarModoMapa();
+}
+
+// Vuelve a numerar los asientos de la vista previa con los baños actuales.
+// Devuelve false (sin cambiar la vista previa) si la distribución no es válida.
+function regenerarVistaPrevia() {
+    if (!configuracionActual) return true;
+
+    try {
+        const pisos = crearPisos(
+            Array.from(
+                { length: Number(numeroPisos.value) },
+                (_, indice) => leerPiso(indice + 1)
+            )
+        );
+
+        const vista = mapaPlantilla.dataset.vista;
+
+        configuracionActual.pisos = pisos;
+        configuracionActual.numero_pisos = pisos.length;
+        configuracionActual.total_asientos = pisos.reduce(
+            (suma, piso) => suma + piso.asientos.length,
+            0
+        );
+
+        seleccionados.clear();
+        mostrarConfiguracion();
+
+        if (vista) mostrarPiso(vista);
+
+        return true;
+    } catch (error) {
+        mostrarMensaje(error.message, "warning");
+        return false;
+    }
+}
+
+function cambiarBano(numero) {
+    if (tieneBano(numero)) {
+        modoMapa = "bano";
+    } else {
+        banos[numero].clear();
+    }
+
+    actualizarTotal();
+
+    if (configuracionActual && !regenerarVistaPrevia()) {
+        limpiarResumen();
+    }
+
+    actualizarModoMapa();
+}
+
+function alternarBano(numeroPiso, fila, columna) {
+    if (!tieneBano(numeroPiso)) {
+        mostrarMensaje(
+            "Para marcar el baño del piso " + numeroPiso + ", elige «Sí» en " +
+            "«¿Este bus tiene baño en el piso " + numeroPiso + "?».",
+            "warning"
+        );
+
+        return;
+    }
+
+    const clave = clavePosicion(fila, columna);
+    const celdas = banos[numeroPiso];
+    const quitar = celdas.has(clave);
+
+    if (quitar) celdas.delete(clave);
+    else celdas.add(clave);
+
+    if (!regenerarVistaPrevia()) {
+        // Se deshace el cambio: la vista previa sigue como estaba.
+        if (quitar) celdas.add(clave);
+        else celdas.delete(clave);
+
+        return;
+    }
+
+    mensaje.classList.add("d-none");
+    actualizarTotal();
+
+    mapaPlantilla.querySelector(
+        '[data-piso="' + numeroPiso + '"][data-fila="' + fila +
+        '"][data-columna="' + columna + '"]'
+    )?.focus();
 }
 
 // Cooperativa, tipo de bus y bus.
@@ -918,6 +1102,10 @@ function actualizarTextoResumen() {
         configuracionActual.numero_pisos +
         (configuracionActual.numero_pisos === 1 ? " piso, " : " pisos, ") +
         configuracionActual.total_asientos + " asientos en total. " +
+        configuracionActual.pisos
+            .filter(p => p.celdas_especiales.length)
+            .map(p => "Baño en el piso " + p.numero + ". ")
+            .join("") +
         (
             esBus
                 ? "Plantilla propia de este bus."
@@ -934,6 +1122,7 @@ function mostrarConfiguracion() {
 
     actualizarTextoResumen();
     dibujarVistaPrevia();
+    actualizarModoMapa();
     actualizarContador();
 
     resumen.classList.remove("d-none");
@@ -970,8 +1159,25 @@ function crearPisos(datos) {
         }
     });
 
-    const total = datos.reduce(
-        (suma, piso) => suma + piso.cantidad,
+    // Pisos con sus celdas de baño (cada celda de baño deja de ser asiento).
+    const distribucion = datos.map(function (piso) {
+        return {
+            cantidad: piso.cantidad,
+            filas: piso.filas,
+            columnas: piso.columnas,
+            ultima_fila_5: piso.central,
+            celdas_especiales: banosDePiso(piso)
+        };
+    });
+
+    distribucion.forEach(function (piso, indice) {
+        const error = validarCeldasEspeciales(piso, indice + 1);
+
+        if (error) throw new RangeError(error);
+    });
+
+    const total = distribucion.reduce(
+        (suma, piso) => suma + piso.cantidad - piso.celdas_especiales.length,
         0
     );
 
@@ -980,46 +1186,24 @@ function crearPisos(datos) {
     if (!enteroEnRango(total, minimo, 60)) {
         throw new RangeError(
             datos.length === 2
-                ? "Los dos pisos deben sumar entre 40 y 60 asientos."
+                ? "Los dos pisos deben sumar entre 40 y 60 asientos " +
+                  "(el baño no cuenta). Ahora suman " + total + "."
                 : "El bus debe tener entre 1 y 60 asientos."
         );
     }
 
-    let numeroSiguiente = 1;
+    // Asientos numerados en orden, saltando el baño.
+    const asientosPorPiso = generarAsientos(distribucion);
 
-    return datos.map(function (piso, indicePiso) {
-        const numeroPiso = indicePiso + 1;
-
-        const asientos = Array.from(
-            { length: piso.cantidad },
-            function (_, indice) {
-                // La última fila de 5 asientos ocupa también el hueco
-                // del pasillo: columnas 1 a 5.
-                const enFilaDeCinco =
-                    piso.central && indice >= (piso.filas - 1) * 4;
-
-                return {
-                    numero: numeroSiguiente++,
-                    piso: numeroPiso,
-                    fila: enFilaDeCinco
-                        ? piso.filas
-                        : Math.floor(indice / piso.columnas) + 1,
-                    columna: enFilaDeCinco
-                        ? indice - (piso.filas - 1) * 4 + 1
-                        : indice % piso.columnas + 1,
-                    tipo: datos.length === 2 && numeroPiso === 1
-                        ? "vip"
-                        : "normal"
-                };
-            }
-        );
-
+    return distribucion.map(function (piso, indice) {
         return {
-            numero: numeroPiso,
+            numero: indice + 1,
             filas: piso.filas,
             columnas: piso.columnas,
-            ultima_fila_5: piso.central,
-            asientos
+            ultima_fila_5: piso.ultima_fila_5,
+            tiene_bano: tieneBano(indice + 1),
+            celdas_especiales: piso.celdas_especiales,
+            asientos: asientosPorPiso[indice]
         };
     });
 }
@@ -1221,6 +1405,8 @@ function crearBotonAsiento(asiento, piso) {
 
     boton.dataset.numero = String(asiento.numero);
     boton.dataset.piso = String(piso.numero);
+    boton.dataset.fila = String(asiento.fila);
+    boton.dataset.columna = String(asiento.columna);
 
     etiqueta.textContent = "Asiento";
     numero.textContent = String(asiento.numero);
@@ -1229,7 +1415,48 @@ function crearBotonAsiento(asiento, piso) {
     actualizarBoton(boton);
 
     boton.addEventListener("click", function () {
-        seleccionarAsiento(boton);
+        if (modoMapa === "bano") {
+            alternarBano(piso.numero, asiento.fila, asiento.columna);
+        } else {
+            seleccionarAsiento(boton);
+        }
+    });
+
+    return boton;
+}
+
+// Celda de baño: no tiene número ni se puede seleccionar. En el modo
+// "Marcar baño" se toca para volver a convertirla en asiento.
+function crearBotonBano(celda, piso) {
+    const boton = document.createElement("button");
+    const etiqueta = document.createElement("small");
+    const icono = document.createElement("strong");
+    const tipo = TIPOS_CELDA[celda.tipo];
+
+    boton.type = "button";
+    boton.className = "plantilla-asiento plantilla-bano";
+
+    boton.dataset.piso = String(piso.numero);
+    boton.dataset.fila = String(celda.fila);
+    boton.dataset.columna = String(celda.columna);
+
+    boton.setAttribute("aria-disabled", String(modoMapa !== "bano"));
+    boton.setAttribute(
+        "aria-label",
+        tipo.nombre + ", piso " + piso.numero + ", fila " + celda.fila +
+        ", columna " + celda.columna + ". No es un asiento."
+    );
+
+    etiqueta.textContent = tipo.nombre;
+    icono.textContent = tipo.icono;
+    icono.setAttribute("aria-hidden", "true");
+
+    boton.append(etiqueta, icono);
+
+    boton.addEventListener("click", function () {
+        if (modoMapa === "bano") {
+            alternarBano(piso.numero, celda.fila, celda.columna);
+        }
     });
 
     return boton;
@@ -1265,7 +1492,12 @@ function crearMapaPiso(piso) {
         piso.asientos.length + " asientos: del " +
         piso.asientos[0].numero + " al " +
         piso.asientos[piso.asientos.length - 1].numero + "." +
-        (piso.ultima_fila_5 ? " Última fila de 5 asientos." : "");
+        (piso.ultima_fila_5 ? " Última fila de 5 asientos." : "") +
+        (piso.celdas_especiales.length
+            ? " Baño: " + piso.celdas_especiales
+                .map(c => "fila " + c.fila + ", columna " + c.columna)
+                .join("; ") + "."
+            : "");
 
     contador.id = "seleccionPiso" + piso.numero;
     contador.className = "small mb-3";
@@ -1316,6 +1548,12 @@ function crearMapaPiso(piso) {
                 celdas[ranuraDe(piso, asiento)] = asiento;
             });
 
+        piso.celdas_especiales
+            .filter(celda => celda.fila === fila)
+            .forEach(function (celda) {
+                celdas[ranuraDe(piso, celda)] = { especial: celda };
+            });
+
         filaVisual.className = "plantilla-fila";
         filaVisual.style.gridTemplateColumns = anchos;
 
@@ -1327,6 +1565,11 @@ function crearMapaPiso(piso) {
         );
 
         celdas.forEach(function (asiento, indice) {
+            if (asiento?.especial) {
+                filaVisual.appendChild(crearBotonBano(asiento.especial, piso));
+                return;
+            }
+
             if (asiento) {
                 filaVisual.appendChild(crearBotonAsiento(asiento, piso));
                 return;
@@ -1476,6 +1719,23 @@ async function guardarPlantillaActual() {
     validarCapacidadTotal();
 
     if (!formulario.reportValidity()) return;
+
+    // Si dijo que tiene baño, debe marcar dónde va.
+    const pisoSinBano = configuracionActual.pisos.find(
+        piso => tieneBano(piso.numero) && !piso.celdas_especiales.length
+    );
+
+    if (pisoSinBano) {
+        cambiarModoMapa("bano");
+        mostrarMensaje(
+            "Marca en la vista previa dónde va el baño del piso " +
+            pisoSinBano.numero + ", o elige «No» en «¿Este bus tiene baño " +
+            "en el piso " + pisoSinBano.numero + "?».",
+            "warning"
+        );
+
+        return;
+    }
 
     const configuracion = structuredClone(configuracionActual);
     const versionEsperada = plantillaCargada?.actualizado_en ?? null;
@@ -1710,6 +1970,18 @@ numeroPisos.addEventListener("change", cambiarNumeroPisos);
 
     campo("central", numero).addEventListener("change", function () {
         ajustarPiso(numero, "central");
+    });
+
+    ["banoNo", "banoSi"].forEach(function (id) {
+        campo(id, numero).addEventListener("change", function () {
+            cambiarBano(numero);
+        });
+    });
+});
+
+grupoModoMapa.querySelectorAll("button").forEach(function (boton) {
+    boton.addEventListener("click", function () {
+        cambiarModoMapa(boton.dataset.modo);
     });
 });
 
