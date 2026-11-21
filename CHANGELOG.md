@@ -6,6 +6,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.1.2] - 2026-11-21
+
+### Corregido
+- Placa de bus: se valida el formato ecuatoriano ABC-1234 (3 letras, guion y
+  4 números) al registrar un bus y en el registro por lote. Se pasa a
+  mayúsculas, el guion se agrega solo y el campo admite máximo 8 caracteres.
+- La base de datos rechaza placas con otro formato y normaliza las ya
+  guardadas, para que el mismo bus no quede registrado dos veces ni se asigne
+  a dos frecuencias el mismo día.
+
 ## [0.1.1] - 2026-11-04
 Corrección publicada en `main` con la rama `hotfix/ajustes-finales` (PR #84).
 
@@ -96,7 +106,8 @@ Beta del Sprint 1: la aplicación es funcional, pero falta el módulo del chofer
 - Carpeta `docs/capturas/jira/`.
 - Etiquetas sin uso: `accessibility`, `good first issue`, `help wanted` y `question`.
 
-[Sin publicar]: https://github.com/kmoyolema3929/MoviPass/compare/v0.1.1...HEAD
+[Sin publicar]: https://github.com/kmoyolema3929/MoviPass/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/kmoyolema3929/MoviPass/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/kmoyolema3929/MoviPass/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kmoyolema3929/MoviPass/compare/v0.1.0-beta.1...v0.1.0
 [0.1.0-beta.1]: https://github.com/kmoyolema3929/MoviPass/releases/tag/v0.1.0-beta.1
