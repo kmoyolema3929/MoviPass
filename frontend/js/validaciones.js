@@ -20,6 +20,62 @@ export function cedulaValida(cedula) {
     return (10 - (suma % 10)) % 10 === parseInt(cedula[9], 10);
 }
 
+/**
+ * Placa ecuatoriana: 3 letras y 4 números, guardada como ABC-1234.
+ * Quita espacios y guiones y pasa a mayúsculas, para que "abc1234",
+ * "ABC 1234" y "ABC-1234" sean la misma placa.
+ * Devuelve { placa, valida }; si no es válida, placa es el texto limpio.
+ */
+export function normalizarPlaca(texto) {
+    const limpio = String(texto ?? '').replace(/[\s-]/g, '').toUpperCase();
+    const valida = /^[A-Z]{3}[0-9]{4}$/.test(limpio);
+
+    return {
+        placa: valida ? `${limpio.slice(0, 3)}-${limpio.slice(3)}` : limpio,
+        valida
+    };
+}
+
+/**
+ * Formato de la placa mientras se escribe: mayúsculas, solo letras y números,
+ * guion automático después de los 3 primeros caracteres y máximo 8 (ABC-1234).
+ * "abc1234" -> "ABC-1234"; "abc-" -> "ABC-" (respeta el guion escrito a mano).
+ */
+export function formatearPlacaEscrita(texto) {
+    const limpio = String(texto ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    if (limpio.length > 3) return `${limpio.slice(0, 3)}-${limpio.slice(3)}`.slice(0, 8);
+
+    return limpio.length === 3 && String(texto).endsWith('-') ? `${limpio}-` : limpio;
+}
+
+/** Placa pegada: se normaliza con normalizarPlaca() y se recorta a 8 caracteres. */
+export function formatearPlacaPegada(texto) {
+    const { placa, valida } = normalizarPlaca(texto);
+
+    return valida ? placa : formatearPlacaEscrita(placa);
+}
+
+/** Aplica el formato de placa a un campo mientras se escribe o se pega. */
+export function prepararCampoPlaca(campo) {
+    campo.addEventListener('input', function () {
+        const formateada = formatearPlacaEscrita(campo.value);
+        if (formateada !== campo.value) campo.value = formateada;
+    });
+
+    campo.addEventListener('paste', function (evento) {
+        const texto = evento.clipboardData?.getData('text') ?? '';
+
+        // Varias filas o columnas (Excel en el lote): lo maneja buses-lote.js
+        if (/[\t\n]/.test(texto.trim())) return;
+
+        // Sin esto, el navegador recortaría el texto a 8 caracteres antes de limpiarlo
+        evento.preventDefault();
+        campo.value = formatearPlacaPegada(texto);
+        campo.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+}
+
 /** Fecha local en formato YYYY-MM-DD (sin desfase por zona horaria). */
 export function fechaLocalISO(fecha = new Date()) {
     const y = fecha.getFullYear();

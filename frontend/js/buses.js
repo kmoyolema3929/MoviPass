@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 import { exigirRoles } from "./guardas.js";
 import { crearLote } from "./buses-lote.js";
+import { normalizarPlaca, prepararCampoPlaca } from "./validaciones.js";
 
 const columnas = "id, placa, chasis, carroceria, cooperativa_id, tipo_bus";
 
@@ -288,7 +289,9 @@ async function guardarBus(evento) {
 
     const idActual = busId.value;
 
-    placa.value = placa.value.trim().toUpperCase();
+    const placaNormalizada = normalizarPlaca(placa.value);
+
+    placa.value = placaNormalizada.placa;
     chasis.value = chasis.value.trim();
     carroceria.value = carroceria.value.trim();
 
@@ -298,9 +301,14 @@ async function guardarBus(evento) {
         return bus.placa === placa.value && bus.id !== idActual;
     });
 
-    if (placaDuplicada) {
+    if (!placaNormalizada.valida) {
+        placa.setCustomValidity("Formato de placa no válido. Usa 3 letras y 4 números, por ejemplo ABC-1234.");
+    } else if (placaDuplicada) {
         placa.setCustomValidity("Ya existe un bus con esta placa.");
     }
+
+    // El aviso junto al campo dice el motivo exacto
+    placa.nextElementSibling.textContent = placa.validationMessage;
 
     formulario.classList.add("was-validated");
 
@@ -367,6 +375,8 @@ botonNuevo.addEventListener("click", function () {
     prepararFormulario();
     modal.show();
 });
+
+prepararCampoPlaca(placa);
 
 placa.addEventListener("input", function () {
     placa.setCustomValidity("");
