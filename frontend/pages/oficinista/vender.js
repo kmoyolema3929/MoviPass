@@ -5,6 +5,8 @@ import { mostrarAlerta } from '../../js/alertas.js';
 import {
     cedulaValida, fechaLocalISO, sumarDias, formatearFecha, formatearHora, dinero
 } from '../../js/validaciones.js'; // <-- Ruta corregida
+import { obtenerCeldasEspecialesDeBus } from '../../js/asientosService.js';
+import { crearCeldaEspecial } from '../../js/celdasEspeciales.js';
 
 const MAX_ASIENTOS = 10;
 const DIAS_VISIBLES = 15;
@@ -25,6 +27,7 @@ let tipos = [];
 let viajes = [];
 let viaje = null;
 let asientos = [];
+let especiales = new Map(); // baño por piso: se muestra bloqueado
 let ocupados = new Set();
 let seleccionados = [];
 const datos = new Map();
@@ -162,6 +165,14 @@ async function elegirViaje(v) {
         if (error) throw error;
         asientos = data ?? [];
 
+        // El baño solo se dibuja; si no se puede leer, el mapa funciona sin él.
+        try {
+            especiales = await obtenerCeldasEspecialesDeBus(v.bus_id);
+        } catch (errorEspeciales) {
+            console.warn('No se pudo cargar el baño del bus:', errorEspeciales);
+            especiales = new Map();
+        }
+
         await actualizarOcupados();
         dibujarMapa();
         dibujarPasajeros();
@@ -234,10 +245,18 @@ function dibujarMapa() {
             return;
         }
 
-        const maxColumna = Math.max(...delPiso.map((a) => a.columna));
+        const especialesPiso = especiales.get(piso) ?? [];
+        const maxColumna = Math.max(
+            ...delPiso.map((a) => a.columna),
+            ...especialesPiso.map((c) => c.columna)
+        );
         const conPasillo = maxColumna === 4;
         const porPosicion = new Map(delPiso.map((a) => [`${a.fila}-${a.columna}`, a]));
-        const filas = [...new Set(delPiso.map((a) => a.fila))].sort((x, y) => x - y);
+        const especialPorPosicion = new Map(especialesPiso.map((c) => [`${c.fila}-${c.columna}`, c]));
+        const filas = [...new Set([
+            ...delPiso.map((a) => a.fila),
+            ...especialesPiso.map((c) => c.fila)
+        ])].sort((x, y) => x - y);
 
         const grid = document.createElement('div');
         grid.className = 'asientos-grid';
@@ -249,7 +268,12 @@ function dibujarMapa() {
                     grid.appendChild(document.createElement('div'));
                 }
                 const asiento = porPosicion.get(`${fila}-${col}`);
-                grid.appendChild(asiento ? crearBotonAsiento(asiento) : document.createElement('div'));
+                const especial = especialPorPosicion.get(`${fila}-${col}`);
+                grid.appendChild(
+                    asiento ? crearBotonAsiento(asiento)
+                        : especial ? crearCeldaEspecial(especial, 'asiento-bano')
+                        : document.createElement('div')
+                );
             }
         });
 

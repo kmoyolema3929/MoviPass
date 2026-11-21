@@ -53,6 +53,19 @@
       border-color: #dc3545;
       color: #dc3545;
     }
+    /* Baño: no es un asiento, siempre bloqueado */
+    .asiento-bano {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      border: 2px dashed #6c757d;
+      background: #e2e3e5;
+      font-size: 1.2rem;
+      cursor: not-allowed;
+    }
     .leyenda span {
       display: inline-block;
       width: 14px;
@@ -98,6 +111,7 @@
               <span style="border:2px solid #198754; background:#fff"></span>Libre
               <span style="background:#0d6efd; margin-left:10px"></span>Elegido
               <span style="background:#f8d7da; border:2px solid #dc3545; margin-left:10px"></span>Ocupado
+              <span style="background:#e2e3e5; border:2px dashed #6c757d; margin-left:10px"></span>🚻 Baño
             </div>
             <div id="mapaAsientos" role="group" aria-label="Mapa de asientos del bus"></div>
             <p class="small text-muted mb-0 text-center">Máximo 10 asientos por compra.</p>
