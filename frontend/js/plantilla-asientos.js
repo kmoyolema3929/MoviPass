@@ -1,10 +1,20 @@
-import { obtenerSesion, obtenerRol } from "./auth.js";
+import { exigirRoles } from "./guardas.js";
 import {
     obtenerCooperativasPermitidas,
     obtenerBusesDeCooperativa,
     obtenerPlantillasDeCooperativa,
-    guardarPlantillaDeTipo
+    guardarPlantillaDeTipo,
+    guardarPlantillaIndividual,
+    quitarPlantillaIndividual
 } from "./asientosService.js";
+import {
+    TIPOS_CELDA,
+    clavePosicion,
+    posicionesDePiso,
+    generarAsientos,
+    validarCeldasEspeciales
+} from "./celdasEspeciales.js";
+import { llenarCombo, ponerOpciones, vaciarCombo } from "./combos.js";
 
 let cooperativaId = "";
 let busesCooperativa = [];
@@ -14,8 +24,16 @@ let configuracionActual = null;
 let segundoPisoPreparado = false;
 let solicitudCooperativa = 0;
 let guardando = false;
+let alcance = "tipo";   // "tipo" o "bus"
+let busId = "";
 
 const seleccionados = new Set();
+
+// Celdas marcadas como baño en cada piso ("fila-columna").
+const banos = { 1: new Set(), 2: new Set() };
+
+// Qué hace tocar una celda de la vista previa: "prueba" o "bano".
+let modoMapa = "prueba";
 
 const formulario = document.getElementById("formPlantilla");
 const controles = document.getElementById("configuracion");
@@ -41,6 +59,15 @@ const botonGuardar = document.getElementById("guardarPlantilla");
 
 const listaGuardadas = document.getElementById("listaGuardadas");
 
+const grupoBus = document.getElementById("grupoBus");
+const selectorBus = document.getElementById("busObjetivo");
+const botonQuitar = document.getElementById("quitarIndividual");
+const radiosAlcance = document.querySelectorAll('input[name="alcance"]');
+
+const grupoModoMapa = document.getElementById("grupoModoMapa");
+const ayudaMapa = document.getElementById("ayudaMapa");
+const textoAyudaPrueba = ayudaMapa.textContent.trim().replace(/\s+/g, " ");
+
 // Utilidades.
 
 function mostrarMensaje(texto, tipo = "info") {
@@ -62,10 +89,30 @@ function campo(nombre, numero) {
     return document.getElementById(nombre + numero);
 }
 
+function tieneIndividual(bus) {
+    return plantillasCooperativa.some(p => p.bus_id === bus.id);
+}
+
+function plantillaDeTipo(tipo) {
+    return plantillasCooperativa.find(
+        p => !p.bus_id && claveTipo(p.tipo_bus) === claveTipo(tipo)
+    ) ?? null;
+}
+
+// Buses que usan la plantilla del tipo (sin plantilla propia).
 function busesDeTipo(clave) {
     return busesCooperativa.filter(function (bus) {
-        return claveTipo(bus.tipo_bus) === clave;
+        return claveTipo(bus.tipo_bus) === clave && !tieneIndividual(bus);
     });
+}
+
+function configuracionVigente() {
+    return Boolean(configuracionActual) &&
+        configuracionActual.cooperativa_id === cooperativaId &&
+        configuracionActual.alcance === alcance &&
+        configuracionActual.clave === claveTipo(campoTipo.value) &&
+        (alcance !== "bus" ||
+            (Boolean(busId) && configuracionActual.bus_id === busId));
 }
 
 function leerPiso(numero) {
@@ -76,6 +123,32 @@ function leerPiso(numero) {
         columnas: Number(campo("columnas", numero).value),
         central: campo("central", numero).checked
     };
+}
+
+function tieneBano(numero) {
+    return campo("banoSi", numero).checked;
+}
+
+// Celdas de baño del piso que existen en la distribución actual del formulario.
+function banosDePiso(piso) {
+    if (!tieneBano(piso.numero)) return [];
+
+    const posiciones = new Set(
+        posicionesDePiso({
+            cantidad: piso.cantidad,
+            filas: piso.filas,
+            columnas: piso.columnas,
+            ultima_fila_5: piso.central
+        }).map(p => clavePosicion(p.fila, p.columna))
+    );
+
+    return [...banos[piso.numero]]
+        .filter(clave => posiciones.has(clave))
+        .map(function (clave) {
+            const [fila, columna] = clave.split("-").map(Number);
+            return { fila, columna, tipo: "bano" };
+        })
+        .sort((a, b) => a.fila - b.fila || a.columna - b.columna);
 }
 
 // Con la última fila de 5 asientos: filas de 4 y una última de 5,
@@ -141,8 +214,9 @@ function validarCapacidadTotal() {
         });
 
         if (!hayError && cantidadesValidas) {
+            // El baño no cuenta como asiento.
             const total = datos.reduce(
-                (suma, piso) => suma + piso.cantidad,
+                (suma, piso) => suma + piso.cantidad - banosDePiso(piso).length,
                 0
             );
 
@@ -175,10 +249,15 @@ function actualizarTotal() {
         return enteroEnRango(piso.cantidad, 1, 60);
     });
 
+    const celdasBano = datos.reduce(
+        (suma, piso) => suma + banosDePiso(piso).length,
+        0
+    );
+
     const total = datos.reduce(
         (suma, piso) => suma + piso.cantidad,
         0
-    );
+    ) - celdasBano;
 
     const minimo = datos.length === 2 ? 40 : 1;
 
@@ -202,7 +281,13 @@ function actualizarTotal() {
         totalConfigurado.textContent = problema;
     } else {
         totalConfigurado.textContent =
-            "Total del bus: " + total + " asientos. " +
+            "Total del bus: " + total + " asientos" +
+            (
+                celdasBano
+                    ? " (sin contar " + celdasBano +
+                      (celdasBano === 1 ? " celda de baño). " : " celdas de baño). ")
+                    : ". "
+            ) +
             (
                 datos.length === 2
                     ? "Los dos pisos deben sumar entre 40 y 60."
@@ -217,9 +302,13 @@ function actualizarBotonGuardar() {
     botonGuardar.disabled =
         guardando ||
         controles.disabled ||
-        !configuracionActual ||
-        configuracionActual.cooperativa_id !== cooperativaId ||
-        configuracionActual.clave !== claveTipo(campoTipo.value);
+        !configuracionVigente();
+
+    botonQuitar.hidden = !(
+        alcance === "bus" &&
+        busId &&
+        plantillasCooperativa.some(p => p.bus_id === busId)
+    );
 }
 
 function limpiarResumen() {
@@ -236,6 +325,23 @@ function limpiarResumen() {
 }
 
 function actualizarInfoBuses() {
+    if (alcance === "bus") {
+        const bus = busesCooperativa.find(b => b.id === busId);
+
+        infoBuses.className = "alert alert-secondary";
+
+        infoBuses.textContent = !bus
+            ? "Elige el bus que tendrá su propia plantilla."
+            : tieneIndividual(bus)
+                ? "El bus " + bus.placa + " usa una plantilla propia. " +
+                  "Los cambios de la plantilla del tipo «" + bus.tipo_bus +
+                  "» no le afectan."
+                : "El bus " + bus.placa + " usa hoy la plantilla de su tipo. " +
+                  "Al guardar tendrá una plantilla propia.";
+
+        return;
+    }
+
     const tipo = campoTipo.value.trim();
 
     if (!cooperativaId || !tipo) {
@@ -290,7 +396,15 @@ function renderizarGuardadas() {
         grupo.className = "list-group";
 
         plantillasCooperativa.forEach(function (plantilla) {
-            const buses = busesDeTipo(claveTipo(plantilla.tipo_bus)).length;
+            const individual = Boolean(plantilla.bus_id);
+
+            const bus = individual
+                ? busesCooperativa.find(b => b.id === plantilla.bus_id)
+                : null;
+
+            const buses = individual
+                ? 1
+                : busesDeTipo(claveTipo(plantilla.tipo_bus)).length;
 
             const fila = document.createElement("div");
             const texto = document.createElement("div");
@@ -302,7 +416,10 @@ function renderizarGuardadas() {
                 "list-group-item d-flex flex-wrap " +
                 "justify-content-between align-items-center gap-2";
 
-            titulo.textContent = plantilla.tipo_bus;
+            titulo.textContent = individual
+                ? "Bus " + (bus?.placa ?? "") + " · " +
+                  plantilla.tipo_bus + " (propia)"
+                : plantilla.tipo_bus + " (por tipo)";
 
             detalle.className = "small text-muted";
 
@@ -319,9 +436,7 @@ function renderizarGuardadas() {
             editar.textContent = "Ver / editar";
 
             editar.addEventListener("click", function () {
-                campoTipo.value = plantilla.tipo_bus;
-                cambiarTipo();
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                abrirPlantilla(plantilla);
             });
 
             fila.append(texto, editar);
@@ -331,14 +446,19 @@ function renderizarGuardadas() {
         listaGuardadas.appendChild(grupo);
     }
 
-    // Avisa de los tipos de bus que todavía no tienen plantilla.
+    // Tipos con buses que aún no tienen plantilla (ni del tipo ni propia).
     const conPlantilla = new Set(
-        plantillasCooperativa.map(p => claveTipo(p.tipo_bus))
+        plantillasCooperativa
+            .filter(p => !p.bus_id)
+            .map(p => claveTipo(p.tipo_bus))
     );
 
     const sinPlantilla = [...new Set(
         busesCooperativa
-            .filter(b => !conPlantilla.has(claveTipo(b.tipo_bus)))
+            .filter(b =>
+                !conPlantilla.has(claveTipo(b.tipo_bus)) &&
+                !tieneIndividual(b)
+            )
             .map(b => String(b.tipo_bus).trim())
     )];
 
@@ -352,6 +472,35 @@ function renderizarGuardadas() {
             sinPlantilla.join(", ") + ".";
 
         listaGuardadas.appendChild(aviso);
+    }
+}
+
+function llenarSelectorBuses() {
+    // El bus depende de la cooperativa: vacío y deshabilitado hasta elegirla.
+    if (!cooperativaId) {
+        vaciarCombo(selectorBus, "Primero elige una cooperativa");
+        return;
+    }
+
+    // No se elige solo aquí: elegirBusUnico() lo hace cuando corresponde,
+    // para no pisar el formulario en las recargas internas.
+    ponerOpciones(selectorBus, busesCooperativa, {
+        valor: bus => bus.id,
+        texto: bus =>
+            bus.placa + " · " + bus.tipo_bus +
+            (tieneIndividual(bus) ? " (plantilla propia)" : ""),
+        inicial: "Selecciona un bus...",
+        porDefecto: busId,
+        unica: false,
+        vacio: "Esta cooperativa no tiene buses"
+    });
+}
+
+// Si se configura un bus y la cooperativa tiene uno solo, se elige solo.
+function elegirBusUnico() {
+    if (alcance === "bus" && !busId && busesCooperativa.length === 1) {
+        selectorBus.value = busesCooperativa[0].id;
+        cambiarBus();
     }
 }
 
@@ -379,6 +528,7 @@ function llenarSugerencias() {
         })
     );
 
+    llenarSelectorBuses();
     renderizarGuardadas();
 }
 
@@ -397,9 +547,20 @@ function aplicarCampos(plantilla) {
         const columnas = campo("columnas", numero);
         const central = campo("central", numero);
 
+        // La cantidad son las celdas del piso: asientos + baño.
+        const especiales = piso?.celdas_especiales ?? [];
+
         cantidad.value = piso
-            ? String(piso.asientos.length)
+            ? String(piso.asientos.length + especiales.length)
             : cantidad.defaultValue;
+
+        banos[numero] = new Set(
+            especiales
+                .filter(c => c.tipo === "bano")
+                .map(c => clavePosicion(c.fila, c.columna))
+        );
+
+        campo(banos[numero].size ? "banoSi" : "banoNo", numero).checked = true;
 
         filas.value = piso ? String(piso.filas) : filas.defaultValue;
 
@@ -502,27 +663,127 @@ function cambiarNumeroPisos() {
     if (usaDosPisos) {
         ajustarPiso(2);
     }
+
+    actualizarModoMapa();
 }
 
-// Cooperativa y tipo de bus.
+// Baño: "¿Este bus tiene baño?" de cada piso y el modo de la vista previa.
 
-function llenarSelectorCooperativas(cooperativas) {
-    const opcionInicial = document.createElement("option");
+function actualizarModoMapa() {
+    const pisos = Number(numeroPisos.value);
+    const hayBano = [1, 2].some(n => n <= pisos && tieneBano(n));
 
-    opcionInicial.value = "";
-    opcionInicial.textContent = "Selecciona una cooperativa";
+    if (!hayBano) modoMapa = "prueba";
 
-    selectorCooperativa.replaceChildren(opcionInicial);
+    grupoModoMapa.hidden = !hayBano;
 
-    cooperativas.forEach(function (cooperativa) {
-        const opcion = document.createElement("option");
-
-        opcion.value = cooperativa.id;
-        opcion.textContent = cooperativa.nombre;
-
-        selectorCooperativa.appendChild(opcion);
+    grupoModoMapa.querySelectorAll("button").forEach(function (boton) {
+        boton.setAttribute("aria-pressed", String(boton.dataset.modo === modoMapa));
     });
+
+    ayudaMapa.textContent = modoMapa === "bano"
+        ? "Toca un asiento para convertirlo en baño, o toca un baño para " +
+          "volver a hacerlo asiento. Los números de los asientos se ajustan solos."
+        : textoAyudaPrueba;
+
+    mapaPlantilla
+        .querySelectorAll(".plantilla-bano")
+        .forEach(function (boton) {
+            boton.setAttribute("aria-disabled", String(modoMapa !== "bano"));
+        });
 }
+
+function cambiarModoMapa(modo) {
+    modoMapa = modo;
+    actualizarModoMapa();
+}
+
+// Vuelve a numerar los asientos de la vista previa con los baños actuales.
+// Devuelve false (sin cambiar la vista previa) si la distribución no es válida.
+function regenerarVistaPrevia() {
+    if (!configuracionActual) return true;
+
+    try {
+        const pisos = crearPisos(
+            Array.from(
+                { length: Number(numeroPisos.value) },
+                (_, indice) => leerPiso(indice + 1)
+            )
+        );
+
+        const vista = mapaPlantilla.dataset.vista;
+
+        configuracionActual.pisos = pisos;
+        configuracionActual.numero_pisos = pisos.length;
+        configuracionActual.total_asientos = pisos.reduce(
+            (suma, piso) => suma + piso.asientos.length,
+            0
+        );
+
+        seleccionados.clear();
+        mostrarConfiguracion();
+
+        if (vista) mostrarPiso(vista);
+
+        return true;
+    } catch (error) {
+        mostrarMensaje(error.message, "warning");
+        return false;
+    }
+}
+
+function cambiarBano(numero) {
+    if (tieneBano(numero)) {
+        modoMapa = "bano";
+    } else {
+        banos[numero].clear();
+    }
+
+    actualizarTotal();
+
+    if (configuracionActual && !regenerarVistaPrevia()) {
+        limpiarResumen();
+    }
+
+    actualizarModoMapa();
+}
+
+function alternarBano(numeroPiso, fila, columna) {
+    if (!tieneBano(numeroPiso)) {
+        mostrarMensaje(
+            "Para marcar el baño del piso " + numeroPiso + ", elige «Sí» en " +
+            "«¿Este bus tiene baño en el piso " + numeroPiso + "?».",
+            "warning"
+        );
+
+        return;
+    }
+
+    const clave = clavePosicion(fila, columna);
+    const celdas = banos[numeroPiso];
+    const quitar = celdas.has(clave);
+
+    if (quitar) celdas.delete(clave);
+    else celdas.add(clave);
+
+    if (!regenerarVistaPrevia()) {
+        // Se deshace el cambio: la vista previa sigue como estaba.
+        if (quitar) celdas.add(clave);
+        else celdas.delete(clave);
+
+        return;
+    }
+
+    mensaje.classList.add("d-none");
+    actualizarTotal();
+
+    mapaPlantilla.querySelector(
+        '[data-piso="' + numeroPiso + '"][data-fila="' + fila +
+        '"][data-columna="' + columna + '"]'
+    )?.focus();
+}
+
+// Cooperativa, tipo de bus y bus.
 
 async function cambiarCooperativa() {
     const solicitud = ++solicitudCooperativa;
@@ -533,6 +794,7 @@ async function cambiarCooperativa() {
     plantillaCargada = null;
 
     campoTipo.value = "";
+    busId = "";
     listaTipos.replaceChildren();
 
     limpiarResumen();
@@ -541,9 +803,12 @@ async function cambiarCooperativa() {
     renderizarGuardadas();
 
     if (!cooperativaId) {
+        llenarSelectorBuses();
         mostrarMensaje("Selecciona una cooperativa para empezar.");
         return;
     }
+
+    vaciarCombo(selectorBus, "Cargando...");
 
     controles.disabled = true;
     formulario.setAttribute("aria-busy", "true");
@@ -566,16 +831,24 @@ async function cambiarCooperativa() {
 
         mostrarMensaje(
             buses.length
-                ? "Escribe o elige el tipo de bus que quieres configurar."
+                ? (
+                    alcance === "bus"
+                        ? "Elige el bus que tendrá su propia plantilla."
+                        : "Escribe o elige el tipo de bus que quieres configurar."
+                )
                 : "Esta cooperativa todavía no tiene buses. " +
                   "Puedes crear la plantilla de un tipo y se asignará " +
                   "a los buses que registres con ese tipo.",
             buses.length ? "info" : "warning"
         );
+
+        elegirBusUnico();
     } catch (error) {
         if (solicitud !== solicitudCooperativa) return;
 
         console.error("No se pudieron cargar los datos:", error);
+
+        vaciarCombo(selectorBus, "No se pudieron cargar los buses");
 
         mostrarMensaje(
             "No se pudieron cargar los datos de la cooperativa. " +
@@ -596,11 +869,7 @@ function cambiarTipo() {
 
     const tipo = campoTipo.value.trim();
 
-    plantillaCargada = tipo
-        ? plantillasCooperativa.find(
-            plantilla => claveTipo(plantilla.tipo_bus) === claveTipo(tipo)
-        ) ?? null
-        : null;
+    plantillaCargada = tipo ? plantillaDeTipo(tipo) : null;
 
     aplicarCampos(plantillaCargada);
     actualizarInfoBuses();
@@ -621,6 +890,8 @@ function cambiarTipo() {
 
     configuracionActual = structuredClone({
         cooperativa_id: cooperativaId,
+        alcance: "tipo",
+        bus_id: null,
         tipo_bus: plantillaCargada.tipo_bus,
         clave: claveTipo(plantillaCargada.tipo_bus),
         numero_pisos: plantillaCargada.numero_pisos,
@@ -636,19 +907,207 @@ function cambiarTipo() {
     );
 }
 
+function cambiarAlcance() {
+    alcance = document.querySelector('input[name="alcance"]:checked').value;
+    busId = "";
+
+    grupoBus.hidden = alcance !== "bus";
+    selectorBus.required = alcance === "bus";
+    selectorBus.value = "";
+
+    campoTipo.readOnly = alcance === "bus";
+    campoTipo.value = "";
+
+    plantillaCargada = null;
+
+    limpiarResumen();
+    aplicarCampos(null);
+    actualizarInfoBuses();
+
+    mostrarMensaje(
+        alcance === "bus"
+            ? "Elige el bus que tendrá su propia plantilla."
+            : "Escribe o elige el tipo de bus que quieres configurar."
+    );
+
+    elegirBusUnico();
+}
+
+function cambiarBus() {
+    busId = selectorBus.value;
+
+    limpiarResumen();
+
+    const bus = busesCooperativa.find(b => b.id === busId);
+
+    if (!bus) {
+        busId = "";
+        campoTipo.value = "";
+        plantillaCargada = null;
+
+        aplicarCampos(null);
+        actualizarInfoBuses();
+        mostrarMensaje("Elige el bus que tendrá su propia plantilla.");
+
+        return;
+    }
+
+    campoTipo.value = bus.tipo_bus;
+
+    const propia = plantillasCooperativa.find(p => p.bus_id === bus.id) ?? null;
+
+    // Sin plantilla propia, el formulario parte de la del tipo como base,
+    // pero no hay versión que comparar al guardar.
+    plantillaCargada = propia;
+
+    aplicarCampos(propia ?? plantillaDeTipo(bus.tipo_bus));
+    actualizarInfoBuses();
+
+    if (!propia) {
+        mostrarMensaje(
+            "El bus " + bus.placa + " usa la plantilla de su tipo. " +
+            "Ajusta los asientos y genera la vista previa para crearle " +
+            "una plantilla propia."
+        );
+
+        return;
+    }
+
+    configuracionActual = structuredClone({
+        cooperativa_id: cooperativaId,
+        alcance: "bus",
+        bus_id: bus.id,
+        tipo_bus: propia.tipo_bus,
+        clave: claveTipo(propia.tipo_bus),
+        numero_pisos: propia.numero_pisos,
+        total_asientos: propia.total_asientos,
+        pisos: propia.pisos
+    });
+
+    mostrarConfiguracion();
+
+    mostrarMensaje(
+        "Plantilla propia cargada para el bus " + bus.placa + "."
+    );
+}
+
+function abrirPlantilla(plantilla) {
+    const alBus = Boolean(plantilla.bus_id);
+
+    document.getElementById(
+        alBus ? "alcanceBus" : "alcanceTipo"
+    ).checked = true;
+
+    cambiarAlcance();
+
+    if (alBus) {
+        selectorBus.value = plantilla.bus_id;
+        cambiarBus();
+    } else {
+        campoTipo.value = plantilla.tipo_bus;
+        cambiarTipo();
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function quitarPropia() {
+    if (guardando || controles.disabled || alcance !== "bus" || !busId) {
+        return;
+    }
+
+    const bus = busesCooperativa.find(b => b.id === busId);
+
+    if (!bus) return;
+
+    const confirmado = window.confirm(
+        "¿Quitar la plantilla propia del bus " + bus.placa + "? " +
+        "Volverá a usar la plantilla de su tipo «" + bus.tipo_bus + "»."
+    );
+
+    if (!confirmado) return;
+
+    guardando = true;
+    controles.disabled = true;
+
+    formulario.setAttribute("aria-busy", "true");
+    actualizarBotonGuardar();
+    mostrarMensaje("Quitando la plantilla propia...");
+
+    try {
+        await quitarPlantillaIndividual(cooperativaId, busId);
+
+        const [buses, plantillas] = await Promise.all([
+            obtenerBusesDeCooperativa(cooperativaId),
+            obtenerPlantillasDeCooperativa(cooperativaId)
+        ]);
+
+        busesCooperativa = buses;
+        plantillasCooperativa = plantillas;
+
+        llenarSugerencias();
+        cambiarBus();
+
+        mostrarMensaje(
+            "El bus " + bus.placa + " vuelve a usar la plantilla de su tipo.",
+            "success"
+        );
+    } catch (error) {
+        console.error("Error al quitar la plantilla propia:", error);
+
+        if (error?.code === "55006" || error?.code === "22023") {
+            mostrarMensaje(error.message, "warning");
+        } else if (error?.code === "42501") {
+            mostrarMensaje(
+                "Tu cuenta no tiene permiso para cambiar plantillas " +
+                "de esta cooperativa.",
+                "danger"
+            );
+        } else {
+            mostrarMensaje(
+                "No se pudo quitar la plantilla propia. Revisa tu " +
+                "conexión e inténtalo de nuevo.",
+                "danger"
+            );
+        }
+    } finally {
+        guardando = false;
+        controles.disabled = false;
+
+        formulario.removeAttribute("aria-busy");
+        actualizarBotonGuardar();
+    }
+}
+
 function actualizarTextoResumen() {
-    const buses = busesDeTipo(configuracionActual.clave).length;
+    const esBus = configuracionActual.alcance === "bus";
+
+    const buses = esBus
+        ? 1
+        : busesDeTipo(configuracionActual.clave).length;
+
+    const placa = esBus
+        ? busesCooperativa.find(b => b.id === configuracionActual.bus_id)?.placa ?? ""
+        : "";
 
     textoResumen.textContent =
-        "Tipo «" + configuracionActual.tipo_bus + "»: " +
+        (esBus
+            ? "Bus " + placa + " (tipo «" + configuracionActual.tipo_bus + "»): "
+            : "Tipo «" + configuracionActual.tipo_bus + "»: ") +
         configuracionActual.numero_pisos +
         (configuracionActual.numero_pisos === 1 ? " piso, " : " pisos, ") +
         configuracionActual.total_asientos + " asientos en total. " +
+        configuracionActual.pisos
+            .filter(p => p.celdas_especiales.length)
+            .map(p => "Baño en el piso " + p.numero + ". ")
+            .join("") +
         (
-            buses
-                ? "Se aplicará a " + buses +
-                  (buses === 1 ? " bus." : " buses.")
-                : "Todavía no hay buses de este tipo."
+            esBus
+                ? "Plantilla propia de este bus."
+                : buses
+                    ? "Se aplicará a " + buses +
+                      (buses === 1 ? " bus." : " buses.")
+                    : "Todavía no hay buses de este tipo."
         );
 }
 
@@ -658,6 +1117,7 @@ function mostrarConfiguracion() {
 
     actualizarTextoResumen();
     dibujarVistaPrevia();
+    actualizarModoMapa();
     actualizarContador();
 
     resumen.classList.remove("d-none");
@@ -694,8 +1154,25 @@ function crearPisos(datos) {
         }
     });
 
-    const total = datos.reduce(
-        (suma, piso) => suma + piso.cantidad,
+    // Pisos con sus celdas de baño (cada celda de baño deja de ser asiento).
+    const distribucion = datos.map(function (piso) {
+        return {
+            cantidad: piso.cantidad,
+            filas: piso.filas,
+            columnas: piso.columnas,
+            ultima_fila_5: piso.central,
+            celdas_especiales: banosDePiso(piso)
+        };
+    });
+
+    distribucion.forEach(function (piso, indice) {
+        const error = validarCeldasEspeciales(piso, indice + 1);
+
+        if (error) throw new RangeError(error);
+    });
+
+    const total = distribucion.reduce(
+        (suma, piso) => suma + piso.cantidad - piso.celdas_especiales.length,
         0
     );
 
@@ -704,46 +1181,24 @@ function crearPisos(datos) {
     if (!enteroEnRango(total, minimo, 60)) {
         throw new RangeError(
             datos.length === 2
-                ? "Los dos pisos deben sumar entre 40 y 60 asientos."
+                ? "Los dos pisos deben sumar entre 40 y 60 asientos " +
+                  "(el baño no cuenta). Ahora suman " + total + "."
                 : "El bus debe tener entre 1 y 60 asientos."
         );
     }
 
-    let numeroSiguiente = 1;
+    // Asientos numerados en orden, saltando el baño.
+    const asientosPorPiso = generarAsientos(distribucion);
 
-    return datos.map(function (piso, indicePiso) {
-        const numeroPiso = indicePiso + 1;
-
-        const asientos = Array.from(
-            { length: piso.cantidad },
-            function (_, indice) {
-                // La última fila de 5 asientos ocupa también el hueco
-                // del pasillo: columnas 1 a 5.
-                const enFilaDeCinco =
-                    piso.central && indice >= (piso.filas - 1) * 4;
-
-                return {
-                    numero: numeroSiguiente++,
-                    piso: numeroPiso,
-                    fila: enFilaDeCinco
-                        ? piso.filas
-                        : Math.floor(indice / piso.columnas) + 1,
-                    columna: enFilaDeCinco
-                        ? indice - (piso.filas - 1) * 4 + 1
-                        : indice % piso.columnas + 1,
-                    tipo: datos.length === 2 && numeroPiso === 1
-                        ? "vip"
-                        : "normal"
-                };
-            }
-        );
-
+    return distribucion.map(function (piso, indice) {
         return {
-            numero: numeroPiso,
+            numero: indice + 1,
             filas: piso.filas,
             columnas: piso.columnas,
-            ultima_fila_5: piso.central,
-            asientos
+            ultima_fila_5: piso.ultima_fila_5,
+            tiene_bano: tieneBano(indice + 1),
+            celdas_especiales: piso.celdas_especiales,
+            asientos: asientosPorPiso[indice]
         };
     });
 }
@@ -945,6 +1400,8 @@ function crearBotonAsiento(asiento, piso) {
 
     boton.dataset.numero = String(asiento.numero);
     boton.dataset.piso = String(piso.numero);
+    boton.dataset.fila = String(asiento.fila);
+    boton.dataset.columna = String(asiento.columna);
 
     etiqueta.textContent = "Asiento";
     numero.textContent = String(asiento.numero);
@@ -953,7 +1410,48 @@ function crearBotonAsiento(asiento, piso) {
     actualizarBoton(boton);
 
     boton.addEventListener("click", function () {
-        seleccionarAsiento(boton);
+        if (modoMapa === "bano") {
+            alternarBano(piso.numero, asiento.fila, asiento.columna);
+        } else {
+            seleccionarAsiento(boton);
+        }
+    });
+
+    return boton;
+}
+
+// Celda de baño: no tiene número ni se puede seleccionar. En el modo
+// "Marcar baño" se toca para volver a convertirla en asiento.
+function crearBotonBano(celda, piso) {
+    const boton = document.createElement("button");
+    const etiqueta = document.createElement("small");
+    const icono = document.createElement("strong");
+    const tipo = TIPOS_CELDA[celda.tipo];
+
+    boton.type = "button";
+    boton.className = "plantilla-asiento plantilla-bano";
+
+    boton.dataset.piso = String(piso.numero);
+    boton.dataset.fila = String(celda.fila);
+    boton.dataset.columna = String(celda.columna);
+
+    boton.setAttribute("aria-disabled", String(modoMapa !== "bano"));
+    boton.setAttribute(
+        "aria-label",
+        tipo.nombre + ", piso " + piso.numero + ", fila " + celda.fila +
+        ", columna " + celda.columna + ". No es un asiento."
+    );
+
+    etiqueta.textContent = tipo.nombre;
+    icono.textContent = tipo.icono;
+    icono.setAttribute("aria-hidden", "true");
+
+    boton.append(etiqueta, icono);
+
+    boton.addEventListener("click", function () {
+        if (modoMapa === "bano") {
+            alternarBano(piso.numero, celda.fila, celda.columna);
+        }
     });
 
     return boton;
@@ -989,7 +1487,12 @@ function crearMapaPiso(piso) {
         piso.asientos.length + " asientos: del " +
         piso.asientos[0].numero + " al " +
         piso.asientos[piso.asientos.length - 1].numero + "." +
-        (piso.ultima_fila_5 ? " Última fila de 5 asientos." : "");
+        (piso.ultima_fila_5 ? " Última fila de 5 asientos." : "") +
+        (piso.celdas_especiales.length
+            ? " Baño: " + piso.celdas_especiales
+                .map(c => "fila " + c.fila + ", columna " + c.columna)
+                .join("; ") + "."
+            : "");
 
     contador.id = "seleccionPiso" + piso.numero;
     contador.className = "small mb-3";
@@ -1040,6 +1543,12 @@ function crearMapaPiso(piso) {
                 celdas[ranuraDe(piso, asiento)] = asiento;
             });
 
+        piso.celdas_especiales
+            .filter(celda => celda.fila === fila)
+            .forEach(function (celda) {
+                celdas[ranuraDe(piso, celda)] = { especial: celda };
+            });
+
         filaVisual.className = "plantilla-fila";
         filaVisual.style.gridTemplateColumns = anchos;
 
@@ -1051,6 +1560,11 @@ function crearMapaPiso(piso) {
         );
 
         celdas.forEach(function (asiento, indice) {
+            if (asiento?.especial) {
+                filaVisual.appendChild(crearBotonBano(asiento.especial, piso));
+                return;
+            }
+
             if (asiento) {
                 filaVisual.appendChild(crearBotonAsiento(asiento, piso));
                 return;
@@ -1188,13 +1702,9 @@ function navegarAsientos(evento) {
 async function guardarPlantillaActual() {
     if (guardando || controles.disabled) return;
 
-    if (
-        !configuracionActual ||
-        configuracionActual.cooperativa_id !== cooperativaId ||
-        configuracionActual.clave !== claveTipo(campoTipo.value)
-    ) {
+    if (!configuracionVigente()) {
         mostrarMensaje(
-            "Genera la vista previa de este tipo de bus antes de guardar.",
+            "Genera la vista previa antes de guardar.",
             "warning"
         );
 
@@ -1204,6 +1714,23 @@ async function guardarPlantillaActual() {
     validarCapacidadTotal();
 
     if (!formulario.reportValidity()) return;
+
+    // Si dijo que tiene baño, debe marcar dónde va.
+    const pisoSinBano = configuracionActual.pisos.find(
+        piso => tieneBano(piso.numero) && !piso.celdas_especiales.length
+    );
+
+    if (pisoSinBano) {
+        cambiarModoMapa("bano");
+        mostrarMensaje(
+            "Marca en la vista previa dónde va el baño del piso " +
+            pisoSinBano.numero + ", o elige «No» en «¿Este bus tiene baño " +
+            "en el piso " + pisoSinBano.numero + "?».",
+            "warning"
+        );
+
+        return;
+    }
 
     const configuracion = structuredClone(configuracionActual);
     const versionEsperada = plantillaCargada?.actualizado_en ?? null;
@@ -1218,11 +1745,18 @@ async function guardarPlantillaActual() {
     mostrarMensaje("Guardando la plantilla...");
 
     try {
-        const guardada = await guardarPlantillaDeTipo(
-            cooperativaId,
-            configuracion,
-            versionEsperada
-        );
+        const guardada = configuracion.alcance === "bus"
+            ? await guardarPlantillaIndividual(
+                cooperativaId,
+                configuracion.bus_id,
+                configuracion,
+                versionEsperada
+            )
+            : await guardarPlantillaDeTipo(
+                cooperativaId,
+                configuracion,
+                versionEsperada
+            );
 
         if (!guardada?.actualizado_en || !guardada.id) {
             throw new Error("Respuesta de guardado incompleta.");
@@ -1231,6 +1765,7 @@ async function guardarPlantillaActual() {
         plantillaCargada = {
             id: guardada.id,
             cooperativa_id: cooperativaId,
+            bus_id: configuracion.bus_id,
             tipo_bus: configuracion.tipo_bus,
             numero_pisos: configuracion.numero_pisos,
             total_asientos: configuracion.total_asientos,
@@ -1239,10 +1774,12 @@ async function guardarPlantillaActual() {
         };
 
         plantillasCooperativa = [
-            ...plantillasCooperativa.filter(
-                plantilla =>
-                    claveTipo(plantilla.tipo_bus) !== configuracion.clave
-            ),
+            ...plantillasCooperativa.filter(function (plantilla) {
+                return configuracion.alcance === "bus"
+                    ? plantilla.bus_id !== configuracion.bus_id
+                    : plantilla.bus_id ||
+                      claveTipo(plantilla.tipo_bus) !== configuracion.clave;
+            }),
             plantillaCargada
         ];
 
@@ -1261,14 +1798,17 @@ async function guardarPlantillaActual() {
         const asignados = Number(guardada.buses_asignados ?? 0);
 
         mostrarMensaje(
-            "Plantilla de «" + configuracion.tipo_bus + "» guardada. " +
-            (
-                asignados
-                    ? "La usan " + asignados +
-                      (asignados === 1 ? " bus." : " buses.")
-                    : "Todavía no hay buses de este tipo; se asignará " +
-                      "a los que registres."
-            ),
+            configuracion.alcance === "bus"
+                ? "Plantilla propia guardada para el bus " +
+                  (busesCooperativa.find(b => b.id === configuracion.bus_id)?.placa ?? "") + "."
+                : "Plantilla de «" + configuracion.tipo_bus + "» guardada. " +
+                  (
+                      asignados
+                          ? "La usan " + asignados +
+                            (asignados === 1 ? " bus." : " buses.")
+                          : "Todavía no hay buses de este tipo; se asignará " +
+                            "a los que registres."
+                  ),
             "success"
         );
 
@@ -1287,6 +1827,9 @@ async function guardarPlantillaActual() {
             }
 
             campoTipo.value = "";
+            busId = "";
+            selectorBus.value = "";
+            llenarSelectorBuses();
             plantillaCargada = null;
 
             limpiarResumen();
@@ -1296,7 +1839,7 @@ async function guardarPlantillaActual() {
 
             mostrarMensaje(
                 "La plantilla cambió en otra sesión. Vuelve a elegir el " +
-                "tipo de bus para cargar la versión actual.",
+                "tipo de bus o el bus para cargar la versión actual.",
                 "warning"
             );
         } else if (error?.code === "42501") {
@@ -1305,6 +1848,8 @@ async function guardarPlantillaActual() {
                 "de esta cooperativa.",
                 "danger"
             );
+        } else if (error?.code === "55006") {
+            mostrarMensaje(error.message, "warning");
         } else if (error?.code === "22023") {
             mostrarMensaje(
                 error.message ||
@@ -1347,6 +1892,11 @@ formulario.addEventListener("submit", function (evento) {
         return;
     }
 
+    if (alcance === "bus" && !busId) {
+        mostrarMensaje("Selecciona un bus.", "warning");
+        return;
+    }
+
     try {
         const datos = Array.from(
             { length: Number(numeroPisos.value) },
@@ -1364,6 +1914,8 @@ formulario.addEventListener("submit", function (evento) {
 
         configuracionActual = {
             cooperativa_id: cooperativaId,
+            alcance,
+            bus_id: alcance === "bus" ? busId : null,
             tipo_bus: tipo,
             clave: claveTipo(tipo),
             numero_pisos: pisos.length,
@@ -1389,6 +1941,13 @@ selectorCooperativa.addEventListener("change", cambiarCooperativa);
 campoTipo.addEventListener("change", cambiarTipo);
 campoTipo.addEventListener("input", actualizarBotonGuardar);
 
+radiosAlcance.forEach(function (radio) {
+    radio.addEventListener("change", cambiarAlcance);
+});
+
+selectorBus.addEventListener("change", cambiarBus);
+botonQuitar.addEventListener("click", quitarPropia);
+
 numeroPisos.addEventListener("change", cambiarNumeroPisos);
 
 [1, 2].forEach(function (numero) {
@@ -1407,6 +1966,18 @@ numeroPisos.addEventListener("change", cambiarNumeroPisos);
     campo("central", numero).addEventListener("change", function () {
         ajustarPiso(numero, "central");
     });
+
+    ["banoNo", "banoSi"].forEach(function (id) {
+        campo(id, numero).addEventListener("change", function () {
+            cambiarBano(numero);
+        });
+    });
+});
+
+grupoModoMapa.querySelectorAll("button").forEach(function (boton) {
+    boton.addEventListener("click", function () {
+        cambiarModoMapa(boton.dataset.modo);
+    });
 });
 
 mapaPlantilla.addEventListener("keydown", navegarAsientos);
@@ -1417,51 +1988,69 @@ botonGuardar.addEventListener("click", guardarPlantillaActual);
 
 // Inicio y comprobación del acceso.
 
+async function alCargarCooperativas(rol, cooperativas) {
+    if (cooperativas.length === 0) {
+        mostrarMensaje(
+            rol === "administrador"
+                ? "No hay cooperativas registradas. Crea una primero."
+                : "Tu cuenta no está asignada a ninguna cooperativa. " +
+                  "Solicita al administrador que revise tu asignación.",
+            "warning"
+        );
+
+        return;
+    }
+
+    controles.disabled = false;
+
+    // Con una sola cooperativa, llenarCombo ya la dejó elegida.
+    if (selectorCooperativa.value) {
+        await cambiarCooperativa();
+    } else {
+        mostrarMensaje("Selecciona la cooperativa para empezar.");
+    }
+
+    actualizarBotonGuardar();
+}
+
 async function iniciar() {
     controles.disabled = true;
 
     try {
-        const sesion = await obtenerSesion();
+        // La guarda comprueba sesión y rol, oculta la página hasta confirmar y
+        // revalida si el usuario vuelve con el botón "atrás".
+        const rol = await exigirRoles(["administrador", "cooperativa"]);
 
-        if (!sesion) {
-            window.location.replace("../login.html");
-            return;
-        }
-
-        const rol = await obtenerRol();
-
-        if (!["administrador", "cooperativa"].includes(rol)) {
-            window.location.replace("../sin-acceso.html");
-            return;
-        }
+        if (!rol) return;
 
         mostrarMensaje("Cargando cooperativas...");
 
-        const cooperativas = await obtenerCooperativasPermitidas(rol);
+        const alCargar = function (cooperativas) {
+            return alCargarCooperativas(rol, cooperativas);
+        };
 
-        if (cooperativas.length === 0) {
+        const cooperativas = await llenarCombo(selectorCooperativa, {
+            cargar: () => obtenerCooperativasPermitidas(rol),
+            valor: cooperativa => cooperativa.id,
+            texto: cooperativa => cooperativa.nombre,
+            inicial: "Selecciona una cooperativa...",
+            vacio: "Sin cooperativas disponibles",
+            error: "No se pudieron cargar las cooperativas.",
+            // El combo está dentro del fieldset deshabilitado: el botón va junto al mensaje.
+            anclaReintentar: mensaje,
+            alReintentar: alCargar
+        });
+
+        if (cooperativas === null) {
             mostrarMensaje(
-                rol === "administrador"
-                    ? "No hay cooperativas registradas. Crea una primero."
-                    : "Tu cuenta no está asignada a ninguna cooperativa. " +
-                      "Solicita al administrador que revise tu asignación.",
-                "warning"
+                "No se pudieron cargar las cooperativas. Revisa tu conexión y pulsa «Reintentar».",
+                "danger"
             );
 
             return;
         }
 
-        llenarSelectorCooperativas(cooperativas);
-        controles.disabled = false;
-
-        if (cooperativas.length === 1) {
-            selectorCooperativa.value = cooperativas[0].id;
-            await cambiarCooperativa();
-        } else {
-            mostrarMensaje("Selecciona la cooperativa para empezar.");
-        }
-
-        actualizarBotonGuardar();
+        await alCargar(cooperativas);
     } catch (error) {
         console.error(
             "Error al cargar la plantilla de asientos:",

@@ -20,15 +20,20 @@
             <a class="navbar-brand fw-bold" href="../cooperativa/index.html">
                 MoviPass - Cooperativa
             </a>
+            <!-- guardas.js cierra la sesión y vuelve al index raíz -->
+            <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">
+                Cerrar Sesión
+            </button>
         </div>
     </nav>
 
     <main class="container my-4 my-md-5">
-        <h1 class="h2">Plantillas de asientos por tipo de bus</h1>
+        <h1 class="h2">Plantillas de asientos</h1>
 
         <p class="text-muted mb-4">
-            Define la distribución de asientos una sola vez por tipo de bus.
-            Todos los buses de ese tipo en tu cooperativa usan la misma plantilla.
+            Define la distribución de asientos una sola vez por tipo de bus:
+            todos los buses de ese tipo en tu cooperativa usan la misma plantilla.
+            Si un bus necesita una distribución distinta, dale una plantilla propia.
         </p>
 
         <div
@@ -57,10 +62,14 @@
                                     Cooperativa, tipo de bus y distribución de asientos
                                 </legend>
 
+                                <p class="text-muted small">
+                                    Los campos marcados con * son obligatorios.
+                                </p>
+
                                 <div class="row g-3 mb-3">
                                     <div class="col-12 col-md-6">
                                         <label for="cooperativa" class="form-label">
-                                            Cooperativa
+                                            Cooperativa *
                                         </label>
 
                                         <select
@@ -68,9 +77,10 @@
                                             name="cooperativa"
                                             class="form-select"
                                             required
+                                            disabled
                                         >
-                                            <option value="">
-                                                Selecciona una cooperativa
+                                            <option value="" selected disabled>
+                                                Cargando...
                                             </option>
                                         </select>
 
@@ -81,7 +91,7 @@
 
                                     <div class="col-12 col-md-6">
                                         <label for="tipoBus" class="form-label">
-                                            Tipo de bus
+                                            Tipo de bus *
                                         </label>
 
                                         <input
@@ -104,6 +114,69 @@
                                     </div>
                                 </div>
 
+                                <!-- Alcance: todos los buses de un tipo o un solo bus -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-12">
+                                        <span class="form-label d-block">
+                                            Aplicar la plantilla a *
+                                        </span>
+
+                                        <div class="form-check form-check-inline">
+                                            <input
+                                                class="form-check-input"
+                                                type="radio"
+                                                name="alcance"
+                                                id="alcanceTipo"
+                                                value="tipo"
+                                                checked
+                                            >
+
+                                            <label
+                                                class="form-check-label"
+                                                for="alcanceTipo"
+                                            >
+                                                Todos los buses de un tipo
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check form-check-inline">
+                                            <input
+                                                class="form-check-input"
+                                                type="radio"
+                                                name="alcance"
+                                                id="alcanceBus"
+                                                value="bus"
+                                            >
+
+                                            <label
+                                                class="form-check-label"
+                                                for="alcanceBus"
+                                            >
+                                                Un solo bus
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-md-6" id="grupoBus" hidden>
+                                        <label for="busObjetivo" class="form-label">
+                                            Bus *
+                                        </label>
+
+                                        <select
+                                            id="busObjetivo"
+                                            name="busObjetivo"
+                                            class="form-select"
+                                            disabled
+                                        >
+                                            <option value="" selected disabled>Primero elige una cooperativa</option>
+                                        </select>
+
+                                        <div class="invalid-feedback">
+                                            Selecciona un bus.
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div
                                     id="busesDelTipo"
                                     class="alert alert-secondary"
@@ -115,7 +188,7 @@
 
                                 <div class="mb-3">
                                     <label for="numeroPisos" class="form-label">
-                                        Número de pisos
+                                        Número de pisos *
                                     </label>
 
                                     <select
@@ -152,7 +225,7 @@
                                     <div class="row g-3">
                                         <div class="col-12 col-sm-4">
                                             <label for="cantidad1" class="form-label">
-                                                Cantidad de asientos
+                                                Cantidad de asientos *
                                             </label>
 
                                             <input
@@ -176,7 +249,7 @@
 
                                         <div class="col-12 col-sm-4">
                                             <label for="filas1" class="form-label">
-                                                Número de filas
+                                                Número de filas *
                                             </label>
 
                                             <input
@@ -199,7 +272,7 @@
 
                                         <div class="col-12 col-sm-4">
                                             <label for="columnas1" class="form-label">
-                                                Asientos por fila
+                                                Asientos por fila *
                                             </label>
 
                                             <input
@@ -237,8 +310,53 @@
                                                 >
                                                     Última fila de 5 asientos
                                                     (el quinto va en el centro, donde está el pasillo)
+                                                    (opcional)
                                                 </label>
                                             </div>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <fieldset aria-describedby="ayudaBano1">
+                                                <legend class="form-label fs-6 mb-1">
+                                                    ¿Este bus tiene baño en el piso 1? *
+                                                </legend>
+
+                                                <div class="form-check form-check-inline">
+                                                    <input
+                                                        class="form-check-input"
+                                                        type="radio"
+                                                        name="bano1"
+                                                        id="banoNo1"
+                                                        value="no"
+                                                        checked
+                                                        required
+                                                    >
+
+                                                    <label class="form-check-label" for="banoNo1">
+                                                        No
+                                                    </label>
+                                                </div>
+
+                                                <div class="form-check form-check-inline">
+                                                    <input
+                                                        class="form-check-input"
+                                                        type="radio"
+                                                        name="bano1"
+                                                        id="banoSi1"
+                                                        value="si"
+                                                    >
+
+                                                    <label class="form-check-label" for="banoSi1">
+                                                        Sí
+                                                    </label>
+                                                </div>
+
+                                                <div id="ayudaBano1" class="form-text">
+                                                    Si eliges Sí, genera la vista previa y toca las
+                                                    celdas donde va el baño (lo normal es la última
+                                                    fila). Cada celda de baño deja de ser asiento.
+                                                </div>
+                                            </fieldset>
                                         </div>
                                     </div>
                                 </fieldset>
@@ -256,7 +374,7 @@
                                     <div class="row g-3">
                                         <div class="col-12 col-sm-4">
                                             <label for="cantidad2" class="form-label">
-                                                Cantidad de asientos
+                                                Cantidad de asientos *
                                             </label>
 
                                             <input
@@ -280,7 +398,7 @@
 
                                         <div class="col-12 col-sm-4">
                                             <label for="filas2" class="form-label">
-                                                Número de filas
+                                                Número de filas *
                                             </label>
 
                                             <input
@@ -303,7 +421,7 @@
 
                                         <div class="col-12 col-sm-4">
                                             <label for="columnas2" class="form-label">
-                                                Asientos por fila
+                                                Asientos por fila *
                                             </label>
 
                                             <input
@@ -339,8 +457,53 @@
                                                 >
                                                     Última fila de 5 asientos
                                                     (el quinto va en el centro, donde está el pasillo)
+                                                    (opcional)
                                                 </label>
                                             </div>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <fieldset aria-describedby="ayudaBano2">
+                                                <legend class="form-label fs-6 mb-1">
+                                                    ¿Este bus tiene baño en el piso 2? *
+                                                </legend>
+
+                                                <div class="form-check form-check-inline">
+                                                    <input
+                                                        class="form-check-input"
+                                                        type="radio"
+                                                        name="bano2"
+                                                        id="banoNo2"
+                                                        value="no"
+                                                        checked
+                                                        required
+                                                    >
+
+                                                    <label class="form-check-label" for="banoNo2">
+                                                        No
+                                                    </label>
+                                                </div>
+
+                                                <div class="form-check form-check-inline">
+                                                    <input
+                                                        class="form-check-input"
+                                                        type="radio"
+                                                        name="bano2"
+                                                        id="banoSi2"
+                                                        value="si"
+                                                    >
+
+                                                    <label class="form-check-label" for="banoSi2">
+                                                        Sí
+                                                    </label>
+                                                </div>
+
+                                                <div id="ayudaBano2" class="form-text">
+                                                    Si eliges Sí, genera la vista previa y toca las
+                                                    celdas donde va el baño (lo normal es la última
+                                                    fila). Cada celda de baño deja de ser asiento.
+                                                </div>
+                                            </fieldset>
                                         </div>
                                     </div>
                                 </fieldset>
@@ -351,9 +514,20 @@
                                     debe ser 4 × filas + 1 (por ejemplo 37 o 41) y la
                                     cantidad de asientos ajusta las filas. Sin esa opción,
                                     puedes dejar la última fila incompleta.
+                                    Las celdas que marques como baño se descuentan
+                                    de la cantidad de asientos.
                                 </p>
 
                                 <div class="d-grid d-sm-flex gap-2 justify-content-sm-end mt-4">
+                                    <button
+                                        type="button"
+                                        id="quitarIndividual"
+                                        class="btn btn-outline-danger"
+                                        hidden
+                                    >
+                                        Volver a la plantilla del tipo
+                                    </button>
+
                                     <button type="submit" class="btn btn-primary">
                                         Generar vista previa
                                     </button>
@@ -430,7 +604,7 @@
                             </p>
 
                             <label for="cantidadBoletos" class="form-label">
-                                Cantidad de puestos que quieres seleccionar
+                                Cantidad de puestos que quieres seleccionar *
                             </label>
 
                             <input
@@ -487,6 +661,14 @@
                                 ></span>
                                 Seleccionado
                             </span>
+
+                            <span>
+                                <span
+                                    class="plantilla-muestra plantilla-muestra-bano"
+                                    aria-hidden="true"
+                                ></span>
+                                🚻 Baño (no es asiento)
+                            </span>
                         </div>
 
                         <div
@@ -495,6 +677,34 @@
                             role="group"
                             aria-label="Elegir el piso de la vista previa"
                         ></div>
+
+                        <div id="grupoModoMapa" class="mb-3" hidden>
+                            <p class="small fw-semibold mb-1">Al tocar una celda:</p>
+
+                            <div
+                                class="btn-group"
+                                role="group"
+                                aria-label="Qué hace al tocar una celda"
+                            >
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-primary btn-sm"
+                                    data-modo="bano"
+                                    aria-pressed="false"
+                                >
+                                    Marcar baño
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-primary btn-sm"
+                                    data-modo="prueba"
+                                    aria-pressed="true"
+                                >
+                                    Probar selección
+                                </button>
+                            </div>
+                        </div>
 
                         <p id="ayudaMapa" class="text-muted small">
                             Toca un asiento para seleccionarlo o desmarcarlo.
