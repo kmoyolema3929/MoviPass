@@ -1,4 +1,5 @@
 import { buscarViajes, obtenerCiudades } from './consultaBusqueda.js';
+import { llenarCombo, fechaHoyEcuador } from './combos.js';
 
 const formulario = document.getElementById('form-busqueda');
 const origen = document.getElementById('origen');
@@ -11,14 +12,8 @@ const botonBuscar = formulario?.querySelector(
 
 let consultando = false;
 
-function obtenerFechaLocalHoy() {
-    const hoy = new Date();
-    const anio = hoy.getFullYear();
-    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-    const dia = String(hoy.getDate()).padStart(2, '0');
-
-    return `${anio}-${mes}-${dia}`;
-}
+// La fecha de viaje se calcula con la hora de Ecuador (America/Guayaquil).
+const obtenerFechaHoy = () => fechaHoyEcuador();
 
 function mostrarErrores(errores) {
     if (!erroresBusqueda) return;
@@ -43,42 +38,38 @@ function mostrarErrores(errores) {
     erroresBusqueda.focus();
 }
 
-function llenarCiudades(selector, ciudades) {
-    if (!selector) return;
+// Origen y destino comparten una sola consulta; si falla, el reintento vuelve a consultar.
+let pedidoCiudades = null;
 
-    const todas = document.createElement('option');
-    todas.value = '';
-    todas.textContent = 'Selecciona una ciudad';
-    selector.replaceChildren(todas);
-
-    ciudades.forEach((ciudad) => {
-        const opcion = document.createElement('option');
-        opcion.value = ciudad;
-        opcion.textContent = ciudad;
-        selector.appendChild(opcion);
+function ciudadesDisponibles() {
+    pedidoCiudades ??= obtenerCiudades().catch((error) => {
+        pedidoCiudades = null;
+        throw error;
     });
 
-    selector.disabled = false;
+    return pedidoCiudades;
 }
 
-async function cargarCiudades() {
+function cargarCiudades() {
     if (!origen || !destino) return;
 
-    try {
-        const ciudades = await obtenerCiudades();
-        llenarCiudades(origen, ciudades);
-        llenarCiudades(destino, ciudades);
-    } catch (error) {
-        console.error('No se pudieron cargar las ciudades:', error);
-        llenarCiudades(origen, []);
-        llenarCiudades(destino, []);
-        mostrarErrores(['No se pudieron cargar las ciudades. Recarga la página e inténtalo de nuevo.']);
-    }
+    // No se eligen solas aunque haya una sola ciudad: origen y destino quedarían iguales.
+    const comun = {
+        cargar: ciudadesDisponibles,
+        unica: false,
+        vacio: 'No hay ciudades disponibles',
+        error: 'No se pudieron cargar las ciudades.',
+    };
+
+    llenarCombo(origen, { ...comun, inicial: '¿De dónde sales?' });
+    llenarCombo(destino, { ...comun, inicial: '¿A dónde vas?' });
 }
 
 if (formulario) {
     if (fecha) {
-        fecha.min = obtenerFechaLocalHoy();
+        const hoy = obtenerFechaHoy();
+        fecha.min = hoy;
+        if (!fecha.value) fecha.value = hoy;
     }
 
     cargarCiudades();
@@ -90,7 +81,7 @@ if (formulario) {
             return;
         }
 
-        const hoy = obtenerFechaLocalHoy();
+        const hoy = obtenerFechaHoy();
         if (fecha) fecha.min = hoy;
 
         const errores = [];
