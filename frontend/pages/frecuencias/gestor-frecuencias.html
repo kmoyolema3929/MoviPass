@@ -77,19 +77,21 @@
                         <input type="hidden" id="frecuenciaId">
 
                         <div class="mb-3">
-                            <label for="cooperativa" class="form-label">Cooperativa</label>
-                            <select id="cooperativa" class="form-select" required></select>
+                            <label for="cooperativa" class="form-label">Cooperativa *</label>
+                            <select id="cooperativa" class="form-select" required disabled>
+                                <option value="" selected disabled>Cargando...</option>
+                            </select>
                             <div class="invalid-feedback">Selecciona la cooperativa.</div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label for="origen" class="form-label">Origen</label>
+                                <label for="origen" class="form-label">Origen *</label>
                                 <input type="text" class="form-control" id="origen" placeholder="Ej. Ambato" required minlength="3" maxlength="100">
                                 <div class="invalid-feedback">Ingresa el origen (mínimo 3 letras).</div>
                             </div>
                             <div class="col-md-6">
-                                <label for="destino" class="form-label">Destino</label>
+                                <label for="destino" class="form-label">Destino *</label>
                                 <input type="text" class="form-control" id="destino" placeholder="Ej. Loja" required minlength="3" maxlength="100">
                                 <div class="invalid-feedback">Ingresa el destino (mínimo 3 letras).</div>
                             </div>
@@ -97,12 +99,12 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label for="hora" class="form-label">Hora de salida</label>
+                                <label for="hora" class="form-label">Hora de salida *</label>
                                 <input type="time" class="form-control" id="hora" required>
                                 <div class="invalid-feedback">Selecciona la hora de salida.</div>
                             </div>
                             <div class="col-md-6">
-                                <label for="precioBase" class="form-label">Precio base (USD)</label>
+                                <label for="precioBase" class="form-label">Precio base (USD) *</label>
                                 <input type="number" class="form-control" id="precioBase" min="0" step="0.01" value="0" required>
                                 <div class="invalid-feedback">Ingresa un precio válido (0 o más).</div>
                             </div>
@@ -110,15 +112,15 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label for="tipo" class="form-label">Tipo</label>
+                                <label for="tipo" class="form-label">Tipo *</label>
                                 <select id="tipo" class="form-select" required>
-                                    <option value="directa">Directa (sin paradas)</option>
+                                    <option value="directa" selected>Directa (sin paradas)</option>
                                     <option value="compartida">Compartida (con paradas)</option>
                                 </select>
                                 <div class="form-text">Las paradas de una compartida se registran después, en "Paradas".</div>
                             </div>
                             <div class="col-md-6">
-                                <label for="resolucion" class="form-label">N.º de resolución</label>
+                                <label for="resolucion" class="form-label">N.º de resolución *</label>
                                 <input type="text" class="form-control" id="resolucion" maxlength="60" minlength="3" placeholder="Ej. ANT-2024-0123" required>
                                 <div class="invalid-feedback">La resolución que aprobó la ruta es obligatoria.</div>
                             </div>
