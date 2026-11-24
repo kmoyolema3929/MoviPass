@@ -1,65 +1,103 @@
+// frontend/pages/frecuencias/frecuencias.js
+// Frecuencias aprobadas (cambio 7, parte 7.1): origen y destino del catálogo
+// de cantones, grupo de bus, estado, tipo y paradas en el mismo formulario.
+
 import { supabase } from '../../js/supabaseClient.js';
 import { exigirRoles } from '../../js/guardas.js';
 import { obtenerContextoGestion, textoError } from '../../js/contextoUsuario.js';
 import { mostrarAlerta } from '../../js/alertas.js';
-import { ponerOpciones } from '../../js/combos.js';
+import { llenarCombo, ponerOpciones, vaciarCombo } from '../../js/combos.js';
+import { obtenerCantones, obtenerProvincias } from '../../js/catalogos.js';
+import { etiquetaCanton } from '../../js/lugares.js';
+import { obtenerGruposBus } from '../../js/gruposBus.js';
+import {
+    datosFrecuencia,
+    moverFrecuencia,
+    opcionesParada,
+    ordenarParaHojaRuta,
+    porCorregir,
+    resolverParada,
+    revisarFrecuencia,
+    textoTipo
+} from '../../js/frecuenciasForm.js';
 
 const COLUMNAS = 9;
+const $ = id => document.getElementById(id);
 
-const tbody = document.getElementById('tablaFrecuencias');
-const form = document.getElementById('formFrecuencia');
-const btnNueva = document.getElementById('btnNueva');
-const btnGuardar = document.getElementById('btnGuardar');
-const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFrecuencia'));
+const tbody = $('tablaFrecuencias');
+const form = $('formFrecuencia');
+const btnNueva = $('btnNueva');
+const btnGuardar = $('btnGuardar');
+const errorFormulario = $('errorFormulario');
+const filasParadas = $('filasParadas');
+const modal = bootstrap.Modal.getOrCreateInstance($('modalFrecuencia'));
 
 const campo = {
-    id: document.getElementById('frecuenciaId'),
-    cooperativa: document.getElementById('cooperativa'),
-    origen: document.getElementById('origen'),
-    destino: document.getElementById('destino'),
-    hora: document.getElementById('hora'),
-    precio: document.getElementById('precioBase'),
-    tipo: document.getElementById('tipo'),
-    resolucion: document.getElementById('resolucion')
+    id: $('frecuenciaId'),
+    cooperativaId: $('cooperativa'),
+    provinciaOrigen: $('provinciaOrigen'),
+    origenCantonId: $('cantonOrigen'),
+    provinciaDestino: $('provinciaDestino'),
+    destinoCantonId: $('cantonDestino'),
+    hora: $('hora'),
+    precio: $('precioBase'),
+    resolucion: $('resolucion'),
+    grupoId: $('grupo'),
+    estado: $('estado'),
+    tipo: $('tipo')
 };
 
+let rol = null;
 let cooperativas = [];
 let frecuencias = [];
+let provincias = null;
+let cantones = null;
+let lugares = [];
+let ocupado = false;
 
-/* ---------- Utilidades de tabla ---------- */
+/* ---------- Utilidades ---------- */
 
 function filaInformativa(texto, clase = 'text-muted') {
-    tbody.replaceChildren();
     const tr = document.createElement('tr');
     const td = document.createElement('td');
     td.colSpan = COLUMNAS;
     td.className = `text-center py-3 ${clase}`;
     td.textContent = texto;
     tr.appendChild(td);
-    tbody.appendChild(tr);
+    tbody.replaceChildren(tr);
 }
 
-function celda(texto) {
+function celda(texto, clase = '') {
     const td = document.createElement('td');
+    td.className = clase;
     td.textContent = texto;
     return td;
 }
 
-function boton(texto, clase, accion) {
+function boton(texto, clase, accion, etiqueta) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = `btn btn-sm ${clase}`;
     b.textContent = texto;
+    if (etiqueta) b.setAttribute('aria-label', etiqueta);
     b.addEventListener('click', accion);
     return b;
 }
 
-function enlace(texto, clase, href) {
-    const a = document.createElement('a');
-    a.className = `btn btn-sm ${clase}`;
-    a.href = href;
-    a.textContent = texto;
-    return a;
+function insignia(texto, clase) {
+    const span = document.createElement('span');
+    span.className = `badge ${clase}`;
+    span.textContent = texto;
+    return span;
+}
+
+const hora = valor => String(valor ?? '').slice(0, 5);
+const ruta = f => `${f.origen} → ${f.destino}`;
+
+function mensajeError(error) {
+    // Los mensajes de las funciones de la base ya están en español.
+    if (['23502', '23503', '23514', '40001', '42501'].includes(error?.code) && error.message) return error.message;
+    return textoError(error);
 }
 
 /* ---------- Listado ---------- */
@@ -67,14 +105,13 @@ function enlace(texto, clase, href) {
 async function cargarFrecuencias() {
     let consulta = supabase
         .from('frecuencias')
-        .select('id, origen, destino, hora, tipo, activa, precio_base, numero_resolucion, cooperativa_id, cooperativas ( nombre )')
-        .order('origen', { ascending: true })
-        .order('hora', { ascending: true });
+        .select(`id, origen, destino, origen_canton_id, destino_canton_id, hora, tipo, activa, precio_base,
+                 numero_resolucion, cooperativa_id, grupo_id, orden_hoja_ruta,
+                 cooperativas ( nombre ), grupos_bus ( nombre ),
+                 paradas ( id, canton_id, nombre, hora_estimada, orden )`);
 
-    // Una cooperativa solo ve las suyas; el administrador ve todas
-    if (campo.cooperativa.dataset.rol === 'cooperativa') {
-        consulta = consulta.in('cooperativa_id', cooperativas.map((c) => c.id));
-    }
+    // Una cooperativa solo ve las suyas; el administrador ve todas.
+    if (rol === 'cooperativa') consulta = consulta.in('cooperativa_id', cooperativas.map(c => c.id));
 
     const { data, error } = await consulta;
     if (error) throw error;
@@ -83,43 +120,81 @@ async function cargarFrecuencias() {
     dibujarTabla();
 }
 
+/** Por cooperativa, por grupo (los sin grupo al final) y en el orden de la hoja de ruta. */
+function frecuenciasOrdenadas() {
+    const grupos = new Map();
+
+    frecuencias.forEach(f => {
+        const clave = `${f.cooperativa_id}|${f.grupo_id ?? ''}`;
+        if (!grupos.has(clave)) grupos.set(clave, []);
+        grupos.get(clave).push(f);
+    });
+
+    const nombre = lista => `${lista[0].cooperativas?.nombre ?? ''} ${lista[0].grupos_bus?.nombre ?? ''}`;
+
+    return [...grupos.values()]
+        .sort((a, b) => (!a[0].grupo_id - !b[0].grupo_id) || nombre(a).localeCompare(nombre(b), 'es'))
+        .flatMap(ordenarParaHojaRuta);
+}
+
 function dibujarTabla() {
     if (frecuencias.length === 0) {
-        filaInformativa('No hay frecuencias registradas.');
+        filaInformativa('No hay frecuencias registradas. Pulsa «+ Nueva frecuencia».');
         return;
     }
 
     tbody.replaceChildren();
+    const ordenadas = frecuenciasOrdenadas();
+    let pendientes = 0;
 
-    frecuencias.forEach((f, i) => {
+    ordenadas.forEach(f => {
         const tr = document.createElement('tr');
         if (!f.activa) tr.className = 'table-secondary';
 
-        const tdEstado = document.createElement('td');
-        const badge = document.createElement('span');
-        badge.className = f.activa ? 'badge bg-success' : 'badge bg-secondary';
-        badge.textContent = f.activa ? 'Activa' : 'Desactivada';
-        tdEstado.appendChild(badge);
+        const delGrupo = ordenadas.filter(x => x.grupo_id && x.grupo_id === f.grupo_id);
+        const posicion = delGrupo.indexOf(f);
 
-        const tdAcciones = document.createElement('td');
-        tdAcciones.className = 'text-center text-nowrap';
-
-        if (f.tipo === 'compartida') {
-            tdAcciones.append(enlace('Paradas', 'btn-outline-secondary me-1', 'gestor-paradas.html'));
+        const tdOrden = celda('', 'text-nowrap');
+        if (f.grupo_id) {
+            const subir = boton('↑', 'btn-outline-secondary px-2', () => void mover(f, -1), `Subir ${ruta(f)} ${hora(f.hora)}`);
+            const bajar = boton('↓', 'btn-outline-secondary px-2 ms-1', () => void mover(f, 1), `Bajar ${ruta(f)} ${hora(f.hora)}`);
+            subir.disabled = posicion === 0;
+            bajar.disabled = posicion === delGrupo.length - 1;
+            tdOrden.append(document.createTextNode(`${posicion + 1} `), subir, bajar);
         }
 
+        const tdGrupo = celda(f.grupos_bus?.nombre ?? '');
+        if (rol === 'administrador') tdGrupo.prepend(document.createTextNode(`${f.cooperativas?.nombre ?? ''} · `));
+
+        const tdRuta = celda(ruta(f));
+        const falta = porCorregir(f);
+        if (falta.length) {
+            pendientes++;
+            const aviso = insignia('por corregir', 'text-bg-warning ms-1');
+            aviso.title = `Falta: ${falta.join(', ')}. Edita la frecuencia para completarla.`;
+            tdRuta.appendChild(aviso);
+        }
+        if (f.tipo === 'compartida' && f.paradas?.length) {
+            const paradas = [...f.paradas].sort((a, b) => a.orden - b.orden).map(p => p.nombre).join(', ');
+            tdRuta.appendChild(Object.assign(document.createElement('div'), { className: 'small text-muted', textContent: `Paradas: ${paradas}` }));
+        }
+
+        const tdEstado = celda('');
+        tdEstado.appendChild(insignia(f.activa ? 'Activa' : 'Inactiva', f.activa ? 'bg-success' : 'bg-secondary'));
+
+        const tdAcciones = celda('', 'text-center text-nowrap');
         tdAcciones.append(
-            boton('Editar', 'btn-outline-primary me-1', () => abrirEditar(f.id)),
-            boton(f.activa ? 'Desactivar' : 'Activar', 'btn-outline-warning me-1', () => cambiarEstado(f)),
-            boton('Eliminar', 'btn-outline-danger', () => eliminar(f))
+            boton('Editar', 'btn-outline-primary me-1', () => void abrirEditar(f.id)),
+            boton(f.activa ? 'Desactivar' : 'Activar', 'btn-outline-warning me-1', () => void cambiarEstado(f)),
+            boton('Eliminar', 'btn-outline-danger', () => void eliminar(f))
         );
 
         tr.append(
-            celda(i + 1),
-            celda(f.cooperativas?.nombre ?? 'Sin cooperativa'),
-            celda(`${f.origen} → ${f.destino}`),
-            celda(String(f.hora).slice(0, 5)),
-            celda(f.tipo === 'compartida' ? 'Compartida' : 'Directa'),
+            tdOrden,
+            tdGrupo,
+            tdRuta,
+            celda(hora(f.hora)),
+            celda(textoTipo(f.tipo)),
             celda(f.numero_resolucion ?? '—'),
             celda('$' + Number(f.precio_base).toFixed(2)),
             tdEstado,
@@ -127,162 +202,353 @@ function dibujarTabla() {
         );
         tbody.appendChild(tr);
     });
+
+    // Aviso fijo (no desaparece) mientras haya frecuencias por corregir.
+    const aviso = $('avisoCorregir');
+    aviso.classList.toggle('d-none', pendientes === 0);
+    aviso.textContent = pendientes === 0 ? '' :
+        `${pendientes === 1 ? 'Una frecuencia está' : `${pendientes} frecuencias están`} «por corregir»: ` +
+        'no se pudo enlazar su origen o destino con un cantón, o no tiene grupo de bus. ' +
+        'Siguen funcionando, pero edítalas para completarlas.';
+}
+
+async function mover(f, direccion) {
+    if (ocupado) return;
+
+    const ids = moverFrecuencia(frecuencias, f.id, direccion);
+    if (!ids) return;
+
+    ocupado = true;
+    try {
+        const { error } = await supabase.rpc('ordenar_frecuencias', { p_grupo_id: f.grupo_id, p_ids: ids });
+        if (error) throw error;
+        await cargarFrecuencias();
+    } catch (error) {
+        console.error('No se pudo cambiar el orden:', error);
+        mostrarAlerta(mensajeError(error), 'danger');
+    } finally {
+        ocupado = false;
+    }
+}
+
+/* ---------- Combos ---------- */
+
+function ponerCantones(selectProvincia, selectCanton, cantonId = '') {
+    const provincia = selectProvincia.value;
+
+    if (!provincia || !cantones) {
+        vaciarCombo(selectCanton, 'Primero elige la provincia');
+        return;
+    }
+
+    ponerOpciones(selectCanton, cantones.filter(c => String(c.provincia_id) === String(provincia)), {
+        inicial: 'Selecciona un cantón...',
+        texto: etiquetaCanton,
+        porDefecto: cantonId
+    });
+}
+
+function ponerLugar(selectProvincia, selectCanton, cantonId) {
+    const canton = cantones?.find(c => c.id === cantonId);
+
+    ponerOpciones(selectProvincia, provincias ?? [], {
+        inicial: 'Selecciona una provincia...',
+        porDefecto: canton?.provincia_id ?? '',
+        unica: false
+    });
+    ponerCantones(selectProvincia, selectCanton, canton?.id ?? '');
+}
+
+async function ponerGrupos(seleccionado = '') {
+    const cooperativaId = campo.cooperativaId.value;
+
+    if (!cooperativaId) {
+        vaciarCombo(campo.grupoId, 'Primero elige la cooperativa');
+        return;
+    }
+
+    await llenarCombo(campo.grupoId, {
+        cargar: () => obtenerGruposBus(cooperativaId),
+        inicial: 'Selecciona un grupo...',
+        porDefecto: seleccionado,
+        vacio: 'Primero crea un grupo de bus',
+        error: 'No se pudieron cargar los grupos.'
+    });
+}
+
+async function cargarCatalogos() {
+    if (provincias && cantones) return;
+
+    [provincias, cantones] = await Promise.all([obtenerProvincias(), obtenerCantones()]);
+    lugares = opcionesParada(cantones);
+
+    $('listaLugares').replaceChildren(...lugares.map(o => Object.assign(document.createElement('option'), { value: o.texto })));
+}
+
+/* ---------- Paradas ---------- */
+
+function textoParada(parada) {
+    if (!parada.canton_id) return parada.nombre ?? '';
+    return lugares.find(o => o.canton_id === parada.canton_id)?.texto ?? parada.nombre ?? '';
+}
+
+function agregarParada(parada = {}) {
+    const fila = document.createElement('tr');
+
+    const lugar = document.createElement('input');
+    lugar.type = 'text';
+    lugar.className = 'form-control form-control-sm';
+    lugar.setAttribute('list', 'listaLugares');
+    lugar.maxLength = 100;
+    lugar.placeholder = 'Cantón o lugar';
+    lugar.dataset.campo = 'lugar';
+    lugar.value = textoParada(parada);
+    lugar.setAttribute('aria-label', 'Lugar de la parada *');
+
+    const horaParada = document.createElement('input');
+    horaParada.type = 'time';
+    horaParada.className = 'form-control form-control-sm';
+    horaParada.dataset.campo = 'hora';
+    horaParada.value = hora(parada.hora_estimada);
+    horaParada.setAttribute('aria-label', 'Hora estimada de la parada *');
+
+    const avisoLugar = Object.assign(document.createElement('div'), { className: 'invalid-feedback' });
+    const avisoHora = Object.assign(document.createElement('div'), { className: 'invalid-feedback' });
+
+    [lugar, horaParada].forEach(c => c.addEventListener('input', () => c.classList.remove('is-invalid')));
+
+    const tdLugar = document.createElement('td');
+    tdLugar.append(lugar, avisoLugar);
+    const tdHora = document.createElement('td');
+    tdHora.append(horaParada, avisoHora);
+
+    const tdAcciones = celda('', 'text-nowrap');
+    tdAcciones.append(
+        boton('↑', 'btn-outline-secondary px-2', () => { fila.previousElementSibling?.before(fila); numerarParadas(); }, 'Subir la parada'),
+        boton('↓', 'btn-outline-secondary px-2 ms-1', () => { fila.nextElementSibling?.after(fila); numerarParadas(); }, 'Bajar la parada'),
+        boton('Quitar', 'btn-outline-danger ms-1', () => { fila.remove(); numerarParadas(); })
+    );
+
+    fila.append(celda(''), tdLugar, tdHora, tdAcciones);
+    filasParadas.appendChild(fila);
+    numerarParadas();
+}
+
+function numerarParadas() {
+    [...filasParadas.rows].forEach((fila, i) => { fila.cells[0].textContent = String(i + 1); });
+}
+
+function leerParadas() {
+    return [...filasParadas.rows].map(fila => ({
+        ...resolverParada(fila.querySelector('[data-campo="lugar"]').value, lugares),
+        hora_estimada: fila.querySelector('[data-campo="hora"]').value
+    }));
+}
+
+function mostrarSeccionParadas() {
+    const conParadas = campo.tipo.value === 'compartida';
+    $('seccionParadas').classList.toggle('d-none', !conParadas);
+    if (conParadas && filasParadas.rows.length === 0) agregarParada();
 }
 
 /* ---------- Formulario ---------- */
 
-function llenarCooperativas(seleccionada = '') {
-    // Al editar se muestra la guardada; si solo administra una, se preselecciona.
-    ponerOpciones(campo.cooperativa, cooperativas, {
+function limpiarErrores() {
+    errorFormulario.classList.add('d-none');
+    $('errorParadas').textContent = '';
+    form.querySelectorAll('.is-invalid').forEach(c => c.classList.remove('is-invalid'));
+}
+
+function mostrarErrores(errores) {
+    let primero = null;
+
+    Object.entries(errores).forEach(([clave, texto]) => {
+        const control = campo[clave];
+        if (!control || typeof texto !== 'string') return;
+        control.classList.add('is-invalid');
+        const aviso = form.querySelector(`[data-error="${clave}"]`);
+        if (aviso) aviso.textContent = texto;
+        primero ??= control;
+    });
+
+    $('errorParadas').textContent = errores.paradasGeneral ?? '';
+
+    (errores.paradas ?? []).forEach((problema, i) => {
+        const fila = filasParadas.rows[i];
+        [['lugar', problema.lugar], ['hora', problema.hora]].forEach(([nombre, texto]) => {
+            const control = fila.querySelector(`[data-campo="${nombre}"]`);
+            control.classList.toggle('is-invalid', Boolean(texto));
+            control.nextElementSibling.textContent = texto ?? '';
+            if (texto) primero ??= control;
+        });
+    });
+
+    primero?.focus();
+}
+
+async function prepararFormulario(f = null) {
+    form.reset();
+    limpiarErrores();
+    filasParadas.replaceChildren();
+    campo.id.value = f?.id ?? '';
+
+    await cargarCatalogos();
+
+    ponerOpciones(campo.cooperativaId, cooperativas, {
         inicial: 'Selecciona una cooperativa...',
-        porDefecto: seleccionada,
+        porDefecto: f?.cooperativa_id ?? '',
         vacio: 'Sin cooperativas disponibles'
     });
+    // El gerente no elige la cooperativa: sale de su sesión.
+    $('grupoCooperativa').classList.toggle('d-none', cooperativas.length === 1);
+    campo.cooperativaId.disabled = Boolean(f) || cooperativas.length === 1;
+
+    ponerLugar(campo.provinciaOrigen, campo.origenCantonId, f?.origen_canton_id);
+    ponerLugar(campo.provinciaDestino, campo.destinoCantonId, f?.destino_canton_id);
+
+    campo.hora.value = f ? hora(f.hora) : '';
+    campo.precio.value = f ? f.precio_base : '';
+    campo.resolucion.value = f?.numero_resolucion ?? '';
+    campo.estado.value = f ? String(f.activa) : 'true';
+    campo.tipo.value = f?.tipo ?? 'directa';
+
+    [...(f?.paradas ?? [])].sort((a, b) => a.orden - b.orden).forEach(agregarParada);
+    mostrarSeccionParadas();
+
+    await ponerGrupos(f?.grupo_id ?? '');
 }
 
-function abrirCrear() {
-    form.reset();
-    form.classList.remove('was-validated');
-    campo.id.value = '';
-    llenarCooperativas();
-    document.getElementById('modalFrecuenciaLabel').textContent = 'Nueva frecuencia';
+async function abrirCrear() {
+    $('modalFrecuenciaLabel').textContent = 'Nueva frecuencia';
     modal.show();
+    await prepararFormulario(null);
 }
 
-function abrirEditar(id) {
-    const f = frecuencias.find((x) => x.id === id);
+async function abrirEditar(id) {
+    const f = frecuencias.find(x => x.id === id);
     if (!f) return;
 
-    form.reset();
-    form.classList.remove('was-validated');
-    campo.id.value = f.id;
-    llenarCooperativas(f.cooperativa_id ?? '');
-    campo.origen.value = f.origen;
-    campo.destino.value = f.destino;
-    campo.hora.value = String(f.hora).slice(0, 5);
-    campo.precio.value = f.precio_base;
-    campo.tipo.value = f.tipo;
-    campo.resolucion.value = f.numero_resolucion ?? '';
-    document.getElementById('modalFrecuenciaLabel').textContent = 'Editar frecuencia';
+    $('modalFrecuenciaLabel').textContent = `Editar ${ruta(f)} ${hora(f.hora)}`;
     modal.show();
+    await prepararFormulario(f);
+
+    const falta = porCorregir(f);
+    if (falta.length) {
+        errorFormulario.textContent = `Esta frecuencia está por corregir. Falta: ${falta.join(', ')}.` +
+            (f.origen_canton_id && f.destino_canton_id ? '' : ` Antes decía «${ruta(f)}».`);
+        errorFormulario.className = 'alert alert-warning';
+    }
 }
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+form.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    if (ocupado) return;
 
-    campo.origen.value = campo.origen.value.trim();
-    campo.destino.value = campo.destino.value.trim();
-    campo.resolucion.value = campo.resolucion.value.trim();
+    limpiarErrores();
 
-    // Origen y destino no pueden ser iguales
-    const iguales = campo.origen.value.toLowerCase() === campo.destino.value.toLowerCase();
-    campo.destino.setCustomValidity(iguales && campo.destino.value ? 'Igual al origen' : '');
+    const valores = Object.fromEntries(Object.entries(campo).map(([clave, control]) => [clave, control.value]));
+    valores.activa = campo.estado.value;
+    const paradas = campo.tipo.value === 'compartida' ? leerParadas() : [];
+    const errores = revisarFrecuencia(valores, paradas);
 
-    if (!form.checkValidity()) {
-        form.classList.add('was-validated');
-        if (iguales) mostrarAlerta('El origen y el destino no pueden ser iguales.', 'warning');
+    if (Object.keys(errores).length) {
+        mostrarErrores(errores);
         return;
     }
 
-    const datos = {
-        cooperativa_id: campo.cooperativa.value,
-        origen: campo.origen.value,
-        destino: campo.destino.value,
-        hora: campo.hora.value,
-        tipo: campo.tipo.value,
-        precio_base: Number(campo.precio.value),
-        numero_resolucion: campo.resolucion.value // obligatoria
-    };
-
+    ocupado = true;
     const textoOriginal = btnGuardar.textContent;
     btnGuardar.disabled = true;
     btnGuardar.textContent = 'Guardando...';
 
     try {
-        const id = campo.id.value;
-        const { error } = id
-            ? await supabase.from('frecuencias').update(datos).eq('id', id)
-            : await supabase.from('frecuencias').insert(datos);
+        const { error } = await supabase.rpc('guardar_frecuencia', {
+            p_cooperativa_id: valores.cooperativaId,
+            p_frecuencia_id: valores.id ? Number(valores.id) : null,
+            p_datos: datosFrecuencia(valores),
+            p_paradas: paradas
+        });
 
         if (error) throw error;
 
         modal.hide();
         await cargarFrecuencias();
         mostrarAlerta(
-            id
-                ? 'Frecuencia actualizada.'
-                : 'Frecuencia creada. Ahora asígnale un bus cada día en la hoja de ruta.',
+            valores.id ? 'Frecuencia actualizada.' : 'Frecuencia creada. Sus buses se asignan en la hoja de ruta del grupo.',
             'success'
         );
     } catch (error) {
         console.error('Error al guardar la frecuencia:', error);
-        mostrarAlerta(
-            error?.code === '23502' || error?.code === '23514' && String(error.message).includes('resolucion')
-                ? 'El número de resolución es obligatorio.'
-                : textoError(error),
-            'danger'
-        );
+        errorFormulario.className = 'alert alert-danger';
+        errorFormulario.textContent = mensajeError(error);
     } finally {
+        ocupado = false;
         btnGuardar.disabled = false;
         btnGuardar.textContent = textoOriginal;
     }
 });
 
-campo.destino.addEventListener('input', () => campo.destino.setCustomValidity(''));
-campo.origen.addEventListener('input', () => campo.destino.setCustomValidity(''));
+campo.provinciaOrigen.addEventListener('change', () => ponerCantones(campo.provinciaOrigen, campo.origenCantonId));
+campo.provinciaDestino.addEventListener('change', () => ponerCantones(campo.provinciaDestino, campo.destinoCantonId));
+campo.cooperativaId.addEventListener('change', () => void ponerGrupos());
+campo.tipo.addEventListener('change', mostrarSeccionParadas);
+$('btnAgregarParada').addEventListener('click', () => agregarParada());
+Object.values(campo).forEach(control => control.addEventListener('change', () => control.classList.remove('is-invalid')));
 
 /* ---------- Activar / desactivar y eliminar ---------- */
 
 async function cambiarEstado(f) {
-    const { error } = await supabase
-        .from('frecuencias')
-        .update({ activa: !f.activa })
-        .eq('id', f.id);
+    if (ocupado) return;
+    ocupado = true;
 
-    if (error) {
-        mostrarAlerta(textoError(error), 'danger');
-        return;
+    try {
+        const { error } = await supabase.from('frecuencias').update({ activa: !f.activa }).eq('id', f.id);
+        if (error) throw error;
+
+        await cargarFrecuencias();
+        mostrarAlerta(f.activa ? 'Frecuencia desactivada.' : 'Frecuencia activada.', 'success');
+    } catch (error) {
+        mostrarAlerta(mensajeError(error), 'danger');
+    } finally {
+        ocupado = false;
     }
-
-    await cargarFrecuencias();
-    mostrarAlerta(f.activa ? 'Frecuencia desactivada.' : 'Frecuencia activada.', 'success');
 }
 
 async function eliminar(f) {
-    if (!confirm(`¿Eliminar la frecuencia ${f.origen} → ${f.destino} de las ${String(f.hora).slice(0, 5)}?`)) return;
+    if (ocupado) return;
+    if (!confirm(`¿Eliminar la frecuencia ${ruta(f)} de las ${hora(f.hora)}?`)) return;
 
-    const { error } = await supabase.from('frecuencias').delete().eq('id', f.id);
+    ocupado = true;
 
-    if (error) {
-        mostrarAlerta(
-            error.code === '23503'
-                ? 'No se puede eliminar: la frecuencia tiene hojas de ruta o viajes. Desactívala en su lugar.'
-                : textoError(error),
-            'danger'
-        );
-        return;
+    try {
+        const { error } = await supabase.rpc('eliminar_frecuencia', { p_frecuencia_id: f.id });
+        if (error) throw error;
+
+        await cargarFrecuencias();
+        mostrarAlerta('Frecuencia eliminada.', 'success');
+    } catch (error) {
+        // Con boletos vendidos la base dice cuántos y sugiere desactivarla.
+        mostrarAlerta(mensajeError(error), 'danger');
+    } finally {
+        ocupado = false;
     }
-
-    await cargarFrecuencias();
-    mostrarAlerta('Frecuencia eliminada.', 'success');
 }
 
 /* ---------- Inicio ---------- */
 
-btnNueva.addEventListener('click', abrirCrear);
+btnNueva.addEventListener('click', () => void abrirCrear());
 
 async function iniciar() {
-    const rol = await exigirRoles(['administrador', 'cooperativa']);
+    rol = await exigirRoles(['administrador', 'cooperativa']);
     if (!rol) return;
 
-    document.getElementById('btnVolver').href = `../${rol}/index.html`;
+    $('btnVolver').href = `../${rol}/index.html`;
 
     try {
         const contexto = await obtenerContextoGestion();
         cooperativas = contexto.cooperativas;
-        campo.cooperativa.dataset.rol = contexto.rol;
 
-        if (contexto.rol === 'cooperativa' && cooperativas.length === 0) {
+        if (rol === 'cooperativa' && cooperativas.length === 0) {
             filaInformativa('Tu cuenta aún no está asignada a una cooperativa. Contacta al administrador.', 'text-danger');
             return;
         }
