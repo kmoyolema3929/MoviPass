@@ -34,12 +34,14 @@ export function obtenerProvincias() {
 /**
  * Cantones activos; si se pasa una provincia, solo los de esa provincia.
  * @param {number} [provinciaId]
- * @returns {Promise<{id: number, provincia_id: number, nombre: string}[]>}
+ * ciudad: cabecera cantonal cuando su nombre es distinto; etiqueta: nombre para
+ * mostrar ("Pastaza (Puyo)", "Olmedo (Loja)"). Ver lugares.js (cambio 7).
+ * @returns {Promise<{id: number, provincia_id: number, nombre: string, ciudad: string|null, etiqueta: string}[]>}
  */
 export function obtenerCantones(provinciaId) {
     const filtros = provinciaId == null ? {} : { provincia_id: Number(provinciaId) };
 
-    return leerCatalogo('cantones', 'id, provincia_id, nombre', filtros);
+    return leerCatalogo('cantones', 'id, provincia_id, nombre, ciudad, etiqueta', filtros);
 }
 
 /** @returns {Promise<{id: number, nombre: string}[]>} */
