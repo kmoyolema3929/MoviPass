@@ -10,7 +10,7 @@
 <body class="bg-light">
     <nav class="navbar navbar-dark" style="background-color: var(--primary-color, #0d6efd);">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="../index.html">MoviPass</a>
+            <a class="navbar-brand fw-bold" href="../../index.html">MoviPass</a>
             <div class="d-flex gap-2">
                 <a id="btnVolver" href="../cooperativa/index.html" class="btn btn-outline-light btn-sm">&larr; Volver al panel</a>
                 <button id="btnCerrarSesion" type="button" class="btn btn-light btn-sm">Cerrar sesión</button>
@@ -31,9 +31,9 @@
 
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <label for="selectFrecuencia" class="form-label fw-bold">Frecuencia</label>
+                <label for="selectFrecuencia" class="form-label fw-bold">Frecuencia *</label>
                 <select class="form-select" id="selectFrecuencia" disabled>
-                    <option value="">Cargando frecuencias...</option>
+                    <option value="" selected disabled>Cargando...</option>
                 </select>
                 <div id="avisoSinCompartidas" class="form-text text-danger d-none">
                     No hay frecuencias compartidas. Crea una en
@@ -74,12 +74,12 @@
                 <div class="modal-body">
                     <form id="formParada" novalidate>
                         <div class="mb-3">
-                            <label for="nombreParada" class="form-label">Nombre de la parada</label>
+                            <label for="nombreParada" class="form-label">Nombre de la parada *</label>
                             <input type="text" class="form-control" id="nombreParada" placeholder="Ej. Terminal Latacunga" required minlength="3" maxlength="100">
                             <div class="invalid-feedback">Ingresa un nombre válido (mínimo 3 letras).</div>
                         </div>
                         <div class="mb-3">
-                            <label for="horaEstimada" class="form-label">Hora estimada</label>
+                            <label for="horaEstimada" class="form-label">Hora estimada *</label>
                             <input type="time" class="form-control" id="horaEstimada" required>
                             <div class="invalid-feedback">Selecciona la hora estimada.</div>
                         </div>
