@@ -2,6 +2,7 @@ import { supabase } from '../../js/supabaseClient.js';
 import { exigirRoles } from '../../js/guardas.js';
 import { obtenerContextoGestion, textoError } from '../../js/contextoUsuario.js';
 import { mostrarAlerta } from '../../js/alertas.js';
+import { llenarCombo, vaciarCombo } from '../../js/combos.js';
 
 // Debe coincidir con validar_hoja_ruta() en la base de datos.
 const DIAS_MAX_ANTICIPACION = 14;
@@ -471,33 +472,50 @@ async function iniciar() {
     inpInicio.min = hoy();
     inpInicio.max = limite();
 
-    try {
-        const contexto = await obtenerContextoGestion();
-        const cooperativas = contexto.cooperativas;
+    selCoop.addEventListener('change', cargarCooperativa);
+    inpInicio.addEventListener('change', () => {
+        if (!inpInicio.value) inpInicio.value = hoy();
+        recargarHojas();
+    });
+    selDias.addEventListener('change', recargarHojas);
+    btnAuto.addEventListener('click', rellenarAutomatico);
 
-        selCoop.replaceChildren(new Option('Selecciona una cooperativa...', ''));
-        cooperativas.forEach((c) => selCoop.append(new Option(c.nombre, c.id)));
-        selCoop.disabled = false;
-
-        if (contexto.rol === 'cooperativa' && cooperativas.length === 0) {
+    // El contexto se consulta dentro de la carga del combo para que "Reintentar" lo repita.
+    let rolContexto = rol;
+    const alCargar = async (cooperativas) => {
+        if (rolContexto === 'cooperativa' && cooperativas.length === 0) {
+            vaciarCombo(selCoop, 'Sin cooperativa asignada');
             contenedor.replaceChildren(
                 nuevoAviso('danger', 'Tu cuenta aún no está asignada a una cooperativa. Contacta al administrador.')
             );
             return;
         }
 
-        selCoop.addEventListener('change', cargarCooperativa);
-        inpInicio.addEventListener('change', () => {
-            if (!inpInicio.value) inpInicio.value = hoy();
-            recargarHojas();
-        });
-        selDias.addEventListener('change', recargarHojas);
-        btnAuto.addEventListener('click', rellenarAutomatico);
+        // Con una sola cooperativa, llenarCombo ya la dejó elegida.
+        await cargarCooperativa();
+    };
 
-        if (cooperativas.length === 1) {
-            selCoop.value = cooperativas[0].id;
-            await cargarCooperativa();
+    try {
+        const cooperativas = await llenarCombo(selCoop, {
+            cargar: async () => {
+                const contexto = await obtenerContextoGestion();
+                rolContexto = contexto.rol;
+                return contexto.cooperativas;
+            },
+            inicial: 'Selecciona una cooperativa...',
+            vacio: 'Sin cooperativas disponibles',
+            error: 'No se pudieron cargar las cooperativas.',
+            alReintentar: alCargar
+        });
+
+        if (cooperativas === null) {
+            contenedor.replaceChildren(
+                nuevoAviso('danger', 'No se pudieron cargar las cooperativas. Pulsa «Reintentar» debajo del selector.')
+            );
+            return;
         }
+
+        await alCargar(cooperativas);
     } catch (error) {
         console.error('Error al iniciar la hoja de ruta:', error);
         contenedor.replaceChildren(nuevoAviso('danger', 'No se pudo cargar la página.'));

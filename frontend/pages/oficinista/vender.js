@@ -7,6 +7,7 @@ import {
 } from '../../js/validaciones.js'; // <-- Ruta corregida
 import { obtenerCeldasEspecialesDeBus } from '../../js/asientosService.js';
 import { crearCeldaEspecial } from '../../js/celdasEspeciales.js';
+import { ponerOpciones } from '../../js/combos.js';
 
 const MAX_ASIENTOS = 10;
 const DIAS_VISIBLES = 15;
@@ -385,13 +386,14 @@ function dibujarPasajeros() {
         const selectTipo = document.createElement('select');
         selectTipo.className = 'form-select form-select-sm';
         selectTipo.id = `tipo-${numero}`;
-        tipos.forEach((t) => {
-            const op = document.createElement('option');
-            op.value = t.codigo;
-            op.textContent = t.descuento > 0 ? `${t.nombre} (${Number(t.descuento)}% desc.)` : t.nombre;
-            selectTipo.appendChild(op);
+        // "Adulto" (normal) por defecto: no lleva opción "Selecciona...".
+        ponerOpciones(selectTipo, tipos, {
+            valor: (t) => t.codigo,
+            texto: (t) => (t.descuento > 0 ? `${t.nombre} (${Number(t.descuento)}% desc.)` : t.nombre),
+            inicial: null,
+            porDefecto: d.tipo || 'normal',
+            vacio: 'No hay tipos de pasajero'
         });
-        selectTipo.value = d.tipo;
         colTipo.append(labelTipo, selectTipo);
 
         const ayuda = document.createElement('div');

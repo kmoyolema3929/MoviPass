@@ -3,6 +3,7 @@
 // Se conecta desde buses.js con crearLote(...). No modifica el formulario de un solo bus.
 
 import { formatearPlacaPegada, normalizarPlaca, prepararCampoPlaca } from "./validaciones.js";
+import { ponerOpciones } from "./combos.js";
 
 const MAX_LOTE = 30;
 
@@ -25,8 +26,10 @@ const PLANTILLA_MODAL = `
                     <div id="errorLote" class="alert alert-danger d-none" role="alert"></div>
 
                     <div class="mb-3">
-                        <label for="tipoLote" class="form-label">Tipo de bus (el mismo para todo el lote)</label>
-                        <select id="tipoLote" class="form-select" required></select>
+                        <label for="tipoLote" class="form-label">Tipo de bus (el mismo para todo el lote) *</label>
+                        <select id="tipoLote" class="form-select" required disabled>
+                            <option value="" selected disabled>Cargando...</option>
+                        </select>
                         <div class="invalid-feedback">Elige el tipo de bus.</div>
                     </div>
 
@@ -39,8 +42,8 @@ const PLANTILLA_MODAL = `
                             <thead>
                                 <tr>
                                     <th scope="col">Placa *</th>
-                                    <th scope="col">Chasis</th>
-                                    <th scope="col">Carrocería</th>
+                                    <th scope="col">Chasis *</th>
+                                    <th scope="col">Carrocería *</th>
                                     <th scope="col"><span class="visually-hidden">Quitar</span></th>
                                 </tr>
                             </thead>
@@ -159,12 +162,12 @@ export function crearLote({
         formulario.classList.remove("was-validated");
         errorLote.classList.add("d-none");
 
-        // Mismas opciones que el formulario de un solo bus
-        tipoLote.replaceChildren(
-            ...Array.from(tipoBus.options).map(function (opcion) {
-                return new Option(opcion.textContent, opcion.value);
-            })
-        );
+        // Mismas opciones que el formulario de un solo bus (sin su opción inicial)
+        const tipos = Array.from(tipoBus.options)
+            .filter(function (opcion) { return opcion.value; })
+            .map(function (opcion) { return { id: opcion.value, nombre: opcion.textContent }; });
+
+        ponerOpciones(tipoLote, tipos, { vacio: "No hay tipos de bus" });
 
         filasLote.replaceChildren();
         for (let i = 0; i < 3; i++) agregarFila();

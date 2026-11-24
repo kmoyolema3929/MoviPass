@@ -2,6 +2,7 @@ import { supabase } from '../../js/supabaseClient.js';
 import { exigirRoles } from '../../js/guardas.js';
 import { obtenerContextoGestion, textoError } from '../../js/contextoUsuario.js';
 import { mostrarAlerta } from '../../js/alertas.js';
+import { ponerOpciones } from '../../js/combos.js';
 
 const COLUMNAS = 9;
 
@@ -131,22 +132,12 @@ function dibujarTabla() {
 /* ---------- Formulario ---------- */
 
 function llenarCooperativas(seleccionada = '') {
-    campo.cooperativa.replaceChildren();
-
-    const vacia = document.createElement('option');
-    vacia.value = '';
-    vacia.textContent = 'Selecciona una cooperativa...';
-    campo.cooperativa.appendChild(vacia);
-
-    cooperativas.forEach((c) => {
-        const op = document.createElement('option');
-        op.value = c.id;
-        op.textContent = c.nombre;
-        campo.cooperativa.appendChild(op);
+    // Al editar se muestra la guardada; si solo administra una, se preselecciona.
+    ponerOpciones(campo.cooperativa, cooperativas, {
+        inicial: 'Selecciona una cooperativa...',
+        porDefecto: seleccionada,
+        vacio: 'Sin cooperativas disponibles'
     });
-
-    // Si solo administra una cooperativa, se preselecciona
-    campo.cooperativa.value = seleccionada || (cooperativas.length === 1 ? cooperativas[0].id : '');
 }
 
 function abrirCrear() {

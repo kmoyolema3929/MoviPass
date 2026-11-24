@@ -2,6 +2,7 @@ import { supabase } from '../../js/supabaseClient.js';
 import { exigirRoles } from '../../js/guardas.js';
 import { obtenerContextoGestion, textoError } from '../../js/contextoUsuario.js';
 import { mostrarAlerta } from '../../js/alertas.js';
+import { llenarCombo, vaciarCombo } from '../../js/combos.js';
 
 const select = document.getElementById('selectFrecuencia');
 const tbody = document.getElementById('tablaParadas');
@@ -24,7 +25,7 @@ function filaInformativa(texto, clase = 'text-muted') {
 
 /* ---------- Frecuencias compartidas (solo ellas pueden tener paradas) ---------- */
 
-async function cargarFrecuencias(rol, cooperativas) {
+async function consultarFrecuencias(rol, cooperativas) {
     let consulta = supabase
         .from('frecuencias')
         .select('id, origen, destino, hora, activa, cooperativas ( nombre )')
@@ -38,32 +39,57 @@ async function cargarFrecuencias(rol, cooperativas) {
 
     const { data, error } = await consulta;
     if (error) throw error;
+    return data ?? [];
+}
 
-    select.replaceChildren();
+function textoFrecuencia(f) {
+    const coop = f.cooperativas?.nombre ? ` - ${f.cooperativas.nombre}` : '';
+    return `${f.origen} → ${f.destino} (${String(f.hora).slice(0, 5)})${coop}${f.activa ? '' : ' [desactivada]'}`;
+}
 
-    if (!data || data.length === 0) {
-        const op = document.createElement('option');
-        op.value = '';
-        op.textContent = 'No hay frecuencias compartidas';
-        select.appendChild(op);
-        aviso.classList.remove('d-none');
+let sinCooperativa = false;
+
+// Las paradas dependen de la frecuencia: se cargan al elegirla
+// (o solas, si hay una sola frecuencia compartida).
+function alCargarFrecuencias(frecuencias) {
+    if (sinCooperativa) {
+        vaciarCombo(select, 'Sin cooperativa asignada');
+        filaInformativa('Tu cuenta aún no está asignada a una cooperativa. Contacta al administrador.', 'text-danger');
         return;
     }
 
-    const primera = document.createElement('option');
-    primera.value = '';
-    primera.textContent = 'Selecciona una frecuencia...';
-    select.appendChild(primera);
+    aviso.classList.toggle('d-none', frecuencias.length > 0);
+    cargarParadas();
+}
 
-    data.forEach((f) => {
-        const op = document.createElement('option');
-        op.value = f.id;
-        const coop = f.cooperativas?.nombre ? ` - ${f.cooperativas.nombre}` : '';
-        op.textContent = `${f.origen} → ${f.destino} (${String(f.hora).slice(0, 5)})${coop}${f.activa ? '' : ' [desactivada]'}`;
-        select.appendChild(op);
+// El contexto del usuario se consulta dentro de la carga para que "Reintentar" lo repita.
+async function frecuenciasDelUsuario() {
+    const contexto = await obtenerContextoGestion();
+
+    sinCooperativa = contexto.rol === 'cooperativa' && contexto.cooperativas.length === 0;
+    if (sinCooperativa) return [];
+
+    return consultarFrecuencias(contexto.rol, contexto.cooperativas);
+}
+
+async function cargarFrecuencias() {
+    filaInformativa('Selecciona una frecuencia para ver sus paradas.');
+
+    const frecuencias = await llenarCombo(select, {
+        cargar: frecuenciasDelUsuario,
+        texto: textoFrecuencia,
+        inicial: 'Selecciona una frecuencia...',
+        vacio: 'No hay frecuencias compartidas',
+        error: 'No se pudieron cargar las frecuencias.',
+        alReintentar: alCargarFrecuencias
     });
 
-    select.disabled = false;
+    if (frecuencias === null) {
+        filaInformativa('No se pudieron cargar las frecuencias. Pulsa «Reintentar» debajo del selector.', 'text-danger');
+        return;
+    }
+
+    alCargarFrecuencias(frecuencias);
 }
 
 /* ---------- Paradas ---------- */
@@ -197,15 +223,7 @@ async function iniciar() {
     document.getElementById('btnVolver').href = `../${rol}/index.html`;
 
     try {
-        const contexto = await obtenerContextoGestion();
-
-        if (contexto.rol === 'cooperativa' && contexto.cooperativas.length === 0) {
-            select.replaceChildren(new Option('Sin cooperativa asignada', ''));
-            filaInformativa('Tu cuenta aún no está asignada a una cooperativa. Contacta al administrador.', 'text-danger');
-            return;
-        }
-
-        await cargarFrecuencias(contexto.rol, contexto.cooperativas);
+        await cargarFrecuencias();
     } catch (error) {
         console.error('Error al iniciar la página de paradas:', error);
         filaInformativa('No se pudieron cargar las frecuencias.', 'text-danger');

@@ -78,69 +78,29 @@
 
                             <!-- Origen -->
                             <div class="col-12 col-md-6 col-lg-3">
-                                <label for="origen" class="form-label fw-bold small text-uppercase text-muted">Origen</label>
+                                <label for="origen" class="form-label fw-bold small text-uppercase text-muted">Origen *</label>
                                 <div class="position-relative">
                                     <i class="bi bi-geo-alt search-icon"></i>
-                                    <select id="origen" name="origen" class="form-select form-control-icon" required>
-                                        <option value="" selected disabled>¿De dónde sales?</option>
-                                        <option value="Ambato">Ambato</option>
-                                        <option value="Quito">Quito</option>
-                                        <option value="Guayaquil">Guayaquil</option>
-                                        <option value="Cuenca">Cuenca</option>
-                                        <option value="Loja">Loja</option>
-                                        <option value="Riobamba">Riobamba</option>
-                                        <option value="Latacunga">Latacunga</option>
-                                        <option value="Baños">Baños</option>
-                                        <option value="Puyo">Puyo</option>
-                                        <option value="Santo Domingo">Santo Domingo</option>
-                                        <option value="Manta">Manta</option>
-                                        <option value="Portoviejo">Portoviejo</option>
-                                        <option value="Machala">Machala</option>
-                                        <option value="Esmeraldas">Esmeraldas</option>
-                                        <option value="Ibarra">Ibarra</option>
-                                        <option value="Tulcán">Tulcán</option>
-                                        <option value="Salinas">Salinas</option>
-                                        <option value="Quevedo">Quevedo</option>
-                                        <option value="Milagro">Milagro</option>
-                                        <option value="Babahoyo">Babahoyo</option>
+                                    <select id="origen" name="origen" class="form-select form-control-icon" required disabled>
+                                        <option value="" selected disabled>Cargando...</option>
                                     </select>
                                 </div>
                             </div>
 
                             <!-- Destino -->
                             <div class="col-12 col-md-6 col-lg-3">
-                                <label for="destino" class="form-label fw-bold small text-uppercase text-muted">Destino</label>
+                                <label for="destino" class="form-label fw-bold small text-uppercase text-muted">Destino *</label>
                                 <div class="position-relative">
                                     <i class="bi bi-geo-fill search-icon"></i>
-                                    <select id="destino" name="destino" class="form-select form-control-icon" required>
-                                        <option value="" selected disabled>¿A dónde vas?</option>
-                                        <option value="Ambato">Ambato</option>
-                                        <option value="Quito">Quito</option>
-                                        <option value="Guayaquil">Guayaquil</option>
-                                        <option value="Cuenca">Cuenca</option>
-                                        <option value="Loja">Loja</option>
-                                        <option value="Riobamba">Riobamba</option>
-                                        <option value="Latacunga">Latacunga</option>
-                                        <option value="Baños">Baños</option>
-                                        <option value="Puyo">Puyo</option>
-                                        <option value="Santo Domingo">Santo Domingo</option>
-                                        <option value="Manta">Manta</option>
-                                        <option value="Portoviejo">Portoviejo</option>
-                                        <option value="Machala">Machala</option>
-                                        <option value="Esmeraldas">Esmeraldas</option>
-                                        <option value="Ibarra">Ibarra</option>
-                                        <option value="Tulcán">Tulcán</option>
-                                        <option value="Salinas">Salinas</option>
-                                        <option value="Quevedo">Quevedo</option>
-                                        <option value="Milagro">Milagro</option>
-                                        <option value="Babahoyo">Babahoyo</option>
+                                    <select id="destino" name="destino" class="form-select form-control-icon" required disabled>
+                                        <option value="" selected disabled>Cargando...</option>
                                     </select>
                                 </div>
                             </div>
 
                             <!-- Fecha -->
                             <div class="col-12 col-md-6 col-lg-3">
-                                <label for="fecha" class="form-label fw-bold small text-uppercase text-muted">Fecha de viaje</label>
+                                <label for="fecha" class="form-label fw-bold small text-uppercase text-muted">Fecha de viaje *</label>
                                 <div class="position-relative">
                                     <i class="bi bi-calendar-event search-icon"></i>
                                     <input id="fecha" name="fecha" type="date" class="form-control form-control-icon" required>
@@ -170,13 +130,13 @@
                 <!-- Filtros -->
                 <div id="filtros-resultados" class="row g-3 mb-4 p-3 bg-white rounded-4 shadow-sm" hidden>
                     <div class="col-md-6">
-                        <label for="filtro-cooperativa" class="form-label small fw-bold text-muted">Cooperativa</label>
+                        <label for="filtro-cooperativa" class="form-label small fw-bold text-muted">Cooperativa (opcional)</label>
                         <select id="filtro-cooperativa" class="form-select form-select-sm">
                             <option value="">Todas las cooperativas</option>
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label for="filtro-tipo-bus" class="form-label small fw-bold text-muted">Tipo de bus</label>
+                        <label for="filtro-tipo-bus" class="form-label small fw-bold text-muted">Tipo de bus (opcional)</label>
                         <select id="filtro-tipo-bus" class="form-select form-select-sm">
                             <option value="">Todos los tipos de bus</option>
                         </select>

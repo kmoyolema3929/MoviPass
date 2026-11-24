@@ -4,9 +4,17 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 
-const codigo = readFileSync(
-    require('node:path').join(__dirname, '../frontend/js/busqueda.js'), 'utf8'
-).replace(/^import .*;\r?\n/, '');
+const leer = archivo => readFileSync(require('node:path').join(__dirname, '../frontend/js', archivo), 'utf8');
+
+// combos.js se carga en el mismo contexto (sin import/export) antes de busqueda.js.
+const codigo = [
+    leer('combos.js').replace(/^export /gm, ''),
+    leer('busqueda.js').replace(/^import .*;\r?\n/gm, ''),
+].join('\n');
+
+const hoyEcuador = () => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Guayaquil', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
 
 function iniciar(consulta = async () => []) {
     const listeners = {};
@@ -16,7 +24,7 @@ function iniciar(consulta = async () => []) {
         value: '', children: [], hidden: true,
         options: [{ text: '' }], selectedIndex: 0,
         appendChild(hijo) { this.children.push(hijo); },
-        replaceChildren() { this.children = []; },
+        replaceChildren(...hijos) { this.children = hijos; },
         focus() {},
     });
     const boton = { disabled: false };
@@ -38,6 +46,7 @@ function iniciar(consulta = async () => []) {
         CustomEvent: class {
             constructor(type, opciones = {}) { this.type = type; this.detail = opciones.detail; }
         },
+        obtenerCiudades: async () => ['Ambato', 'Quito'],
         buscarViajes: async criterios => {
             llamadas.push(criterios);
             return consulta(criterios);
@@ -57,14 +66,28 @@ function iniciar(consulta = async () => []) {
 
 const terminar = () => new Promise(resolve => setImmediate(resolve));
 
-test('carga sin ReferenceError y establece la fecha local con ceros', () => {
+test('carga sin ReferenceError y la fecha es hoy en Ecuador (mínima y por defecto)', () => {
     const { campos } = iniciar();
-    const hoy = new Date();
-    assert.equal(campos.fecha.min, `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`);
+    assert.equal(campos.fecha.min, hoyEcuador());
+    assert.equal(campos.fecha.value, hoyEcuador());
+});
+
+test('origen y destino se cargan solos con "Cargando..." y luego la opción inicial', async () => {
+    const { campos } = iniciar();
+    assert.equal(campos.origen.disabled, true);
+    assert.equal(campos.origen.children[0].textContent, 'Cargando...');
+    await terminar();
+    for (const [id, inicial] of [['origen', '¿De dónde sales?'], ['destino', '¿A dónde vas?']]) {
+        assert.equal(campos[id].disabled, false);
+        assert.deepEqual(campos[id].children.map(o => o.textContent), [inicial, 'Ambato', 'Quito']);
+        assert.equal(campos[id].children[0].disabled, true);
+        assert.equal(campos[id].value, '');
+    }
 });
 
 test('campos vacíos generan tres errores sin consultar Supabase', () => {
     const app = iniciar();
+    app.campos.fecha.value = '';
     app.enviar();
     assert.equal(app.mensajes().length, 3);
     assert.equal(app.llamadas.length, 0);
@@ -108,6 +131,7 @@ test('una búsqueda sin coincidencias entrega una lista vacía sin error', async
 
 test('un fallo de red muestra el error y permite reintentar', async () => {
     const app = iniciar(async () => { throw new Error('Sin conexión'); });
+    await terminar(); // espera a que se carguen las ciudades
     app.valido(); app.enviar();
     await terminar();
     assert.match(app.mensajes()[0], /No se pudo completar/);

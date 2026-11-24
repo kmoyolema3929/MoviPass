@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient.js';
 import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
 import { cedulaValida, dinero, formatearFecha, formatearHora } from './validaciones.js';
+import { ponerOpciones } from './combos.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -84,15 +85,16 @@ function dibujarPasajeros() {
         selectTipo.className = 'form-select form-select-sm';
         selectTipo.id = `tipo-${numero}`;
 
-        borrador.tipos.forEach((tipo) => {
-            const opcion = document.createElement('option');
-            opcion.value = tipo.codigo;
-            opcion.textContent = Number(tipo.descuento) > 0
+        // "Adulto" (normal) por defecto: no lleva opción "Selecciona...".
+        ponerOpciones(selectTipo, borrador.tipos, {
+            valor: (tipo) => tipo.codigo,
+            texto: (tipo) => (Number(tipo.descuento) > 0
                 ? `${tipo.nombre} (${Number(tipo.descuento)}% desc.)`
-                : tipo.nombre;
-            selectTipo.appendChild(opcion);
+                : tipo.nombre),
+            inicial: null,
+            porDefecto: d.tipo || 'normal',
+            vacio: 'No hay tipos de pasajero',
         });
-        selectTipo.value = d.tipo;
         colTipo.append(labelTipo, selectTipo);
 
         cedula.input.addEventListener('input', () => {

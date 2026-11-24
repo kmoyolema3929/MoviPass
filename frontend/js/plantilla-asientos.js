@@ -14,6 +14,7 @@ import {
     generarAsientos,
     validarCeldasEspeciales
 } from "./celdasEspeciales.js";
+import { llenarCombo, ponerOpciones, vaciarCombo } from "./combos.js";
 
 let cooperativaId = "";
 let busesCooperativa = [];
@@ -475,28 +476,32 @@ function renderizarGuardadas() {
 }
 
 function llenarSelectorBuses() {
-    const previo = busId;
+    // El bus depende de la cooperativa: vacío y deshabilitado hasta elegirla.
+    if (!cooperativaId) {
+        vaciarCombo(selectorBus, "Primero elige una cooperativa");
+        return;
+    }
 
-    const inicial = document.createElement("option");
+    // No se elige solo aquí: elegirBusUnico() lo hace cuando corresponde,
+    // para no pisar el formulario en las recargas internas.
+    ponerOpciones(selectorBus, busesCooperativa, {
+        valor: bus => bus.id,
+        texto: bus =>
+            bus.placa + " · " + bus.tipo_bus +
+            (tieneIndividual(bus) ? " (plantilla propia)" : ""),
+        inicial: "Selecciona un bus...",
+        porDefecto: busId,
+        unica: false,
+        vacio: "Esta cooperativa no tiene buses"
+    });
+}
 
-    inicial.value = "";
-    inicial.textContent = "Selecciona un bus";
-
-    selectorBus.replaceChildren(
-        inicial,
-        ...busesCooperativa.map(function (bus) {
-            const opcion = document.createElement("option");
-
-            opcion.value = bus.id;
-            opcion.textContent =
-                bus.placa + " · " + bus.tipo_bus +
-                (tieneIndividual(bus) ? " (plantilla propia)" : "");
-
-            return opcion;
-        })
-    );
-
-    selectorBus.value = previo;
+// Si se configura un bus y la cooperativa tiene uno solo, se elige solo.
+function elegirBusUnico() {
+    if (alcance === "bus" && !busId && busesCooperativa.length === 1) {
+        selectorBus.value = busesCooperativa[0].id;
+        cambiarBus();
+    }
 }
 
 function llenarSugerencias() {
@@ -780,24 +785,6 @@ function alternarBano(numeroPiso, fila, columna) {
 
 // Cooperativa, tipo de bus y bus.
 
-function llenarSelectorCooperativas(cooperativas) {
-    const opcionInicial = document.createElement("option");
-
-    opcionInicial.value = "";
-    opcionInicial.textContent = "Selecciona una cooperativa";
-
-    selectorCooperativa.replaceChildren(opcionInicial);
-
-    cooperativas.forEach(function (cooperativa) {
-        const opcion = document.createElement("option");
-
-        opcion.value = cooperativa.id;
-        opcion.textContent = cooperativa.nombre;
-
-        selectorCooperativa.appendChild(opcion);
-    });
-}
-
 async function cambiarCooperativa() {
     const solicitud = ++solicitudCooperativa;
 
@@ -808,7 +795,6 @@ async function cambiarCooperativa() {
 
     campoTipo.value = "";
     busId = "";
-    llenarSelectorBuses();
     listaTipos.replaceChildren();
 
     limpiarResumen();
@@ -817,9 +803,12 @@ async function cambiarCooperativa() {
     renderizarGuardadas();
 
     if (!cooperativaId) {
+        llenarSelectorBuses();
         mostrarMensaje("Selecciona una cooperativa para empezar.");
         return;
     }
+
+    vaciarCombo(selectorBus, "Cargando...");
 
     controles.disabled = true;
     formulario.setAttribute("aria-busy", "true");
@@ -852,10 +841,14 @@ async function cambiarCooperativa() {
                   "a los buses que registres con ese tipo.",
             buses.length ? "info" : "warning"
         );
+
+        elegirBusUnico();
     } catch (error) {
         if (solicitud !== solicitudCooperativa) return;
 
         console.error("No se pudieron cargar los datos:", error);
+
+        vaciarCombo(selectorBus, "No se pudieron cargar los buses");
 
         mostrarMensaje(
             "No se pudieron cargar los datos de la cooperativa. " +
@@ -936,6 +929,8 @@ function cambiarAlcance() {
             ? "Elige el bus que tendrá su propia plantilla."
             : "Escribe o elige el tipo de bus que quieres configurar."
     );
+
+    elegirBusUnico();
 }
 
 function cambiarBus() {
@@ -1993,6 +1988,31 @@ botonGuardar.addEventListener("click", guardarPlantillaActual);
 
 // Inicio y comprobación del acceso.
 
+async function alCargarCooperativas(rol, cooperativas) {
+    if (cooperativas.length === 0) {
+        mostrarMensaje(
+            rol === "administrador"
+                ? "No hay cooperativas registradas. Crea una primero."
+                : "Tu cuenta no está asignada a ninguna cooperativa. " +
+                  "Solicita al administrador que revise tu asignación.",
+            "warning"
+        );
+
+        return;
+    }
+
+    controles.disabled = false;
+
+    // Con una sola cooperativa, llenarCombo ya la dejó elegida.
+    if (selectorCooperativa.value) {
+        await cambiarCooperativa();
+    } else {
+        mostrarMensaje("Selecciona la cooperativa para empezar.");
+    }
+
+    actualizarBotonGuardar();
+}
+
 async function iniciar() {
     controles.disabled = true;
 
@@ -2005,31 +2025,32 @@ async function iniciar() {
 
         mostrarMensaje("Cargando cooperativas...");
 
-        const cooperativas = await obtenerCooperativasPermitidas(rol);
+        const alCargar = function (cooperativas) {
+            return alCargarCooperativas(rol, cooperativas);
+        };
 
-        if (cooperativas.length === 0) {
+        const cooperativas = await llenarCombo(selectorCooperativa, {
+            cargar: () => obtenerCooperativasPermitidas(rol),
+            valor: cooperativa => cooperativa.id,
+            texto: cooperativa => cooperativa.nombre,
+            inicial: "Selecciona una cooperativa...",
+            vacio: "Sin cooperativas disponibles",
+            error: "No se pudieron cargar las cooperativas.",
+            // El combo está dentro del fieldset deshabilitado: el botón va junto al mensaje.
+            anclaReintentar: mensaje,
+            alReintentar: alCargar
+        });
+
+        if (cooperativas === null) {
             mostrarMensaje(
-                rol === "administrador"
-                    ? "No hay cooperativas registradas. Crea una primero."
-                    : "Tu cuenta no está asignada a ninguna cooperativa. " +
-                      "Solicita al administrador que revise tu asignación.",
-                "warning"
+                "No se pudieron cargar las cooperativas. Revisa tu conexión y pulsa «Reintentar».",
+                "danger"
             );
 
             return;
         }
 
-        llenarSelectorCooperativas(cooperativas);
-        controles.disabled = false;
-
-        if (cooperativas.length === 1) {
-            selectorCooperativa.value = cooperativas[0].id;
-            await cambiarCooperativa();
-        } else {
-            mostrarMensaje("Selecciona la cooperativa para empezar.");
-        }
-
-        actualizarBotonGuardar();
+        await alCargar(cooperativas);
     } catch (error) {
         console.error(
             "Error al cargar la plantilla de asientos:",
