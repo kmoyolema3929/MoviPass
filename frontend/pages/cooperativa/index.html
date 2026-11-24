@@ -204,15 +204,15 @@
                     hecho: d.nFrecuencias > 0
                 },
                 {
-                    titulo: 'Asigna un bus a cada día',
-                    porque: 'En la hoja de ruta eliges qué bus hace cada frecuencia cada día. Solo puedes hacerlo con hasta 14 días de anticipación, así que vuelve a revisarla cada semana.',
+                    titulo: 'Genera la hoja de ruta',
+                    porque: 'Por cada grupo de bus, MoviPass reparte los buses entre las frecuencias, con un descanso y un retén, y los rota un lugar cada día. Se genera con hasta 14 días de anticipación, así que vuelve a generarla cada semana.',
                     detalle: d.hojasProximas > 0
                         ? `${plural(d.hojasProximas, 'hoja de ruta desde hoy', 'hojas de ruta desde hoy')}.`
                         : (d.nBuses === 0 || faltanAsientos || d.nFrecuencias === 0)
                             ? 'Antes necesitas buses con asientos y al menos una frecuencia.'
                             : 'Aún no hay días asignados.',
                     href: '../frecuencias/hoja-ruta.html',
-                    boton: d.hojasProximas > 0 ? 'Asignar más días' : 'Asignar buses',
+                    boton: d.hojasProximas > 0 ? 'Generar más días' : 'Generar hoja de ruta',
                     hecho: d.hojasProximas > 0,
                     bloqueado: d.nBuses === 0 || faltanAsientos || d.nFrecuencias === 0
                 }
@@ -271,7 +271,7 @@
             $('heroTexto').textContent =
                 `Tienes ${plural(d.hojasProximas, 'hoja de ruta programada', 'hojas de ruta programadas')} desde hoy. ` +
                 'Cuando se acerque el último día asignado, entra a la hoja de ruta y programa más días.';
-            boton.textContent = 'Asignar más días';
+            boton.textContent = 'Generar más días';
             boton.href = '../frecuencias/hoja-ruta.html';
             boton.classList.remove('d-none');
         }

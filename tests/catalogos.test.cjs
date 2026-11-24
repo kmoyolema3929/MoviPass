@@ -36,7 +36,7 @@ const casos = [
     ['obtenerMarcasCarroceria', 'marcas_carroceria', 'id, nombre'],
     ['obtenerMarcasChasis', 'marcas_chasis', 'id, nombre'],
     ['obtenerTiposPasajero', 'tipos_pasajero', 'codigo, nombre, descuento'],
-    ['obtenerCantones', 'cantones', 'id, provincia_id, nombre'],
+    ['obtenerCantones', 'cantones', 'id, provincia_id, nombre, ciudad, etiqueta'],
 ];
 
 for (const [funcion, tabla, columnas] of casos) {
@@ -61,7 +61,7 @@ test('obtenerCantones filtra por provincia', async () => {
 
     assert.deepEqual(copia(llamadas), [
         ['from', 'cantones'],
-        ['select', 'id, provincia_id, nombre'],
+        ['select', 'id, provincia_id, nombre, ciudad, etiqueta'],
         ['eq', 'activo', true],
         ['eq', 'provincia_id', 13],
         ['order', 'nombre'],

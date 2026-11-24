@@ -8,15 +8,19 @@
     <link rel="stylesheet" href="../../css/styles.css">
     <style>
         .hoja-ruta th:first-child,
-        .hoja-ruta td:first-child { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 13rem; }
+        .hoja-ruta td:first-child { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 14rem; }
         .hoja-ruta thead th:first-child { background: #212529; z-index: 2; }
-        .hoja-ruta select { min-width: 9rem; }
+        .hoja-ruta td { min-width: 6.5rem; text-align: center; }
+        .hoja-ruta td:first-child { text-align: left; }
+        .hoja-ruta .fila-parada td { background: #f8f9fa; }
+        .hoja-ruta .bus { font-weight: 700; font-size: 1.05rem; }
+        .hoja-ruta .sin-generar { color: #adb5bd; }
     </style>
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-dark" style="background-color: var(--primary-color, #0d6efd);">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="../cooperativa/index.html">MoviPass - Cooperativa</a>
+            <a class="navbar-brand fw-bold" id="marca" href="../cooperativa/index.html">MoviPass - Cooperativa</a>
             <div class="d-flex gap-2">
                 <a id="btnVolver" href="../cooperativa/index.html" class="btn btn-outline-light btn-sm">&larr; Volver al panel</a>
                 <button id="btnCerrarSesion" type="button" class="btn btn-light btn-sm">Cerrar sesión</button>
@@ -28,29 +32,39 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <div>
                 <h1 class="h3 mb-1">Hoja de ruta</h1>
-                <p class="text-muted mb-0">Asigna un bus a cada frecuencia, día por día. Un bus solo puede hacer una frecuencia al día.</p>
+                <p class="text-muted mb-0">
+                    Se genera por grupo de bus: cada día cada bus baja una fila y el del retén sube a la primera frecuencia.
+                </p>
             </div>
-            <a href="gestor-frecuencias.html" class="btn btn-outline-primary">Gestionar frecuencias</a>
+            <a href="gestor-frecuencias.html" class="btn btn-outline-primary" id="enlaceFrecuencias">Gestionar frecuencias</a>
         </div>
 
         <div id="alertContainer" role="alert" aria-live="polite"></div>
+        <div id="resultado" class="alert d-none" role="status" aria-live="polite"></div>
 
-        <div class="card shadow-sm mb-4">
+        <div class="card shadow-sm mb-3">
             <div class="card-body">
+                <p class="text-muted small">Los campos marcados con * son obligatorios.</p>
                 <div class="row g-3 align-items-end">
-                    <div class="col-md-4">
+                    <div class="col-md-3" id="grupoCooperativa">
                         <label for="cooperativa" class="form-label">Cooperativa *</label>
                         <select id="cooperativa" class="form-select" disabled>
                             <option value="" selected disabled>Cargando...</option>
                         </select>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <label for="fechaInicio" class="form-label">Válida a partir de</label>
-                        <input type="date" id="fechaInicio" class="form-control">
+                    <div class="col-md-3">
+                        <label for="grupo" class="form-label">Grupo de bus *</label>
+                        <select id="grupo" class="form-select" disabled>
+                            <option value="" selected disabled>Primero elige la cooperativa</option>
+                        </select>
                     </div>
                     <div class="col-6 col-md-2">
-                        <label for="numeroDias" class="form-label">Días</label>
-                        <select id="numeroDias" class="form-select">
+                        <label for="fechaInicio" class="form-label">Desde *</label>
+                        <input type="date" id="fechaInicio" class="form-control" required>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label for="numeroDias" class="form-label">Días *</label>
+                        <select id="numeroDias" class="form-select" required>
                             <option value="3">3 días</option>
                             <option value="5">5 días</option>
                             <option value="7" selected>7 días</option>
@@ -58,31 +72,29 @@
                             <option value="14">14 días</option>
                         </select>
                     </div>
-                    <div class="col-md-3 d-grid">
-                        <button id="btnAutomatico" type="button" class="btn btn-success" disabled>
-                            Rellenar con rotación
-                        </button>
+                    <div class="col-md-2 d-grid">
+                        <button id="btnGenerar" type="button" class="btn btn-success" disabled>Generar</button>
                     </div>
                 </div>
                 <p class="form-text mb-0 mt-2">
-                    No se crean hojas con más de 14 días de anticipación, por si se elimina una frecuencia.
-                    El relleno automático rota los buses un lugar cada día; los buses que sobran quedan en parada.
+                    Se puede generar desde hoy y hasta 14 días (fecha de Ecuador). Los días con boletos vendidos no se
+                    regeneran: se conservan y la rotación continúa desde ellos. Los clientes solo pueden comprar los días generados.
                 </p>
             </div>
         </div>
 
-        <div id="avisos"></div>
+        <div id="flota" class="alert d-none" role="status"></div>
 
         <div class="card shadow-sm">
             <div class="card-body p-0">
                 <div id="contenedorHoja" class="table-responsive">
-                    <p class="text-center py-3 text-muted mb-0">Selecciona una cooperativa.</p>
+                    <p class="text-center py-3 text-muted mb-0">Elige un grupo de bus.</p>
                 </div>
             </div>
         </div>
         <p class="small text-muted mt-3 mb-0">
-            Para cambiar un bus de lugar, primero déjalo en "sin bus" donde estaba. Los días pasados no se pueden modificar,
-            y un viaje con boletos vendidos no se puede quitar.
+            «Usar retén» cambia el bus de una frecuencia por el del retén ese día, y el que sale queda de retén.
+            Los días pasados no se modifican.
         </p>
     </main>
 
