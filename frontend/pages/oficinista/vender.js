@@ -6,7 +6,7 @@ import {
     cedulaValida, fechaLocalISO, sumarDias, formatearFecha, formatearHora, dinero
 } from '../../js/validaciones.js'; // <-- Ruta corregida
 import { obtenerCeldasEspecialesDeBus } from '../../js/asientosService.js';
-import { crearCeldaEspecial } from '../../js/celdasEspeciales.js';
+import { claseTipoAsiento, columnasDelMapa, crearAsientoBloqueado, crearCeldaEspecial } from '../../js/celdasEspeciales.js';
 import { ponerOpciones } from '../../js/combos.js';
 
 const MAX_ASIENTOS = 10;
@@ -204,9 +204,12 @@ async function actualizarOcupados() {
 }
 
 function crearBotonAsiento(asiento) {
+    // Bloqueado: se ve, pero nunca se puede elegir.
+    if (asiento.tipo === 'bloqueado') return crearAsientoBloqueado(asiento, 'asiento bloqueado');
+
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'asiento' + (asiento.tipo === 'vip' ? ' vip' : '');
+    b.className = 'asiento' + claseTipoAsiento(asiento.tipo);
     b.textContent = asiento.numero;
     b.dataset.numero = asiento.numero;
     b.setAttribute('aria-label', `Asiento ${asiento.numero}`);
@@ -251,7 +254,6 @@ function dibujarMapa() {
             ...delPiso.map((a) => a.columna),
             ...especialesPiso.map((c) => c.columna)
         );
-        const conPasillo = maxColumna === 4;
         const porPosicion = new Map(delPiso.map((a) => [`${a.fila}-${a.columna}`, a]));
         const especialPorPosicion = new Map(especialesPiso.map((c) => [`${c.fila}-${c.columna}`, c]));
         const filas = [...new Set([
@@ -261,13 +263,11 @@ function dibujarMapa() {
 
         const grid = document.createElement('div');
         grid.className = 'asientos-grid';
-        grid.style.gridTemplateColumns = conPasillo ? '44px 44px 20px 44px 44px' : `repeat(${maxColumna}, 44px)`;
+        // El pasillo viene en la plantilla (cambio 6): las columnas de solo pasillo son angostas.
+        grid.style.gridTemplateColumns = columnasDelMapa(maxColumna, filas, especialesPiso, '44px', '20px');
 
         filas.forEach((fila) => {
             for (let col = 1; col <= maxColumna; col++) {
-                if (conPasillo && col === 3) {
-                    grid.appendChild(document.createElement('div'));
-                }
                 const asiento = porPosicion.get(`${fila}-${col}`);
                 const especial = especialPorPosicion.get(`${fila}-${col}`);
                 grid.appendChild(

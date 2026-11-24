@@ -55,8 +55,11 @@
                 <div class="card shadow-sm h-100">
                     <div class="card-body d-flex flex-column">
                         <h3 class="h6">Mi personal</h3>
-                        <p class="text-muted small">Crea las cuentas de tus oficinistas para que vendan boletos en ventanilla y validen los pagos de los clientes.</p>
-                        <a href="gestor-oficinistas.html" class="btn btn-outline-primary btn-sm mt-auto align-self-start">Gestionar oficinistas</a>
+                        <p class="text-muted small">Crea las cuentas de tus oficinistas (venden en ventanilla y validan pagos) y de tus usuarios bus (chofer, controlador o dueño, que usan la app del bus).</p>
+                        <div class="d-flex flex-wrap gap-2 mt-auto">
+                            <a href="gestor-oficinistas.html" class="btn btn-outline-primary btn-sm">Gestionar oficinistas</a>
+                            <a href="gestor-usuarios-bus.html" class="btn btn-outline-primary btn-sm">Gestionar usuarios bus</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -79,7 +82,7 @@
     <script type="module">
         import { exigirRoles } from '../../js/guardas.js';
         import { supabase } from '../../js/supabaseClient.js';
-        import { obtenerBusesDeCooperativa, obtenerPlantillasDeCooperativa } from '../../js/asientosService.js';
+        import { obtenerBusesDeCooperativa } from '../../js/asientosService.js';
 
         const $ = id => document.getElementById(id);
         const clave = t => String(t ?? '').trim().toLowerCase();
@@ -120,13 +123,16 @@
         }
 
         async function cargarDatos(coopId) {
-            const [buses, plantillas, frecuencias] = await Promise.all([
+            const [buses, plantillas, frecuencias, grupos] = await Promise.all([
                 obtenerBusesDeCooperativa(coopId),
-                obtenerPlantillasDeCooperativa(coopId),
-                supabase.from('frecuencias').select('id').eq('cooperativa_id', coopId)
+                supabase.from('plantillas_bus').select('id', { count: 'exact', head: true }).eq('cooperativa_id', coopId),
+                supabase.from('frecuencias').select('id').eq('cooperativa_id', coopId),
+                supabase.from('grupos_bus').select('id', { count: 'exact', head: true }).eq('cooperativa_id', coopId)
             ]);
 
             if (frecuencias.error) throw frecuencias.error;
+            if (grupos.error) throw grupos.error;
+            if (plantillas.error) throw plantillas.error;
 
             const frecIds = frecuencias.data.map(f => f.id);
             let hojasProximas = 0;
@@ -142,47 +148,52 @@
                 hojasProximas = count ?? 0;
             }
 
-            // Tipos de bus que tienen buses pero todavía no tienen plantilla de asientos
-            const conPlantilla = new Set(plantillas.map(p => clave(p.tipo_bus)));
-            const sinPlantilla = new Map();
-
-            buses.forEach(b => {
-                if (!conPlantilla.has(clave(b.tipo_bus))) sinPlantilla.set(clave(b.tipo_bus), b.tipo_bus);
-            });
-
             return {
+                nGrupos: grupos.count ?? 0,
+                nPlantillas: plantillas.count ?? 0,
                 nBuses: buses.length,
-                tiposSinPlantilla: [...sinPlantilla.values()],
+                // Placas de los buses que todavía no tienen plantilla de asientos
+                sinPlantilla: buses.filter(b => !b.plantilla_id).map(b => b.placa),
                 nFrecuencias: frecIds.length,
                 hojasProximas
             };
         }
 
-        // Los 4 pasos de preparación, en el orden en que deben hacerse
+        // Los 5 pasos de preparación, en el orden en que deben hacerse
         function armarPasos(d) {
-            const faltanAsientos = d.tiposSinPlantilla.length > 0;
+            const faltanAsientos = d.sinPlantilla.length > 0;
 
             return [
                 {
-                    titulo: 'Registra tus buses',
-                    porque: 'Cada bus lleva placa, chasis, carrocería y tipo (cómodo, provincial o ranchera).',
-                    detalle: d.nBuses > 0 ? `${plural(d.nBuses, 'bus registrado', 'buses registrados')}.` : 'Aún no tienes buses.',
-                    href: '../bus/buses.html',
-                    boton: d.nBuses > 0 ? 'Ver buses' : 'Registrar buses',
-                    hecho: d.nBuses > 0
+                    titulo: 'Crea tus grupos de bus',
+                    porque: 'Agrupa tus buses, por ejemplo «Cómodos (importados)», «Provinciales (viajes cortos)» o «Rancheras». Cada bus pertenece a un grupo.',
+                    detalle: d.nGrupos > 0 ? `${plural(d.nGrupos, 'grupo creado', 'grupos creados')}.` : 'Aún no tienes grupos.',
+                    href: '../bus/grupos.html',
+                    boton: d.nGrupos > 0 ? 'Ver grupos' : 'Crear grupos',
+                    hecho: d.nGrupos > 0
                 },
                 {
-                    titulo: 'Configura los asientos de cada tipo de bus',
-                    porque: 'Defines la distribución una sola vez por tipo y se aplica a todos los buses de ese tipo. Sin esto no puedes asignar el bus a un día.',
-                    detalle: d.nBuses === 0
-                        ? 'Primero registra un bus.'
-                        : faltanAsientos
-                            ? `Falta configurar: ${d.tiposSinPlantilla.join(', ')}.`
-                            : 'Todos tus tipos de bus tienen asientos.',
+                    titulo: 'Crea tus plantillas de asientos',
+                    porque: 'Diseña la distribución de asientos una vez, ponle un nombre y úsala en todos los buses iguales. Sin plantilla no puedes asignar el bus a un día.',
+                    detalle: d.nPlantillas > 0
+                        ? `${plural(d.nPlantillas, 'plantilla creada', 'plantillas creadas')}.`
+                        : 'Aún no tienes plantillas.',
                     href: 'plantilla-asientos.html',
-                    boton: faltanAsientos ? 'Configurar asientos' : 'Ver asientos',
+                    boton: d.nPlantillas > 0 ? 'Ver mis plantillas' : 'Crear plantillas',
+                    hecho: d.nPlantillas > 0
+                },
+                {
+                    titulo: 'Registra tus buses',
+                    porque: 'Cada bus lleva placa, chasis, carrocería, su grupo y su plantilla de asientos.',
+                    detalle: d.nBuses === 0
+                        ? (d.nGrupos === 0 ? 'Primero crea un grupo.' : 'Aún no tienes buses.')
+                        : faltanAsientos
+                            ? `Buses sin plantilla de asientos: ${d.sinPlantilla.join(', ')}.`
+                            : `${plural(d.nBuses, 'bus registrado', 'buses registrados')}, todos con plantilla.`,
+                    href: '../bus/buses.html',
+                    boton: d.nBuses > 0 ? 'Ver buses' : 'Registrar buses',
                     hecho: d.nBuses > 0 && !faltanAsientos,
-                    bloqueado: d.nBuses === 0
+                    bloqueado: d.nGrupos === 0
                 },
                 {
                     titulo: 'Registra tus frecuencias',
@@ -197,13 +208,13 @@
                     porque: 'En la hoja de ruta eliges qué bus hace cada frecuencia cada día. Solo puedes hacerlo con hasta 14 días de anticipación, así que vuelve a revisarla cada semana.',
                     detalle: d.hojasProximas > 0
                         ? `${plural(d.hojasProximas, 'hoja de ruta desde hoy', 'hojas de ruta desde hoy')}.`
-                        : (d.nBuses === 0 || d.tiposSinPlantilla.length > 0 || d.nFrecuencias === 0)
+                        : (d.nBuses === 0 || faltanAsientos || d.nFrecuencias === 0)
                             ? 'Antes necesitas buses con asientos y al menos una frecuencia.'
                             : 'Aún no hay días asignados.',
                     href: '../frecuencias/hoja-ruta.html',
                     boton: d.hojasProximas > 0 ? 'Asignar más días' : 'Asignar buses',
                     hecho: d.hojasProximas > 0,
-                    bloqueado: d.nBuses === 0 || d.tiposSinPlantilla.length > 0 || d.nFrecuencias === 0
+                    bloqueado: d.nBuses === 0 || faltanAsientos || d.nFrecuencias === 0
                 }
             ];
         }
@@ -293,7 +304,7 @@
                     mostrarAviso('Sin datos', 'No pudimos revisar el avance', 'Revisa tu conexión y recarga la página. Mientras tanto puedes entrar a cada sección.');
 
                     // Los pasos siguen disponibles, sin estados
-                    pintarPasos(armarPasos({ nBuses: 1, tiposSinPlantilla: [], nFrecuencias: 1, hojasProximas: 0 })
+                    pintarPasos(armarPasos({ nGrupos: 1, nPlantillas: 1, nBuses: 1, sinPlantilla: [], nFrecuencias: 1, hojasProximas: 0 })
                         .map(p => ({ ...p, hecho: false, bloqueado: false, detalle: '' })), null);
                 }
             }

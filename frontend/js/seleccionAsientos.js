@@ -4,7 +4,7 @@ import { mostrarAlerta } from './alertas.js';
 import { dinero, formatearFecha, formatearHora } from './validaciones.js';
 import { leerViajeId, urlResumenCompra } from './rutasCompra.js';
 import { obtenerCeldasEspecialesDeBus } from './asientosService.js';
-import { crearCeldaEspecial } from './celdasEspeciales.js';
+import { claseTipoAsiento, columnasDelMapa, crearAsientoBloqueado, crearCeldaEspecial } from './celdasEspeciales.js';
 
 const MAX_ASIENTOS = 10;
 const $ = (id) => document.getElementById(id);
@@ -115,9 +115,12 @@ async function actualizarOcupados() {
 }
 
 function crearBotonAsiento(asiento) {
+    // Bloqueado: se ve, pero nunca se puede elegir.
+    if (asiento.tipo === 'bloqueado') return crearAsientoBloqueado(asiento, 'asiento-cliente bloqueado');
+
     const boton = document.createElement('button');
     boton.type = 'button';
-    boton.className = 'asiento-cliente' + (asiento.tipo === 'vip' ? ' vip' : '');
+    boton.className = 'asiento-cliente' + claseTipoAsiento(asiento.tipo);
     boton.textContent = asiento.numero;
     boton.dataset.numero = asiento.numero;
     boton.setAttribute('aria-label', `Asiento ${asiento.numero}`);
@@ -165,7 +168,6 @@ function dibujarMapa() {
             ...delPiso.map((a) => Number(a.columna)),
             ...especialesPiso.map((c) => c.columna)
         );
-        const conPasillo = maxColumna === 4;
         const porPosicion = new Map(
             delPiso.map((a) => [`${a.fila}-${a.columna}`, a])
         );
@@ -179,16 +181,11 @@ function dibujarMapa() {
 
         const grid = document.createElement('div');
         grid.className = 'asientos-grid';
-        grid.style.gridTemplateColumns = conPasillo
-            ? '48px 48px 24px 48px 48px'
-            : `repeat(${maxColumna}, 48px)`;
+        // El pasillo viene en la plantilla (cambio 6): las columnas de solo pasillo son angostas.
+        grid.style.gridTemplateColumns = columnasDelMapa(maxColumna, filas, especialesPiso, '48px', '24px');
 
         filas.forEach((fila) => {
             for (let columna = 1; columna <= maxColumna; columna++) {
-                if (conPasillo && columna === 3) {
-                    grid.appendChild(document.createElement('div'));
-                }
-
                 const asiento = porPosicion.get(`${fila}-${columna}`);
                 const especial = especialPorPosicion.get(`${fila}-${columna}`);
                 grid.appendChild(
