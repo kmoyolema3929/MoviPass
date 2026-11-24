@@ -1,205 +1,214 @@
-.plantilla-bus {
-    width: 100%;
-    max-width: 22rem;
-    margin: 0 auto;
-    padding: 1rem;
-    background-color: var(--bg-light);
-    border: 3px solid #adb5bd;
-    border-radius: 2rem 2rem 1rem 1rem;
+/* Mis plantillas: editor visual y vista previa (cambio 6, parte 2). */
+
+:root {
+    --celda-normal-fondo: #ffffff;
+    --celda-normal-borde: #0d6efd;
+    --celda-normal-texto: #084298;
+    --celda-vip-fondo: #fff3cd;
+    --celda-vip-borde: #997404;
+    --celda-vip-texto: #664d03;
+    --celda-cama-fondo: #e2d9f3;
+    --celda-cama-borde: #6f42c1;
+    --celda-cama-texto: #432874;
+    --celda-bloqueado-fondo: #ced4da;
+    --celda-bloqueado-borde: #6c757d;
+    --celda-bloqueado-texto: #495057;
+    --celda-especial-fondo: #e9ecef;
+    --celda-especial-borde: #adb5bd;
 }
 
-.plantilla-frente {
-    display: flex;
-    flex-wrap: wrap;
+/* ---------- Herramientas ---------- */
+.herramienta {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding-bottom: 1rem;
-    margin-bottom: 1.25rem;
-    border-bottom: 2px dashed #adb5bd;
-}
-
-.plantilla-fila {
-    display: grid;
     gap: 0.4rem;
-    margin-bottom: 0.6rem;
 }
 
-.plantilla-asiento {
-    position: relative;
-    display: flex;
-    flex-direction: column;
+.muestra {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.15rem;
-    min-width: 0;
-    min-height: 3.5rem;
-    padding: 0.35rem 0.1rem;
-    background-color: #ffffff;
-    color: #084298;
-    border: 2px solid var(--primary-color);
-    border-bottom-width: 6px;
-    border-radius: 0.8rem 0.8rem 0.35rem 0.35rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    font-size: 0.8rem;
+    border: 2px solid var(--celda-especial-borde);
+    border-radius: 0.35rem;
+    background-color: var(--celda-especial-fondo);
+}
+
+.muestra[data-tipo="normal"] { background-color: var(--celda-normal-fondo); border-color: var(--celda-normal-borde); }
+.muestra[data-tipo="vip"] { background-color: var(--celda-vip-fondo); border-color: var(--celda-vip-borde); }
+.muestra[data-tipo="cama"] { background-color: var(--celda-cama-fondo); border-color: var(--celda-cama-borde); }
+.muestra[data-tipo="pasillo"] { background-color: transparent; border-style: dashed; }
+.muestra[data-tipo="bloqueado"] { background-color: var(--celda-bloqueado-fondo); border-color: var(--celda-bloqueado-borde); }
+.muestra[data-tipo="vacio"] { background-color: transparent; border-style: dotted; border-color: #dee2e6; }
+
+/* ---------- Editor ---------- */
+.editor-piso {
+    overflow-x: auto;
+}
+
+.editor-cuadricula {
+    display: grid;
+    gap: 0.3rem;
+    align-items: center;
+    width: max-content;
+    margin: 0 auto;
+}
+
+.editor-celda {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    padding: 0;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 2px solid var(--celda-especial-borde);
+    border-radius: 0.6rem 0.6rem 0.3rem 0.3rem;
+    background-color: var(--celda-especial-fondo);
+    color: #212529;
     cursor: pointer;
 }
 
-.plantilla-asiento small {
-    font-size: 0.6rem;
-}
+.editor-celda:hover { filter: brightness(0.94); }
 
-.plantilla-asiento strong {
-    font-size: 1rem;
-}
-
-.plantilla-asiento:hover {
-    background-color: #e7f1ff;
-}
-
-.plantilla-asiento:focus-visible {
+.editor-celda:focus-visible {
     outline: 3px solid #212529;
-    outline-offset: 3px;
+    outline-offset: 2px;
 }
 
-/* Asientos VIP del piso inferior. */
-.plantilla-asiento[data-tipo="vip"] {
-    background-color: #fff3cd;
-    color: #664d03;
-    border-color: #997404;
+.editor-celda[data-tipo="normal"] {
+    background-color: var(--celda-normal-fondo);
+    border-color: var(--celda-normal-borde);
+    border-bottom-width: 5px;
+    color: var(--celda-normal-texto);
 }
 
-.plantilla-asiento[data-tipo="vip"]:hover {
-    background-color: #ffe69c;
+.editor-celda[data-tipo="vip"] {
+    background-color: var(--celda-vip-fondo);
+    border-color: var(--celda-vip-borde);
+    border-bottom-width: 5px;
+    color: var(--celda-vip-texto);
 }
 
-.plantilla-muestra.plantilla-muestra-vip {
-    background-color: #fff3cd;
-    border-color: #997404;
+.editor-celda[data-tipo="cama"] {
+    background-color: var(--celda-cama-fondo);
+    border-color: var(--celda-cama-borde);
+    border-bottom-width: 5px;
+    color: var(--celda-cama-texto);
 }
 
-/* La selección se muestra en verde para ambos tipos. */
-.plantilla-asiento[aria-pressed="true"],
-.plantilla-asiento[aria-pressed="true"]:hover {
-    background-color: #146c43;
-    color: #ffffff;
-    border-color: #0f5132;
+.editor-celda[data-tipo="bloqueado"] {
+    background-color: var(--celda-bloqueado-fondo);
+    border-color: var(--celda-bloqueado-borde);
+    border-bottom-width: 5px;
+    color: var(--celda-bloqueado-texto);
+    font-size: 0.8rem;
 }
 
-.plantilla-asiento[aria-pressed="true"]::after {
-    content: "✓";
-    position: absolute;
-    top: 0;
-    right: 0.15rem;
-    font-size: 0.75rem;
+/* Espacio vacío: no es asiento ni pasillo (filas de distinto ancho). */
+.editor-celda[data-tipo="vacio"] {
+    background-color: transparent;
+    border-style: dotted;
+    border-color: #dee2e6;
 }
 
-/* Baño: no es un asiento, no tiene número y no se vende. */
-.plantilla-asiento.plantilla-bano,
-.plantilla-asiento.plantilla-bano:hover {
-    background-color: #e2e3e5;
-    color: #41464b;
-    border-color: #6c757d;
+.editor-celda[data-tipo="pasillo"] {
+    background-color: transparent;
     border-style: dashed;
-    border-bottom-width: 2px;
+    color: #6c757d;
+}
+
+.editor-celda.seleccionada {
+    outline: 3px solid #198754;
+    outline-offset: 2px;
+}
+
+.editor-control {
+    width: 3rem;
+    padding: 0.1rem 0;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.editor-control-fila {
+    width: 2.2rem;
+}
+
+.editor-control-columna {
+    width: 1.5rem;
+}
+
+.editor-frente {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #6c757d;
+    border-bottom: 2px dashed #adb5bd;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.25rem;
+}
+
+.editor-numero {
+    padding: 0.75rem;
     border-radius: 0.5rem;
+    background-color: #f8f9fa;
 }
 
-.plantilla-asiento.plantilla-bano strong {
-    font-size: 1.25rem;
+/* ---------- Vista previa ---------- */
+@media (min-width: 1200px) {
+    .editor-lateral {
+        position: sticky;
+        top: 1rem;
+    }
 }
 
-/* Sin el modo "Marcar baño", el baño no se puede tocar. */
-.plantilla-asiento.plantilla-bano[aria-disabled="true"] {
-    cursor: not-allowed;
+.vista-previa {
+    overflow-x: auto;
 }
 
-.plantilla-muestra.plantilla-muestra-bano {
-    background-color: #e2e3e5;
-    border: 2px dashed #6c757d;
+.vista-piso + .vista-piso {
+    margin-top: 1rem;
 }
 
-.plantilla-muestra {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-    margin-right: 0.25rem;
-    vertical-align: middle;
-    background-color: #ffffff;
-    border: 2px solid var(--primary-color);
-    border-radius: 0.2rem;
-}
-
-.plantilla-muestra-elegido {
-    background-color: #146c43;
-    border-color: #0f5132;
-}
-
-.plantilla-mapas {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-    gap: 1rem;
-    min-width: 0;
-}
-
-.plantilla-piso {
-    width: 100%;
-    min-width: 0;
-    max-width: 26rem;
+.vista-bus {
+    width: max-content;
     margin: 0 auto;
+    padding: 0.6rem;
+    border: 3px solid #adb5bd;
+    border-radius: 1.5rem 1.5rem 0.75rem 0.75rem;
+    background-color: #f8f9fa;
 }
 
-.plantilla-piso[hidden] {
-    display: none;
+.vista-cuadricula {
+    display: grid;
+    gap: 0.2rem;
 }
 
-.plantilla-pisos {
+.vista-celda {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 2px solid var(--celda-especial-borde);
+    border-radius: 0.4rem 0.4rem 0.2rem 0.2rem;
+    background-color: var(--celda-especial-fondo);
+}
+
+.vista-celda[data-tipo="normal"] { background-color: var(--celda-normal-fondo); border-color: var(--celda-normal-borde); color: var(--celda-normal-texto); }
+.vista-celda[data-tipo="vip"] { background-color: var(--celda-vip-fondo); border-color: var(--celda-vip-borde); color: var(--celda-vip-texto); }
+.vista-celda[data-tipo="cama"] { background-color: var(--celda-cama-fondo); border-color: var(--celda-cama-borde); color: var(--celda-cama-texto); }
+.vista-celda[data-tipo="bloqueado"] { background-color: var(--celda-bloqueado-fondo); border-color: var(--celda-bloqueado-borde); color: var(--celda-bloqueado-texto); font-size: 0.55rem; }
+.vista-celda[data-tipo="pasillo"],
+.vista-celda[data-tipo="vacio"] { visibility: hidden; }
+
+.leyenda li {
+    display: flex;
+    align-items: center;
     gap: 0.5rem;
-}
-
-.plantilla-pisos button {
-    flex: 1 1 auto;
-    min-height: 44px;
-}
-
-.plantilla-pisos button[aria-pressed="true"] {
-    background-color: var(--primary-color);
-    color: #ffffff;
-}
-
-#estadoSeleccion {
-    overflow-wrap: anywhere;
-}
-
-@media (min-width: 768px) {
-    .plantilla-mapas[data-vista="ambos"] {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 575.98px) {
-    .plantilla-bus {
-        padding: 0.65rem;
-    }
-
-    .plantilla-fila {
-        gap: 0.3rem;
-    }
-
-    .plantilla-asiento {
-        min-height: 3.5rem;
-        touch-action: manipulation;
-    }
-    .plantilla-pisos button:focus-visible {
-    outline: 3px solid #212529;
-    outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .plantilla-asiento,
-    .plantilla-pisos button {
-        transition: none;
-    }
-}
+    margin-bottom: 0.25rem;
 }
