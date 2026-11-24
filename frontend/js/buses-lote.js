@@ -1,21 +1,26 @@
 // frontend/js/buses-lote.js
-// Alta de varios buses a la vez, todos del mismo tipo, para el gerente de la cooperativa.
+// Alta de varios buses a la vez para el gerente de la cooperativa. Todos los
+// buses del lote comparten grupo, plantilla y marcas; cada fila tiene su
+// número interno, placa, dueño y número de chasis (cambio 6, parte 3).
 // Se conecta desde buses.js con crearLote(...). No modifica el formulario de un solo bus.
 
 import { formatearPlacaPegada, normalizarPlaca, prepararCampoPlaca } from "./validaciones.js";
-import { ponerOpciones } from "./combos.js";
+import { ponerOpciones, vaciarCombo } from "./combos.js";
+import { LIMITES_BUS, datosDelBus, esMarcaOtro, mensajeErrorBus, normalizarNumeroInterno, revisarBus } from "./formularioBus.js";
 
 const MAX_LOTE = 30;
 
+// [campo, etiqueta, obligatorio, máximo]
 const CAMPOS = [
-    ["placa", "Placa"],
-    ["chasis", "Chasis"],
-    ["carroceria", "Carrocería"]
+    ["numeroInterno", "Número interno", true, LIMITES_BUS.numeroInterno],
+    ["placa", "Placa", true, 8],
+    ["dueno", "Dueño o socio", true, LIMITES_BUS.dueno],
+    ["chasis", "Número de chasis", false, LIMITES_BUS.chasis]
 ];
 
 const PLANTILLA_MODAL = `
 <div class="modal fade" id="modalLote" tabindex="-1" aria-labelledby="tituloModalLote" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <form class="modal-content" id="formLote" novalidate>
             <div class="modal-header">
                 <h2 class="modal-title h5" id="tituloModalLote">Agregar varios buses</h2>
@@ -25,25 +30,51 @@ const PLANTILLA_MODAL = `
                 <div class="modal-body">
                     <div id="errorLote" class="alert alert-danger d-none" role="alert"></div>
 
-                    <div class="mb-3">
-                        <label for="tipoLote" class="form-label">Tipo de bus (el mismo para todo el lote) *</label>
-                        <select id="tipoLote" class="form-select" required disabled>
-                            <option value="" selected disabled>Cargando...</option>
-                        </select>
-                        <div class="invalid-feedback">Elige el tipo de bus.</div>
+                    <p class="text-muted small">Los campos marcados con * son obligatorios. Estos datos son los mismos para todo el lote:</p>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label for="grupoLote" class="form-label">Grupo *</label>
+                            <select id="grupoLote" class="form-select" required disabled>
+                                <option value="" selected disabled>Cargando...</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label for="plantillaLote" class="form-label">Plantilla de asientos *</label>
+                            <select id="plantillaLote" class="form-select" required disabled>
+                                <option value="" selected disabled>Cargando...</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label for="marcaCarroceriaLote" class="form-label">Marca de carrocería *</label>
+                            <select id="marcaCarroceriaLote" class="form-select" required disabled>
+                                <option value="" selected disabled>Cargando...</option>
+                            </select>
+                            <input type="text" id="marcaCarroceriaOtraLote" class="form-control mt-2 d-none" maxlength="60"
+                                   placeholder="¿Cuál marca? *" aria-label="¿Cuál marca de carrocería? *">
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label for="marcaChasisLote" class="form-label">Marca de chasis (opcional)</label>
+                            <select id="marcaChasisLote" class="form-select" disabled>
+                                <option value="" selected>Cargando...</option>
+                            </select>
+                            <input type="text" id="marcaChasisOtraLote" class="form-control mt-2 d-none" maxlength="60"
+                                   placeholder="¿Cuál marca? *" aria-label="¿Cuál marca de chasis? *">
+                        </div>
                     </div>
 
                     <p class="text-muted small mb-2">
-                        Escribe una fila por bus. También puedes copiar filas de Excel (placa, chasis y carrocería) y pegarlas en la primera casilla.
+                        Escribe una fila por bus. También puedes copiar filas de Excel (número interno, placa, dueño y número de chasis) y pegarlas en la primera casilla.
                     </p>
 
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-2">
                             <thead>
                                 <tr>
+                                    <th scope="col">Número interno *</th>
                                     <th scope="col">Placa *</th>
-                                    <th scope="col">Chasis *</th>
-                                    <th scope="col">Carrocería *</th>
+                                    <th scope="col">Dueño o socio *</th>
+                                    <th scope="col">Número de chasis (opcional)</th>
                                     <th scope="col"><span class="visually-hidden">Quitar</span></th>
                                 </tr>
                             </thead>
@@ -66,23 +97,30 @@ export function crearLote({
     supabase,
     columnas,
     botonNuevo,
-    tipoBus,
+    obtenerListas,
     obtenerEstado,
     cambiarOcupado,
-    obtenerMensajeError,
     alGuardar
 }) {
     document.body.insertAdjacentHTML("beforeend", PLANTILLA_MODAL);
 
-    const elementoModal = document.getElementById("modalLote");
+    const $ = id => document.getElementById(id);
+    const elementoModal = $("modalLote");
     const modal = new bootstrap.Modal(elementoModal);
-    const formulario = document.getElementById("formLote");
-    const contenido = document.getElementById("contenidoLote");
-    const errorLote = document.getElementById("errorLote");
-    const tipoLote = document.getElementById("tipoLote");
-    const filasLote = document.getElementById("filasLote");
-    const botonFila = document.getElementById("btnFilaLote");
-    const botonGuardar = document.getElementById("btnGuardarLote");
+    const formulario = $("formLote");
+    const contenido = $("contenidoLote");
+    const errorLote = $("errorLote");
+    const filasLote = $("filasLote");
+    const botonFila = $("btnFilaLote");
+    const botonGuardar = $("btnGuardarLote");
+    const comunes = {
+        grupoId: $("grupoLote"),
+        plantillaId: $("plantillaLote"),
+        marcaCarroceriaId: $("marcaCarroceriaLote"),
+        marcaCarroceriaOtra: $("marcaCarroceriaOtraLote"),
+        marcaChasisId: $("marcaChasisLote"),
+        marcaChasisOtra: $("marcaChasisOtraLote")
+    };
 
     // Botón junto a "Nuevo bus": un solo bus o varios
     const botonLote = document.createElement("button");
@@ -100,6 +138,12 @@ export function crearLote({
         errorLote.classList.remove("d-none");
     }
 
+    function mostrarMarcasOtra() {
+        const listas = obtenerListas();
+        comunes.marcaCarroceriaOtra.classList.toggle("d-none", !esMarcaOtro(listas.marcasCarroceria, comunes.marcaCarroceriaId.value));
+        comunes.marcaChasisOtra.classList.toggle("d-none", !esMarcaOtro(listas.marcasChasis, comunes.marcaChasisId.value));
+    }
+
     function agregarFila(valores = {}) {
         if (filasLote.rows.length >= MAX_LOTE) {
             mostrarError(`Puedes agregar hasta ${MAX_LOTE} buses por lote.`);
@@ -108,36 +152,25 @@ export function crearLote({
 
         const fila = document.createElement("tr");
 
-        CAMPOS.forEach(function ([nombre, etiqueta]) {
+        CAMPOS.forEach(function ([nombre, etiqueta, obligatorio, maximo]) {
             const celda = document.createElement("td");
             const campo = document.createElement("input");
 
             campo.type = "text";
             campo.className = "form-control form-control-sm";
-            campo.required = true;
+            campo.required = obligatorio;
+            campo.maxLength = maximo;
             campo.dataset.campo = nombre;
-            campo.setAttribute("aria-label", etiqueta);
+            campo.setAttribute("aria-label", `${etiqueta}${obligatorio ? " *" : " (opcional)"}`);
             campo.value = valores[nombre] ?? "";
+            campo.addEventListener("input", () => campo.classList.remove("is-invalid"));
 
-            // Al corregir una placa se limpia el aviso de "repetida"
-            if (nombre === "placa") {
-                campo.maxLength = 8;
-                prepararCampoPlaca(campo);
+            if (nombre === "placa") prepararCampoPlaca(campo);
 
-                campo.addEventListener("input", function () {
-                    campo.setCustomValidity("");
-                });
-            }
+            const aviso = document.createElement("div");
+            aviso.className = "invalid-feedback";
 
-            celda.appendChild(campo);
-
-            // Aviso junto a la casilla de placa (formato o repetida)
-            if (nombre === "placa") {
-                const aviso = document.createElement("div");
-                aviso.className = "invalid-feedback";
-                celda.appendChild(aviso);
-            }
-
+            celda.append(campo, aviso);
             fila.appendChild(celda);
         });
 
@@ -159,15 +192,19 @@ export function crearLote({
 
     function prepararLote() {
         formulario.reset();
-        formulario.classList.remove("was-validated");
         errorLote.classList.add("d-none");
 
-        // Mismas opciones que el formulario de un solo bus (sin su opción inicial)
-        const tipos = Array.from(tipoBus.options)
-            .filter(function (opcion) { return opcion.value; })
-            .map(function (opcion) { return { id: opcion.value, nombre: opcion.textContent }; });
+        // Los mismos combos que el formulario de un solo bus.
+        const listas = obtenerListas();
+        const poner = (select, lista, config) => (lista
+            ? ponerOpciones(select, lista, config)
+            : vaciarCombo(select, "No se pudo cargar. Recarga la página."));
 
-        ponerOpciones(tipoLote, tipos, { vacio: "No hay tipos de bus" });
+        poner(comunes.grupoId, listas.grupos, { inicial: "Selecciona un grupo...", vacio: "Primero crea un grupo de bus" });
+        poner(comunes.plantillaId, listas.plantillas, { inicial: "Selecciona una plantilla...", vacio: "Primero crea una plantilla" });
+        poner(comunes.marcaCarroceriaId, listas.marcasCarroceria, { inicial: "Selecciona una marca..." });
+        poner(comunes.marcaChasisId, listas.marcasChasis, { todos: "Sin especificar" });
+        mostrarMarcasOtra();
 
         filasLote.replaceChildren();
         for (let i = 0; i < 3; i++) agregarFila();
@@ -183,43 +220,53 @@ export function crearLote({
 
         const lineas = texto
             .split(/\r?\n/)
-            .filter(function (linea) { return linea.trim() !== ""; })
+            .filter(linea => linea.trim() !== "")
             .slice(0, MAX_LOTE);
 
         let indice = Array.from(filasLote.rows).indexOf(evento.target.closest("tr"));
 
         lineas.forEach(function (linea) {
-            const [placa = "", chasis = "", carroceria = ""] = linea.split("\t");
+            const [numeroInterno = "", placa = "", dueno = "", chasis = ""] = linea.split("\t");
 
             if (!filasLote.rows[indice]) agregarFila();
 
             const fila = filasLote.rows[indice];
             if (!fila) return;
 
+            fila.querySelector('[data-campo="numeroInterno"]').value = numeroInterno.trim();
             fila.querySelector('[data-campo="placa"]').value = formatearPlacaPegada(placa);
+            fila.querySelector('[data-campo="dueno"]').value = dueno.trim();
             fila.querySelector('[data-campo="chasis"]').value = chasis.trim();
-            fila.querySelector('[data-campo="carroceria"]').value = carroceria.trim();
 
             indice++;
         });
     });
 
     function mensajeDeError(error) {
-        if (error?.code === "23505") {
-            const coincidencia = /\(placa\)=\(([^)]+)\)/.exec(error.details ?? "");
+        const detalle = error?.details ?? "";
 
-            return coincidencia
-                ? `La placa ${coincidencia[1]} ya está registrada. No se guardó ningún bus del lote.`
-                : "Una de las placas ya está registrada. No se guardó ningún bus del lote.";
+        if (error?.code === "23505") {
+            const placa = /\(placa\)=\(([^)]+)\)/.exec(detalle);
+            const numero = /numero_interno.*\)=\([^,]+, ([^)]+)\)/.exec(detalle);
+
+            if (placa) return `La placa ${placa[1]} ya está registrada. No se guardó ningún bus del lote.`;
+            if (numero) return `El número interno ${numero[1].toUpperCase()} ya existe. No se guardó ningún bus del lote.`;
         }
 
-        return `${obtenerMensajeError(error, "guardar")} No se guardó ningún bus del lote.`;
+        return `${mensajeErrorBus(error, "guardar")} No se guardó ningún bus del lote.`;
+    }
+
+    function valoresDeFila(fila, valoresComunes) {
+        const valores = { ...valoresComunes };
+        fila.querySelectorAll("input").forEach(campo => { valores[campo.dataset.campo] = campo.value; });
+        return valores;
     }
 
     async function guardar(evento) {
         evento.preventDefault();
 
         const estado = obtenerEstado();
+        const listas = obtenerListas();
 
         if (estado.ocupado || !estado.accesoPermitido || !estado.cooperativaGerente) return;
 
@@ -227,10 +274,7 @@ export function crearLote({
 
         // Las filas totalmente vacías se ignoran
         Array.from(filasLote.rows).forEach(function (fila) {
-            const vacia = Array.from(fila.querySelectorAll("input")).every(function (campo) {
-                return campo.value.trim() === "";
-            });
-
+            const vacia = Array.from(fila.querySelectorAll("input")).every(campo => campo.value.trim() === "");
             if (vacia) fila.remove();
         });
 
@@ -240,49 +284,58 @@ export function crearLote({
             return;
         }
 
-        filasLote.querySelectorAll("input").forEach(function (campo) {
-            campo.value = campo.value.trim();
-            campo.setCustomValidity("");
+        const valoresComunes = Object.fromEntries(Object.entries(comunes).map(([clave, campo]) => [clave, campo.value]));
+        const contexto = {
+            buses: estado.buses,
+            marcasCarroceria: listas.marcasCarroceria ?? [],
+            marcasChasis: listas.marcasChasis ?? []
+        };
+
+        // Datos comunes: se revisan con la primera fila (son iguales en todas).
+        const primera = revisarBus(valoresDeFila(filasLote.rows[0], valoresComunes), contexto);
+        const problemasComunes = ["grupoId", "plantillaId", "marcaCarroceriaId", "marcaCarroceriaOtra", "marcaChasisOtra"]
+            .filter(clave => primera[clave])
+            .map(clave => primera[clave]);
+
+        // Cada fila: número interno, placa, dueño y chasis; sin repetir dentro del lote.
+        const vistosNumero = new Set();
+        const vistasPlaca = new Set();
+        let hayErrores = false;
+
+        Array.from(filasLote.rows).forEach(function (fila) {
+            const valores = valoresDeFila(fila, valoresComunes);
+            const errores = revisarBus(valores, contexto);
+            const numero = normalizarNumeroInterno(valores.numeroInterno);
+            const placa = normalizarPlaca(valores.placa);
+
+            if (placa.valida) fila.querySelector('[data-campo="placa"]').value = placa.placa;
+            if (numero && vistosNumero.has(numero)) errores.numeroInterno = "Número repetido en el lote.";
+            if (placa.valida && vistasPlaca.has(placa.placa)) errores.placa = "Placa repetida en el lote.";
+
+            vistosNumero.add(numero);
+            vistasPlaca.add(placa.placa);
+
+            CAMPOS.forEach(function ([nombre]) {
+                const campo = fila.querySelector(`[data-campo="${nombre}"]`);
+                const problema = errores[nombre] ?? "";
+
+                campo.classList.toggle("is-invalid", Boolean(problema));
+                campo.nextElementSibling.textContent = problema;
+                if (problema) hayErrores = true;
+            });
         });
 
-        // Placas con formato no válido, repetidas dentro del lote o ya registradas en tu cooperativa
-        const vistas = new Set();
-
-        filasLote.querySelectorAll('[data-campo="placa"]').forEach(function (campo) {
-            const { placa, valida } = normalizarPlaca(campo.value);
-
-            campo.value = placa;
-
-            const repetida = vistas.has(placa) ||
-                estado.buses.some(function (bus) { return bus.placa === placa; });
-
-            if (!valida) {
-                campo.setCustomValidity("Formato no válido. Usa ABC-1234.");
-            } else if (repetida) {
-                campo.setCustomValidity("Placa repetida.");
-            }
-
-            campo.nextElementSibling.textContent = campo.validationMessage;
-
-            vistas.add(placa);
-        });
-
-        formulario.classList.add("was-validated");
-
-        if (!formulario.checkValidity()) {
-            mostrarError("Revisa las casillas marcadas en rojo: hay campos vacíos, placas con formato no válido o placas repetidas.");
+        if (problemasComunes.length || hayErrores) {
+            mostrarError(problemasComunes.length
+                ? problemasComunes.join(" ")
+                : "Revisa las casillas marcadas en rojo: hay campos vacíos, placas con formato no válido o datos repetidos.");
             return;
         }
 
-        const datos = Array.from(filasLote.rows).map(function (fila) {
-            return {
-                placa: fila.querySelector('[data-campo="placa"]').value,
-                chasis: fila.querySelector('[data-campo="chasis"]').value,
-                carroceria: fila.querySelector('[data-campo="carroceria"]').value,
-                cooperativa_id: estado.cooperativaGerente.id,
-                tipo_bus: tipoLote.value
-            };
-        });
+        const datos = Array.from(filasLote.rows).map(fila => ({
+            ...datosDelBus(valoresDeFila(fila, valoresComunes), contexto),
+            cooperativa_id: estado.cooperativaGerente.id
+        }));
 
         cambiarOcupado(true);
         contenido.disabled = true;
@@ -327,8 +380,11 @@ export function crearLote({
         agregarFila();
     });
 
+    comunes.marcaCarroceriaId.addEventListener("change", mostrarMarcasOtra);
+    comunes.marcaChasisId.addEventListener("change", mostrarMarcasOtra);
+
     elementoModal.addEventListener("shown.bs.modal", function () {
-        tipoLote.focus();
+        comunes.grupoId.focus();
     });
 
     elementoModal.addEventListener("hide.bs.modal", function (evento) {
