@@ -88,7 +88,7 @@ const validaciones = [
     ['fila fuera de la cuadrícula', [bano(11, 1)], /fuera de la distribución/],
     ['columna 5 sin última fila de 5', [bano(1, 5)], /fuera de la distribución/],
     ['celda repetida', [bano(10, 4), bano(10, 4)], /repetida/],
-    ['tipo que todavía no existe', [{ fila: 10, columna: 4, tipo: 'puerta' }], /tipo no válido/],
+    ['tipo que no existe', [{ fila: 10, columna: 4, tipo: 'jacuzzi' }], /tipo no válido/],
 ];
 
 for (const [nombre, celdas, esperado] of validaciones) {
@@ -131,11 +131,11 @@ test('especialesPorPiso: lee el baño guardado e ignora datos antiguos o inváli
     assert.equal(especialesPorPiso(null).size, 0);
 });
 
-test('el editor pregunta por el baño en cada piso y por defecto es «No»', () => {
-    const html = readFileSync(join(__dirname, '../frontend/pages/cooperativa/plantilla-asientos.html'), 'utf8');
+// Cambio 6: el editor visual reemplazó la pregunta «¿Este bus tiene baño?»;
+// el baño ahora es una herramienta más (ver tests/editorPlantilla.test.cjs).
+test('los mapas de venta leen también puerta, escalera, cabina y pasillo', async () => {
+    const { especialesPorPiso } = await cargar();
+    const celdas = ['puerta', 'escalera', 'cabina', 'pasillo'].map((tipo, i) => ({ fila: 1, columna: i + 1, tipo }));
 
-    for (const piso of [1, 2]) {
-        assert.match(html, new RegExp(`¿Este bus tiene baño en el piso ${piso}\\? \\*`));
-        assert.match(html, new RegExp(`id="banoNo${piso}"\\s+value="no"\\s+checked`));
-    }
+    assert.deepEqual([...especialesPorPiso([{ formato: 2, celdas_especiales: celdas }])], [[1, celdas]]);
 });

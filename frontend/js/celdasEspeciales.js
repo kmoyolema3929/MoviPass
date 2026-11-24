@@ -1,18 +1,33 @@
 // frontend/js/celdasEspeciales.js
-// Celdas de la plantilla que NO son asientos (por ahora solo el baño).
+// Celdas de la plantilla que NO son asientos: baño (cambio 11), puerta,
+// escalera, cabina, pasillo y espacio vacío (cambio 6). El espacio vacío
+// permite filas de distinto ancho: en los mapas no se dibuja nada.
 //
 // Se guardan en plantillas_bus.distribucion, dentro de cada piso:
 //   "celdas_especiales": [{ "fila": 11, "columna": 3, "tipo": "bano" }]
-// Un piso sin celdas especiales no lleva la lista (las plantillas antiguas
-// siguen igual). Más adelante se podrán agregar otros tipos en TIPOS_CELDA
-// (puerta, escalera, cabina, pasillo) con el mismo formato.
 //
 // En cada piso, "cantidad" es el número de celdas de la cuadrícula
-// (asientos + celdas especiales). Los asientos se numeran en orden y se
-// saltan las celdas especiales, igual que guardar_plantilla_bus.
+// (asientos + celdas especiales). En el formato antiguo los asientos se
+// numeraban en orden saltando las celdas especiales (generarAsientos). En el
+// formato 2 (editor visual, ver editorPlantilla.js) cada asiento guarda su
+// número y su tipo en la lista "asientos" del piso.
 
 export const TIPOS_CELDA = {
-    bano: { nombre: 'Baño', icono: '🚻' }
+    bano: { nombre: 'Baño', icono: '🚻' },
+    puerta: { nombre: 'Puerta', icono: '🚪' },
+    escalera: { nombre: 'Escalera', icono: '🪜' },
+    cabina: { nombre: 'Cabina del conductor', icono: '🛞' },
+    pasillo: { nombre: 'Pasillo', icono: '' },
+    vacio: { nombre: 'Espacio vacío', icono: '' }
+};
+
+// Tipos de asiento. El bloqueado existe y conserva su número, pero no se
+// vende ni cuenta en la capacidad (la base rechaza venderlo).
+export const TIPOS_ASIENTO = {
+    normal: { nombre: 'Asiento normal' },
+    vip: { nombre: 'Asiento VIP' },
+    cama: { nombre: 'Cama' },
+    bloqueado: { nombre: 'Asiento bloqueado', icono: '🔒' }
 };
 
 export function clavePosicion(fila, columna) {
@@ -119,10 +134,53 @@ export function generarAsientos(pisos) {
     });
 }
 
+/**
+ * Ancho de cada columna de un mapa de venta: las columnas que en todas las
+ * filas son pasillo se dibujan angostas (como el pasillo central de antes).
+ */
+export function columnasDelMapa(columnas, filas, especialesPiso, ancho, anchoPasillo) {
+    const pasillo = new Set(
+        especialesPiso.filter(c => c.tipo === 'pasillo').map(c => clavePosicion(c.fila, c.columna))
+    );
+
+    return Array.from({ length: columnas }, (_, i) => {
+        const soloPasillo = filas.length > 0 && filas.every(fila => pasillo.has(clavePosicion(fila, i + 1)));
+        return soloPasillo ? anchoPasillo : ancho;
+    }).join(' ');
+}
+
+/** Clase CSS de un asiento en los mapas de venta según su tipo. */
+export function claseTipoAsiento(tipo) {
+    return tipo === 'vip' || tipo === 'cama' || tipo === 'bloqueado' ? ` ${tipo}` : '';
+}
+
+/**
+ * Asiento bloqueado en los mapas de venta: se ve con su número y un candado,
+ * siempre deshabilitado (no se registra entre los botones que se pueden elegir).
+ */
+export function crearAsientoBloqueado(asiento, clase) {
+    const boton = document.createElement('button');
+
+    boton.type = 'button';
+    boton.className = clase;
+    boton.disabled = true;
+    boton.textContent = `🔒${asiento.numero}`;
+    boton.title = `Asiento ${asiento.numero} (bloqueado, no se vende)`;
+    boton.setAttribute('aria-label', `Asiento ${asiento.numero}, bloqueado, no disponible`);
+
+    return boton;
+}
+
 /** Celda especial bloqueada para los mapas de venta (no se puede elegir). */
 export function crearCeldaEspecial(celda, clase) {
     const tipo = TIPOS_CELDA[celda.tipo];
     const elemento = document.createElement('div');
+
+    // El pasillo y el espacio vacío no muestran nada.
+    if (celda.tipo === 'pasillo' || celda.tipo === 'vacio') {
+        elemento.setAttribute('aria-hidden', 'true');
+        return elemento;
+    }
 
     elemento.className = clase;
     elemento.textContent = tipo.icono;
