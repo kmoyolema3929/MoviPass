@@ -22,15 +22,19 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <div>
                 <h1 class="h3 mb-1">Gestión de Frecuencias</h1>
-                <p class="text-muted mb-0">Rutas aprobadas de la cooperativa: horario, tipo, resolución, precio y estado.</p>
+                <p class="text-muted mb-0">
+                    Rutas aprobadas por la ANT: origen, destino, horario, precio, grupo de bus y estado.
+                    Cada sentido es una frecuencia propia.
+                </p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a href="hoja-ruta.html" class="btn btn-outline-primary">Hoja de ruta (asignar buses)</a>
+                <a href="hoja-ruta.html" class="btn btn-outline-primary">Hoja de ruta</a>
                 <button id="btnNueva" type="button" class="btn btn-primary" disabled>+ Nueva frecuencia</button>
             </div>
         </div>
 
         <div id="alertContainer" role="alert" aria-live="polite"></div>
+        <div id="avisoCorregir" class="alert alert-warning d-none" role="status"></div>
 
         <div class="card shadow-sm">
             <div class="card-body p-0">
@@ -38,12 +42,12 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-dark">
                             <tr>
-                                <th>#</th>
-                                <th>Cooperativa</th>
+                                <th>Orden</th>
+                                <th>Grupo de bus</th>
                                 <th>Ruta</th>
                                 <th>Hora</th>
                                 <th>Tipo</th>
-                                <th>N.º de resolución</th>
+                                <th>Resolución ANT</th>
                                 <th>Precio base</th>
                                 <th>Estado</th>
                                 <th class="text-center">Acciones</th>
@@ -57,81 +61,136 @@
             </div>
         </div>
         <p class="small text-muted mt-3 mb-0">
-            Una frecuencia es una ruta aprobada: lleva su <strong>número de resolución</strong> y no lleva bus.
-            El bus se asigna cada día en la <a href="hoja-ruta.html">hoja de ruta</a>.
-            Una frecuencia <strong>directa</strong> no puede tener paradas; una <strong>compartida</strong> sí.
-            Si una frecuencia ya tiene hojas de ruta no se puede eliminar: desactívala.
+            El <strong>orden</strong> es el de las filas de la hoja de ruta de cada grupo: cada bus baja una fila por día,
+            así que pon la vuelta justo debajo de su ida (Ambato → Loja 19:00 y luego Loja → Ambato 20:00).
+            Si no lo ordenas, se usa la hora de salida.
+            Una frecuencia con boletos vendidos no se puede eliminar: desactívala.
         </p>
     </main>
 
     <!-- Modal crear / editar -->
     <div class="modal fade" id="modalFrecuencia" tabindex="-1" aria-labelledby="modalFrecuenciaLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title h5" id="modalFrecuenciaLabel">Nueva frecuencia</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="formFrecuencia" novalidate>
+                <form id="formFrecuencia" novalidate>
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="modalFrecuenciaLabel">Nueva frecuencia</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="errorFormulario" class="alert alert-danger d-none" role="alert"></div>
+                        <p class="text-muted small">Los campos marcados con * son obligatorios.</p>
                         <input type="hidden" id="frecuenciaId">
 
-                        <div class="mb-3">
-                            <label for="cooperativa" class="form-label">Cooperativa *</label>
-                            <select id="cooperativa" class="form-select" required disabled>
-                                <option value="" selected disabled>Cargando...</option>
-                            </select>
-                            <div class="invalid-feedback">Selecciona la cooperativa.</div>
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label for="origen" class="form-label">Origen *</label>
-                                <input type="text" class="form-control" id="origen" placeholder="Ej. Ambato" required minlength="3" maxlength="100">
-                                <div class="invalid-feedback">Ingresa el origen (mínimo 3 letras).</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6" id="grupoCooperativa">
+                                <label for="cooperativa" class="form-label">Cooperativa *</label>
+                                <select id="cooperativa" class="form-select" required disabled>
+                                    <option value="" selected disabled>Cargando...</option>
+                                </select>
+                                <div class="invalid-feedback" data-error="cooperativaId"></div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="destino" class="form-label">Destino *</label>
-                                <input type="text" class="form-control" id="destino" placeholder="Ej. Loja" required minlength="3" maxlength="100">
-                                <div class="invalid-feedback">Ingresa el destino (mínimo 3 letras).</div>
-                            </div>
-                        </div>
 
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
+                            <div class="col-12"><h3 class="h6 mb-0">Origen</h3></div>
+                            <div class="col-12 col-md-6">
+                                <label for="provinciaOrigen" class="form-label">Provincia de origen *</label>
+                                <select id="provinciaOrigen" class="form-select" required disabled>
+                                    <option value="" selected disabled>Cargando...</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="cantonOrigen" class="form-label">Cantón de origen *</label>
+                                <select id="cantonOrigen" class="form-select" required disabled>
+                                    <option value="" selected disabled>Primero elige la provincia</option>
+                                </select>
+                                <div class="invalid-feedback" data-error="origenCantonId"></div>
+                            </div>
+
+                            <div class="col-12"><h3 class="h6 mb-0">Destino</h3></div>
+                            <div class="col-12 col-md-6">
+                                <label for="provinciaDestino" class="form-label">Provincia de destino *</label>
+                                <select id="provinciaDestino" class="form-select" required disabled>
+                                    <option value="" selected disabled>Cargando...</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="cantonDestino" class="form-label">Cantón de destino *</label>
+                                <select id="cantonDestino" class="form-select" required disabled>
+                                    <option value="" selected disabled>Primero elige la provincia</option>
+                                </select>
+                                <div class="invalid-feedback" data-error="destinoCantonId"></div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
                                 <label for="hora" class="form-label">Hora de salida *</label>
                                 <input type="time" class="form-control" id="hora" required>
-                                <div class="invalid-feedback">Selecciona la hora de salida.</div>
+                                <div class="invalid-feedback" data-error="hora"></div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
                                 <label for="precioBase" class="form-label">Precio base (USD) *</label>
-                                <input type="number" class="form-control" id="precioBase" min="0" step="0.01" value="0" required>
-                                <div class="invalid-feedback">Ingresa un precio válido (0 o más).</div>
+                                <input type="number" class="form-control" id="precioBase" min="0" step="0.01" required>
+                                <div class="invalid-feedback" data-error="precio"></div>
                             </div>
-                        </div>
 
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
+                                <label for="resolucion" class="form-label">N.º de resolución de la ANT *</label>
+                                <input type="text" class="form-control" id="resolucion" maxlength="60" placeholder="Ej. ANT-2024-0123" required autocomplete="off">
+                                <div class="invalid-feedback" data-error="resolucion"></div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="grupo" class="form-label">Grupo de bus *</label>
+                                <select id="grupo" class="form-select" required disabled>
+                                    <option value="" selected disabled>Primero elige la cooperativa</option>
+                                </select>
+                                <div class="invalid-feedback" data-error="grupoId"></div>
+                                <div class="form-text">Los buses de este grupo harán la frecuencia en la hoja de ruta.</div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label for="estado" class="form-label">Estado *</label>
+                                <select id="estado" class="form-select" required>
+                                    <option value="true" selected>Activa</option>
+                                    <option value="false">Inactiva</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
                                 <label for="tipo" class="form-label">Tipo *</label>
                                 <select id="tipo" class="form-select" required>
                                     <option value="directa" selected>Directa (sin paradas)</option>
-                                    <option value="compartida">Compartida (con paradas)</option>
+                                    <option value="compartida">Con paradas (entra a terminales intermedias)</option>
                                 </select>
-                                <div class="form-text">Las paradas de una compartida se registran después, en "Paradas".</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="resolucion" class="form-label">N.º de resolución *</label>
-                                <input type="text" class="form-control" id="resolucion" maxlength="60" minlength="3" placeholder="Ej. ANT-2024-0123" required>
-                                <div class="invalid-feedback">La resolución que aprobó la ruta es obligatoria.</div>
+                                <div class="invalid-feedback" data-error="tipo"></div>
                             </div>
                         </div>
 
-                        <div class="text-end">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-success" id="btnGuardar">Guardar frecuencia</button>
-                        </div>
-                    </form>
-                </div>
+                        <section id="seccionParadas" class="mt-4 d-none" aria-labelledby="tituloParadas">
+                            <h3 class="h6" id="tituloParadas">Paradas *</h3>
+                            <p class="small text-muted mb-2">
+                                En orden de recorrido. Elige el cantón de la lista o escribe el lugar si no consta.
+                            </p>
+                            <div id="errorParadas" class="text-danger small mb-2"></div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-2">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">#</th>
+                                            <th scope="col">Lugar *</th>
+                                            <th scope="col">Hora estimada *</th>
+                                            <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="filasParadas"></tbody>
+                                </table>
+                            </div>
+                            <datalist id="listaLugares"></datalist>
+                            <button type="button" id="btnAgregarParada" class="btn btn-outline-secondary btn-sm">Agregar parada</button>
+                        </section>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success" id="btnGuardar">Guardar frecuencia</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
