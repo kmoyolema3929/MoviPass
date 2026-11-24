@@ -11,7 +11,11 @@
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand fw-bold" href="index.html">MoviPass - Admin</a>
-            <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+                <!-- guardas.js cierra la sesión y vuelve al index raíz -->
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            </div>
         </div>
     </nav>
 
@@ -28,29 +32,29 @@
                     <div class="card-body">
                         <form id="formGerente">
                             <div class="mb-3">
-                                <label for="cooperativa" class="form-label">Cooperativa a Asignar</label>
-                                <select id="cooperativa" class="form-select" required>
-                                    <option value="">Cargando cooperativas...</option>
+                                <label for="cooperativa" class="form-label">Cooperativa a Asignar *</label>
+                                <select id="cooperativa" class="form-select" required disabled>
+                                    <option value="" selected disabled>Cargando...</option>
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="nombres" class="form-label">Nombres</label>
+                                <label for="nombres" class="form-label">Nombres *</label>
                                 <input type="text" class="form-control" id="nombres" required>
                             </div>
                             <div class="mb-3">
-                                <label for="apellidos" class="form-label">Apellidos</label>
+                                <label for="apellidos" class="form-label">Apellidos *</label>
                                 <input type="text" class="form-control" id="apellidos" required>
                             </div>
                             <div class="mb-3">
-                                <label for="cedula" class="form-label">Cédula</label>
+                                <label for="cedula" class="form-label">Cédula *</label>
                                 <input type="text" class="form-control" id="cedula" required maxlength="10">
                             </div>
                             <div class="mb-3">
-                                <label for="email" class="form-label">Correo Electrónico (será su usuario)</label>
+                                <label for="email" class="form-label">Correo Electrónico (será su usuario) *</label>
                                 <input type="email" class="form-control" id="email" required>
                             </div>
                             <div class="mb-3">
-                                <label for="password" class="form-label">Contraseña Temporal</label>
+                                <label for="password" class="form-label">Contraseña Temporal *</label>
                                 <input type="password" class="form-control" id="password" required minlength="6">
                             </div>
                             <button type="submit" class="btn btn-primary w-100" id="btnGuardar">Crear Gerente y Asignar</button>
@@ -69,6 +73,7 @@
         import { supabase } from '../../js/supabaseClient.js';
         import { mostrarAlerta } from '../../js/alertas.js';
         import { exigirRoles } from '../../js/guardas.js';
+        import { llenarCombo } from '../../js/combos.js';
 
         // Solo el administrador puede ver esta página
         exigirRoles(['administrador']);
@@ -79,18 +84,16 @@
         const TEXTO_BTN = 'Crear Gerente y Asignar';
 
         // 1. Cargar las cooperativas existentes en el select
-        async function cargarCooperativas() {
-            const { data, error } = await supabase.from('cooperativas').select('id, nombre').order('nombre');
-
-            if (error) {
-                console.error('Error al cargar cooperativas:', error);
-                selectCoop.innerHTML = '<option value="">Error al cargar cooperativas</option>';
-                return;
-            }
-
-            selectCoop.innerHTML = '<option value="">Selecciona una cooperativa</option>';
-            data.forEach(c => {
-                selectCoop.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+        function cargarCooperativas() {
+            return llenarCombo(selectCoop, {
+                cargar: async () => {
+                    const { data, error } = await supabase.from('cooperativas').select('id, nombre').order('nombre');
+                    if (error) throw error;
+                    return data;
+                },
+                inicial: 'Selecciona una cooperativa...',
+                vacio: 'No hay cooperativas registradas',
+                error: 'No se pudieron cargar las cooperativas.',
             });
         }
         cargarCooperativas();
@@ -179,8 +182,8 @@
 
                 // F. Éxito
                 mostrarAlerta('¡Gerente creado y asignado a la cooperativa con éxito!', 'success');
+                // Vuelve a la opción por defecto ("Selecciona..." o la única cooperativa).
                 form.reset();
-                selectCoop.value = '';
 
             } catch (error) {
                 console.error(error);
