@@ -6,107 +6,69 @@
     <title>Panel de Cooperativa - MoviPass</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .paso { transition: box-shadow .15s, transform .15s; border-width: 2px !important; }
-        .paso:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.12) !important; transform: translateY(-2px); }
+        .hero { border-left: .35rem solid #0d6efd; }
+        .hero.listo { border-left-color: #198754; }
+
         .paso-num {
-            width: 2.5rem; height: 2.5rem; flex: 0 0 2.5rem;
+            width: 2.25rem; height: 2.25rem; flex: 0 0 2.25rem;
             display: flex; align-items: center; justify-content: center;
             border-radius: 50%; font-weight: 700;
             background: #e9ecef; color: #495057;
         }
-        .paso.completado .paso-num { background: #198754; color: #fff; }
-        .paso.siguiente .paso-num { background: #0d6efd; color: #fff; }
+        .paso.hecho .paso-num { background: #198754; color: #fff; }
+        .paso.actual { background: #f1f6ff; }
+        .paso.actual .paso-num { background: #0d6efd; color: #fff; }
+        .paso.bloqueado .paso-info { opacity: .65; }
     </style>
 </head>
 <body class="bg-light d-flex flex-column min-vh-100">
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="../index.html">MoviPass - Cooperativa</a>
-            <!-- guardas.js cierra la sesión y redirige a pages/index.html -->
+            <a class="navbar-brand" href="../../index.html">MoviPass - Cooperativa</a>
+            <!-- guardas.js cierra la sesión y vuelve al index raíz -->
             <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
         </div>
     </nav>
 
-    <main class="container my-5 flex-grow-1">
-        <h1 class="h2 mb-1">Bienvenido, <span id="nombreCoop">gerente</span></h1>
-        <p class="text-muted mb-4">Sigue estos pasos en orden para dejar tu cooperativa lista para vender boletos.</p>
+    <main class="container my-4 my-md-5 flex-grow-1" style="max-width: 920px;">
+        <h1 class="h3 mb-1">Hola, <span id="nombreCoop">gerente</span></h1>
+        <p class="text-muted mb-4">Aquí ves qué te falta para vender boletos y a dónde ir ahora.</p>
 
-        <div class="row g-4">
-            <!-- Paso 1: Buses -->
-            <div class="col-lg-4">
-                <div class="card paso shadow-sm h-100 border" id="paso-buses">
+        <!-- Siguiente paso: lo único que necesitas mirar primero -->
+        <section id="hero" class="card hero shadow-sm mb-4" aria-live="polite">
+            <div class="card-body p-4">
+                <p id="heroEtiqueta" class="text-muted small mb-1">Revisando tu cooperativa...</p>
+                <h2 id="heroTitulo" class="h4 mb-2"></h2>
+                <p id="heroTexto" class="mb-3"></p>
+                <a id="heroBoton" class="btn btn-primary d-none" href="#"></a>
+            </div>
+        </section>
+
+        <!-- Preparación inicial: aquí el orden sí importa -->
+        <h2 class="h5 mb-2">Prepara tu cooperativa</h2>
+        <ol id="listaPasos" class="list-group list-group-flush shadow-sm rounded border mb-5 p-0"></ol>
+
+        <!-- Gestión: no tiene orden, se usa cuando hace falta -->
+        <h2 class="h5 mb-2">Gestión</h2>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
                     <div class="card-body d-flex flex-column">
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <div class="paso-num">1</div>
-                            <div>
-                                <h5 class="card-title mb-0">Mis buses</h5>
-                                <span class="badge text-bg-secondary mt-1 d-none" data-estado></span>
-                            </div>
-                        </div>
-                        <p class="card-text text-muted">Registra los buses de tu flota con su placa, chasis, carrocería y tipo (cómodo, provincial o ranchera).</p>
-                        <a href="../bus/buses.html" class="btn btn-primary mt-auto">Gestionar buses</a>
+                        <h3 class="h6">Mi personal</h3>
+                        <p class="text-muted small">Crea las cuentas de tus oficinistas para que vendan boletos en ventanilla y validen los pagos de los clientes.</p>
+                        <a href="gestor-oficinistas.html" class="btn btn-outline-primary btn-sm mt-auto align-self-start">Gestionar oficinistas</a>
                     </div>
                 </div>
             </div>
-
-            <!-- Paso 2: Plantillas (una por tipo de bus) -->
-            <div class="col-lg-4">
-                <div class="card paso shadow-sm h-100 border" id="paso-plantillas">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
                     <div class="card-body d-flex flex-column">
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <div class="paso-num">2</div>
-                            <div>
-                                <h5 class="card-title mb-0">Plantillas de asientos</h5>
-                                <span class="badge text-bg-secondary mt-1 d-none" data-estado></span>
-                            </div>
-                        </div>
-                        <p class="card-text text-muted">Cada tipo de bus tiene su distribución de asientos. Configúrala después de registrar el bus.</p>
-                        <a href="plantilla-asientos.html" class="btn btn-primary mt-auto">Configurar asientos</a>
+                        <h3 class="h6">Reportes</h3>
+                        <p class="text-muted small">Consulta ventas, ingresos, próximos viajes y pagos pendientes de validar.</p>
+                        <a href="reportes.html" class="btn btn-outline-primary btn-sm mt-auto align-self-start">Ver reportes</a>
                     </div>
                 </div>
             </div>
-
-            <!-- Paso 3: Frecuencias y hojas de ruta -->
-            <div class="col-lg-4">
-                <div class="card paso shadow-sm h-100 border" id="paso-frecuencias">
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <div class="paso-num">3</div>
-                            <div>
-                                <h5 class="card-title mb-0">Frecuencias y hojas de ruta</h5>
-                                <span class="badge text-bg-secondary mt-1 d-none" data-estado></span>
-                            </div>
-                        </div>
-                        <p class="card-text text-muted">Registra las frecuencias aprobadas (con su n.º de resolución) y luego asigna un bus a cada frecuencia, día por día, en la hoja de ruta.</p>
-                        <div class="mt-auto d-grid gap-2">
-                            <a href="../frecuencias/gestor-frecuencias.html" class="btn btn-outline-primary">Gestionar frecuencias</a>
-                            <a href="../frecuencias/hoja-ruta.html" class="btn btn-primary">Hoja de ruta (asignar buses)</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-                <!-- Paso 4: Gestión de Oficinistas -->
-        <div class="col-lg-4">
-            <div class="card shadow-sm h-100 border">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="paso-num" style="background: #e0cffc; color: #6610f2;">4</div>
-                        <div>
-                            <h5 class="card-title mb-0">Mi Personal</h5>
-                        </div>
-                    </div>
-                    <p class="card-text text-muted">Crea las cuentas de tus oficinistas para que puedan vender boletos y validar los pagos de los clientes.</p>
-                    <a href="gestor-oficinistas.html" class="btn btn-primary mt-auto">Gestionar Oficinistas</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="alert alert-light border shadow-sm mt-4" role="alert">
-            <strong>¿Primera vez?</strong> Empieza por el paso marcado como
-            <span class="badge text-bg-primary">Empieza aquí</span>.
-            Primero registra el bus, luego configura sus asientos, y al final crea las frecuencias y asigna los buses a cada día.
         </div>
     </main>
 
@@ -119,23 +81,37 @@
         import { supabase } from '../../js/supabaseClient.js';
         import { obtenerBusesDeCooperativa, obtenerPlantillasDeCooperativa } from '../../js/asientosService.js';
 
-        // Solo el gerente (rol 'cooperativa') puede ver esta página.
-        // guardas.js también conecta el botón #btnCerrarSesion.
+        const $ = id => document.getElementById(id);
+        const clave = t => String(t ?? '').trim().toLowerCase();
+        const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+        // Fecha de hoy en Ecuador (formato AAAA-MM-DD), igual que usa la base de datos
+        const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' });
+
+        function el(etiqueta, clases, texto) {
+            const nodo = document.createElement(etiqueta);
+            if (clases) nodo.className = clases;
+            if (texto !== undefined) nodo.textContent = texto;
+            return nodo;
+        }
+
+        // Solo el gerente (rol 'cooperativa'). guardas.js conecta #btnCerrarSesion.
         const rol = await exigirRoles(['cooperativa']);
 
-        // Cooperativa asignada al gerente (tabla cooperativas_usuarios)
         async function obtenerCooperativa() {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (!session) return null;
+
                 const { data, error } = await supabase
                     .from('cooperativas_usuarios')
                     .select('cooperativa_id, cooperativas(nombre)')
                     .eq('perfil_id', session.user.id)
                     .limit(1)
                     .maybeSingle();
+
                 if (error) throw error;
                 if (!data) return null;
+
                 return { id: data.cooperativa_id, nombre: data.cooperativas?.nombre };
             } catch (err) {
                 console.error('No se pudo cargar la cooperativa del gerente:', err);
@@ -143,119 +119,184 @@
             }
         }
 
-        // IDs de las filas de la cooperativa (las frecuencias tienen cooperativa_id)
-        async function idsDe(tabla, coopId) {
-            const { data, error } = await supabase.from(tabla).select('id').eq('cooperativa_id', coopId);
-            if (error) throw error;
-            return data.map(r => r.id);
-        }
-
-        // Cuenta filas de "tabla" cuya columna pertenece a la lista de ids
-        async function contarEn(tabla, columna, ids) {
-            if (ids.length === 0) return 0;
-            const { count, error } = await supabase
-                .from(tabla)
-                .select('*', { count: 'exact', head: true })
-                .in(columna, ids);
-            if (error) throw error;
-            return count ?? 0;
-        }
-
-        const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
-        const clave = t => String(t ?? '').trim().toLowerCase();
-
-        // Calcula el estado de cada paso: { id, estado: 'completado'|'parcial'|'pendiente', texto }
-        async function calcularPasos(coopId) {
-            const [buses, plantillas, frecIds] = await Promise.all([
+        async function cargarDatos(coopId) {
+            const [buses, plantillas, frecuencias] = await Promise.all([
                 obtenerBusesDeCooperativa(coopId),
-                obtenerPlantillasDeCooperativa(coopId),   // las plantillas son por tipo de bus
-                idsDe('frecuencias', coopId)
+                obtenerPlantillasDeCooperativa(coopId),
+                supabase.from('frecuencias').select('id').eq('cooperativa_id', coopId)
             ]);
-            const hojas = await contarEn('hojas_ruta', 'frecuencia_id', frecIds);
 
-            // Un bus "tiene asientos" si su tipo ya tiene plantilla guardada
-            const tiposConPlantilla = new Set(plantillas.map(p => clave(p.tipo_bus)));
-            const conPlantilla = buses.filter(b => tiposConPlantilla.has(clave(b.tipo_bus))).length;
+            if (frecuencias.error) throw frecuencias.error;
 
-            const nBuses = buses.length;
-            const nFrec = frecIds.length;
+            const frecIds = frecuencias.data.map(f => f.id);
+            let hojasProximas = 0;
 
-            // Paso 1: buses
-            const paso1 = nBuses > 0
-                ? { id: 'paso-buses', estado: 'completado', texto: `✓ ${plural(nBuses, 'bus', 'buses')}` }
-                : { id: 'paso-buses', estado: 'pendiente', texto: 'Empieza aquí' };
+            if (frecIds.length > 0) {
+                const { count, error } = await supabase
+                    .from('hojas_ruta')
+                    .select('*', { count: 'exact', head: true })
+                    .in('frecuencia_id', frecIds)
+                    .gte('fecha', hoy());
 
-            // Paso 2: plantillas (por tipo de bus)
-            let paso2;
-            if (nBuses === 0) {
-                paso2 = { id: 'paso-plantillas', estado: 'pendiente', texto: 'Primero registra un bus' };
-            } else if (conPlantilla >= nBuses) {
-                paso2 = { id: 'paso-plantillas', estado: 'completado', texto: `✓ ${nBuses} de ${nBuses} buses con asientos` };
-            } else if (conPlantilla > 0) {
-                paso2 = { id: 'paso-plantillas', estado: 'parcial', texto: `${conPlantilla} de ${nBuses} buses con asientos` };
-            } else {
-                paso2 = { id: 'paso-plantillas', estado: 'pendiente', texto: 'Empieza aquí' };
+                if (error) throw error;
+                hojasProximas = count ?? 0;
             }
 
-            // Paso 3: frecuencias + hojas de ruta
-            let paso3;
-            if (nFrec > 0 && hojas > 0) {
-                paso3 = { id: 'paso-frecuencias', estado: 'completado', texto: `✓ ${plural(nFrec, 'frecuencia', 'frecuencias')} · ${plural(hojas, 'hoja', 'hojas')}` };
-            } else if (nFrec > 0) {
-                paso3 = { id: 'paso-frecuencias', estado: 'parcial', texto: `${plural(nFrec, 'frecuencia', 'frecuencias')}, falta asignar buses` };
-            } else {
-                paso3 = { id: 'paso-frecuencias', estado: 'pendiente', texto: nBuses === 0 ? 'Primero registra un bus' : 'Empieza aquí' };
-            }
+            // Tipos de bus que tienen buses pero todavía no tienen plantilla de asientos
+            const conPlantilla = new Set(plantillas.map(p => clave(p.tipo_bus)));
+            const sinPlantilla = new Map();
 
-            return [paso1, paso2, paso3];
-        }
-
-        async function pintarPasos(coopId) {
-            let pasos;
-            try {
-                pasos = await calcularPasos(coopId);
-            } catch (err) {
-                console.error('No se pudo calcular el avance:', err);
-                return; // sin estados, pero la página sigue funcionando
-            }
-
-            const siguiente = pasos.find(p => p.estado !== 'completado');
-            let completados = 0;
-
-            pasos.forEach(p => {
-                const tarjeta = document.getElementById(p.id);
-                const badge = tarjeta.querySelector('[data-estado]');
-                badge.classList.remove('d-none', 'text-bg-secondary');
-
-                if (p.estado === 'completado') {
-                    completados++;
-                    tarjeta.classList.add('completado');
-                    badge.classList.add('text-bg-success');
-                    badge.textContent = p.texto;
-                } else if (p === siguiente) {
-                    tarjeta.classList.add('siguiente');
-                    if (p.estado === 'parcial') {
-                        badge.classList.add('text-bg-warning', 'text-dark');
-                        badge.textContent = p.texto;
-                    } else {
-                        badge.classList.add('text-bg-primary');
-                        badge.textContent = 'Empieza aquí';
-                    }
-                } else {
-                    badge.classList.add('text-bg-secondary');
-                    badge.textContent = p.estado === 'parcial' ? p.texto : 'Pendiente';
-                }
+            buses.forEach(b => {
+                if (!conPlantilla.has(clave(b.tipo_bus))) sinPlantilla.set(clave(b.tipo_bus), b.tipo_bus);
             });
 
-            document.getElementById('barraProgreso').style.width = Math.round((completados / pasos.length) * 100) + '%';
-            document.getElementById('textoProgreso').textContent = `${completados} de ${pasos.length} pasos`;
+            return {
+                nBuses: buses.length,
+                tiposSinPlantilla: [...sinPlantilla.values()],
+                nFrecuencias: frecIds.length,
+                hojasProximas
+            };
+        }
+
+        // Los 4 pasos de preparación, en el orden en que deben hacerse
+        function armarPasos(d) {
+            const faltanAsientos = d.tiposSinPlantilla.length > 0;
+
+            return [
+                {
+                    titulo: 'Registra tus buses',
+                    porque: 'Cada bus lleva placa, chasis, carrocería y tipo (cómodo, provincial o ranchera).',
+                    detalle: d.nBuses > 0 ? `${plural(d.nBuses, 'bus registrado', 'buses registrados')}.` : 'Aún no tienes buses.',
+                    href: '../bus/buses.html',
+                    boton: d.nBuses > 0 ? 'Ver buses' : 'Registrar buses',
+                    hecho: d.nBuses > 0
+                },
+                {
+                    titulo: 'Configura los asientos de cada tipo de bus',
+                    porque: 'Defines la distribución una sola vez por tipo y se aplica a todos los buses de ese tipo. Sin esto no puedes asignar el bus a un día.',
+                    detalle: d.nBuses === 0
+                        ? 'Primero registra un bus.'
+                        : faltanAsientos
+                            ? `Falta configurar: ${d.tiposSinPlantilla.join(', ')}.`
+                            : 'Todos tus tipos de bus tienen asientos.',
+                    href: 'plantilla-asientos.html',
+                    boton: faltanAsientos ? 'Configurar asientos' : 'Ver asientos',
+                    hecho: d.nBuses > 0 && !faltanAsientos,
+                    bloqueado: d.nBuses === 0
+                },
+                {
+                    titulo: 'Registra tus frecuencias',
+                    porque: 'Son las rutas aprobadas para tu cooperativa, con su número de resolución.',
+                    detalle: d.nFrecuencias > 0 ? `${plural(d.nFrecuencias, 'frecuencia registrada', 'frecuencias registradas')}.` : 'Aún no tienes frecuencias.',
+                    href: '../frecuencias/gestor-frecuencias.html',
+                    boton: d.nFrecuencias > 0 ? 'Ver frecuencias' : 'Registrar frecuencias',
+                    hecho: d.nFrecuencias > 0
+                },
+                {
+                    titulo: 'Asigna un bus a cada día',
+                    porque: 'En la hoja de ruta eliges qué bus hace cada frecuencia cada día. Solo puedes hacerlo con hasta 14 días de anticipación, así que vuelve a revisarla cada semana.',
+                    detalle: d.hojasProximas > 0
+                        ? `${plural(d.hojasProximas, 'hoja de ruta desde hoy', 'hojas de ruta desde hoy')}.`
+                        : (d.nBuses === 0 || d.tiposSinPlantilla.length > 0 || d.nFrecuencias === 0)
+                            ? 'Antes necesitas buses con asientos y al menos una frecuencia.'
+                            : 'Aún no hay días asignados.',
+                    href: '../frecuencias/hoja-ruta.html',
+                    boton: d.hojasProximas > 0 ? 'Asignar más días' : 'Asignar buses',
+                    hecho: d.hojasProximas > 0,
+                    bloqueado: d.nBuses === 0 || d.tiposSinPlantilla.length > 0 || d.nFrecuencias === 0
+                }
+            ];
+        }
+
+        function pintarPasos(pasos, actual) {
+            const lista = $('listaPasos');
+            lista.replaceChildren();
+
+            pasos.forEach((paso, i) => {
+                const fila = el('li', 'list-group-item paso d-flex align-items-center gap-3 flex-wrap p-3');
+                if (paso.hecho) fila.classList.add('hecho');
+                if (paso === actual) fila.classList.add('actual');
+                if (paso.bloqueado && !paso.hecho) fila.classList.add('bloqueado');
+
+                const numero = el('div', 'paso-num', paso.hecho ? '✓' : String(i + 1));
+                numero.setAttribute('aria-hidden', 'true');
+
+                const info = el('div', 'paso-info flex-grow-1');
+                info.append(el('h3', 'h6 mb-1', paso.titulo));
+                info.append(el('p', 'small text-muted mb-0', paso.detalle));
+
+                let accion;
+                if (paso.bloqueado && !paso.hecho) {
+                    accion = el('button', 'btn btn-sm btn-outline-secondary', paso.boton);
+                    accion.type = 'button';
+                    accion.disabled = true;
+                } else {
+                    accion = el('a', paso === actual ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline-primary', paso.boton);
+                    accion.href = paso.href;
+                }
+
+                fila.append(numero, info, accion);
+                lista.appendChild(fila);
+            });
+        }
+
+        function pintarHero(pasos, actual, d) {
+            const hero = $('hero');
+            const boton = $('heroBoton');
+
+            if (actual) {
+                $('heroEtiqueta').textContent = 'Siguiente paso';
+                $('heroTitulo').textContent = actual.titulo;
+                $('heroTexto').textContent = actual.porque;
+                boton.textContent = actual.boton;
+                boton.href = actual.href;
+                boton.classList.remove('d-none');
+                return;
+            }
+
+            hero.classList.add('listo');
+            $('heroEtiqueta').textContent = 'Todo listo';
+            $('heroTitulo').textContent = 'Tu cooperativa ya puede vender boletos';
+            $('heroTexto').textContent =
+                `Tienes ${plural(d.hojasProximas, 'hoja de ruta programada', 'hojas de ruta programadas')} desde hoy. ` +
+                'Cuando se acerque el último día asignado, entra a la hoja de ruta y programa más días.';
+            boton.textContent = 'Asignar más días';
+            boton.href = '../frecuencias/hoja-ruta.html';
+            boton.classList.remove('d-none');
+        }
+
+        function mostrarAviso(etiqueta, titulo, texto) {
+            $('heroEtiqueta').textContent = etiqueta;
+            $('heroTitulo').textContent = titulo;
+            $('heroTexto').textContent = texto;
         }
 
         if (rol) {
             const coop = await obtenerCooperativa();
-            if (coop?.nombre) document.getElementById('nombreCoop').textContent = coop.nombre;
-            // Sin cooperativa asignada no se cuenta nada (evita mostrar datos de otras)
-            if (coop?.id) pintarPasos(coop.id);
+
+            if (coop?.nombre) $('nombreCoop').textContent = coop.nombre;
+
+            if (!coop?.id) {
+                // Sin cooperativa asignada no se muestra ni se cuenta nada
+                mostrarAviso('Cuenta sin cooperativa', 'Aún no tienes una cooperativa asignada', 'Contacta al administrador para que te asigne una.');
+            } else {
+                try {
+                    const datos = await cargarDatos(coop.id);
+                    const pasos = armarPasos(datos);
+                    const actual = pasos.find(p => !p.hecho) ?? null;
+
+                    pintarHero(pasos, actual, datos);
+                    pintarPasos(pasos, actual);
+                } catch (err) {
+                    console.error('No se pudo calcular el avance:', err);
+
+                    mostrarAviso('Sin datos', 'No pudimos revisar el avance', 'Revisa tu conexión y recarga la página. Mientras tanto puedes entrar a cada sección.');
+
+                    // Los pasos siguen disponibles, sin estados
+                    pintarPasos(armarPasos({ nBuses: 1, tiposSinPlantilla: [], nFrecuencias: 1, hojasProximas: 0 })
+                        .map(p => ({ ...p, hecho: false, bloqueado: false, detalle: '' })), null);
+                }
+            }
         }
     </script>
 </body>

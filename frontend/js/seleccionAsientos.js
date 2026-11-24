@@ -2,12 +2,16 @@ import { supabase } from './supabaseClient.js';
 import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
 import { dinero, formatearFecha, formatearHora } from './validaciones.js';
+import { leerViajeId, urlResumenCompra } from './rutasCompra.js';
+import { obtenerCeldasEspecialesDeBus } from './asientosService.js';
+import { crearCeldaEspecial } from './celdasEspeciales.js';
 
 const MAX_ASIENTOS = 10;
 const $ = (id) => document.getElementById(id);
 
 let viaje = null;
 let asientos = [];
+let especiales = new Map(); // baño por piso: se muestra bloqueado
 let tipos = [];
 let ocupados = new Set();
 let seleccionados = [];
@@ -82,6 +86,15 @@ async function cargarAsientos() {
 
     if (error) throw error;
     asientos = data ?? [];
+
+    // El baño no es un asiento: solo se dibuja. Si no se puede leer, el mapa sigue
+    // funcionando sin él (la base igual rechaza vender esa posición).
+    try {
+        especiales = await obtenerCeldasEspecialesDeBus(viaje.busId);
+    } catch (errorEspeciales) {
+        console.warn('No se pudo cargar el baño del bus:', errorEspeciales);
+        especiales = new Map();
+    }
 }
 
 async function actualizarOcupados() {
@@ -147,12 +160,22 @@ function dibujarMapa() {
             return;
         }
 
-        const maxColumna = Math.max(...delPiso.map((a) => Number(a.columna)));
+        const especialesPiso = especiales.get(piso) ?? [];
+        const maxColumna = Math.max(
+            ...delPiso.map((a) => Number(a.columna)),
+            ...especialesPiso.map((c) => c.columna)
+        );
         const conPasillo = maxColumna === 4;
         const porPosicion = new Map(
             delPiso.map((a) => [`${a.fila}-${a.columna}`, a])
         );
-        const filas = [...new Set(delPiso.map((a) => Number(a.fila)))].sort((a, b) => a - b);
+        const especialPorPosicion = new Map(
+            especialesPiso.map((c) => [`${c.fila}-${c.columna}`, c])
+        );
+        const filas = [...new Set([
+            ...delPiso.map((a) => Number(a.fila)),
+            ...especialesPiso.map((c) => c.fila)
+        ])].sort((a, b) => a - b);
 
         const grid = document.createElement('div');
         grid.className = 'asientos-grid';
@@ -167,8 +190,11 @@ function dibujarMapa() {
                 }
 
                 const asiento = porPosicion.get(`${fila}-${columna}`);
+                const especial = especialPorPosicion.get(`${fila}-${columna}`);
                 grid.appendChild(
-                    asiento ? crearBotonAsiento(asiento) : document.createElement('div')
+                    asiento ? crearBotonAsiento(asiento)
+                        : especial ? crearCeldaEspecial(especial, 'asiento-bano')
+                        : document.createElement('div')
                 );
             }
         });
@@ -276,14 +302,14 @@ $('btnContinuar').addEventListener('click', () => {
 
     sessionStorage.setItem('compraDraft', JSON.stringify(borrador));
 
-    window.location.href = `compra/resumen-compra.html?viaje_id=${encodeURIComponent(viaje.id)}`;
+    window.location.href = urlResumenCompra(viaje.id);
 });
 
 async function iniciar() {
     const rol = await exigirRoles(['cliente']);
     if (!rol) return;
 
-    const viajeId = new URLSearchParams(window.location.search).get('viaje_id');
+    const viajeId = leerViajeId(window.location.search);
 
     if (!viajeId) {
         $('mapaAsientos').replaceChildren(

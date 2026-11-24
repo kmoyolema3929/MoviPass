@@ -11,7 +11,11 @@
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand fw-bold" href="index.html">MoviPass - Cooperativa</a>
-            <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+                <!-- guardas.js cierra la sesión y vuelve al index raíz -->
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            </div>
         </div>
     </nav>
 
@@ -89,86 +93,181 @@
     <script type="module">
         import { supabase } from '../../js/supabaseClient.js';
         import { mostrarAlerta } from '../../js/alertas.js';
+        import { exigirRoles } from '../../js/guardas.js';
 
         const form = document.getElementById('formOficinista');
         const btn = document.getElementById('btnGuardar');
         const tbody = document.getElementById('tablaOficinistas');
+
         let miCooperativaId = null;
+        let ocupado = false;
 
-        // 1. Cargar la lista directamente desde perfiles
-        async function cargarOficinistas() {
+        // Solo el gerente (rol 'cooperativa') puede administrar su personal.
+        // guardas.js también conecta el botón #btnCerrarSesion y revalida al
+        // volver con el botón "atrás".
+        const rol = await exigirRoles(['cooperativa']);
+
+        function filaMensaje(texto, clase = 'text-muted') {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 4;
+            td.className = `text-center py-3 ${clase}`;
+            td.textContent = texto;
+            tr.appendChild(td);
+            return tr;
+        }
+
+        const TEXTO_FALTA_MIGRACION =
+            'Falta aplicar una migración de base de datos para gestionar al personal. ' +
+            'Pide al administrador que ejecute las migraciones pendientes.';
+
+        function esFaltaMigracion(error) {
+            const mensaje = error?.message ?? '';
+            return (
+                error?.code === 'PGRST202' ||
+                error?.code === 'PGRST204' ||
+                /could not find the function|asignar_usuario_a_cooperativa/i.test(mensaje) ||
+                /column .* does not exist|schema cache/i.test(mensaje)
+            );
+        }
+
+        async function obtenerMiCooperativa() {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+            if (!session) return null;
 
-            // Obtener la cooperativa del gerente (por si acaso)
-            const { data: coop } = await supabase
+            const { data, error } = await supabase
                 .from('cooperativas_usuarios')
                 .select('cooperativa_id')
                 .eq('perfil_id', session.user.id)
-                .single();
-            
-            if (coop) miCooperativaId = coop.cooperativa_id;
+                .limit(1)
+                .maybeSingle();
 
-            // CONSULTA DIRECTA: Traer a todos los usuarios con rol 'oficinista'
-            const { data: perfiles, error } = await supabase
-                .from('perfiles')
-                .select('id, nombres, apellidos, cedula, estado')
-                .eq('rol', 'oficinista');
+            if (error) throw error;
+            return data?.cooperativa_id ?? null;
+        }
 
-            if (error) {
-                console.error(error);
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger">Error al cargar la lista.</td></tr>';
-                return;
-            }
+        function crearFilaOficinista(perfil) {
+            const tr = document.createElement('tr');
 
-            tbody.replaceChildren();
+            const tdNombre = document.createElement('td');
+            tdNombre.textContent = `${perfil.nombres ?? ''} ${perfil.apellidos ?? ''}`.trim();
 
-            if (!perfiles || perfiles.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No hay oficinistas registrados aún.</td></tr>';
-                return;
-            }
+            const tdCedula = document.createElement('td');
+            tdCedula.textContent = perfil.cedula ?? '';
 
-            perfiles.forEach(p => {
-                const tr = document.createElement('tr');
-                const badge = p.estado === 'activo' ? 'bg-success' : 'bg-danger';
-                const badgeTexto = p.estado === 'activo' ? 'Activo' : 'Suspendido';
-                const btnTexto = p.estado === 'activo' ? 'Suspender' : 'Activar';
-                const btnClase = p.estado === 'activo' ? 'btn-outline-warning' : 'btn-outline-success';
+            const tdEstado = document.createElement('td');
+            const badge = document.createElement('span');
+            const activo = perfil.estado === 'activo';
+            badge.className = `badge ${activo ? 'bg-success' : 'bg-danger'}`;
+            badge.textContent = activo ? 'Activo' : 'Suspendido';
+            tdEstado.appendChild(badge);
 
-                tr.innerHTML = `
-                    <td>${p.nombres} ${p.apellidos}</td>
-                    <td>${p.cedula}</td>
-                    <td><span class="badge ${badge}">${badgeTexto}</span></td>
-                    <td>
-                        <button class="btn btn-sm ${btnClase} me-1" onclick="cambiarEstadoOficinista('${p.id}', '${p.estado}')">${btnTexto}</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="eliminarOficinista('${p.id}')">Eliminar</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            const tdAcciones = document.createElement('td');
+
+            const btnEstado = document.createElement('button');
+            btnEstado.type = 'button';
+            btnEstado.className = `btn btn-sm ${activo ? 'btn-outline-warning' : 'btn-outline-success'} me-1`;
+            btnEstado.textContent = activo ? 'Suspender' : 'Activar';
+            btnEstado.addEventListener('click', () => {
+                void cambiarEstadoOficinista(perfil.id, perfil.estado);
             });
+
+            const btnEliminar = document.createElement('button');
+            btnEliminar.type = 'button';
+            btnEliminar.className = 'btn btn-sm btn-outline-danger';
+            btnEliminar.textContent = 'Eliminar';
+            btnEliminar.addEventListener('click', () => {
+                void eliminarOficinista(perfil.id);
+            });
+
+            tdAcciones.append(btnEstado, btnEliminar);
+            tr.append(tdNombre, tdCedula, tdEstado, tdAcciones);
+            return tr;
+        }
+
+        // 1. Cargar únicamente el personal de la cooperativa del gerente.
+        // Se usa una función de la base de datos porque las reglas de seguridad
+        // no dejan al gerente leer las asignaciones de otros usuarios.
+        async function cargarOficinistas() {
+            tbody.replaceChildren(filaMensaje('Cargando oficinistas...'));
+
+            try {
+                miCooperativaId = await obtenerMiCooperativa();
+
+                if (!miCooperativaId) {
+                    tbody.replaceChildren(
+                        filaMensaje('Tu cuenta no está asignada a una cooperativa.', 'text-danger')
+                    );
+                    return;
+                }
+
+                const { data, error } = await supabase.rpc('obtener_oficinistas_de_cooperativa', {
+                    p_cooperativa_id: miCooperativaId
+                });
+
+                if (error) throw error;
+
+                const oficinistas = data ?? [];
+
+                tbody.replaceChildren();
+
+                if (oficinistas.length === 0) {
+                    tbody.appendChild(
+                        filaMensaje('No hay oficinistas registrados aún.')
+                    );
+                    return;
+                }
+
+                oficinistas.forEach(perfil => {
+                    tbody.appendChild(crearFilaOficinista(perfil));
+                });
+            } catch (error) {
+                console.error('No se pudo cargar el personal:', error);
+                tbody.replaceChildren(
+                    filaMensaje(
+                        esFaltaMigracion(error) ? TEXTO_FALTA_MIGRACION : 'Error al cargar la lista.',
+                        'text-danger'
+                    )
+                );
+            }
         }
 
         // 2. Cambiar estado (Suspender/Activar)
-        window.cambiarEstadoOficinista = async (perfilId, estadoActual) => {
+        async function cambiarEstadoOficinista(perfilId, estadoActual) {
+            if (ocupado) return;
+
             const nuevoEstado = estadoActual === 'activo' ? 'suspendido' : 'activo';
-            if (!confirm(`¿Estás seguro de ${nuevoEstado === 'activo' ? 'activar' : 'suspender'} a este oficinista?`)) return;
+            const accion = nuevoEstado === 'activo' ? 'activar' : 'suspender';
 
-            const { error } = await supabase
-                .from('perfiles')
-                .update({ estado: nuevoEstado })
-                .eq('id', perfilId);
+            if (!confirm(`¿Estás seguro de ${accion} a este oficinista?`)) return;
 
-            if (error) {
-                mostrarAlerta('Error: ' + error.message, 'danger');
-                return;
+            ocupado = true;
+
+            try {
+                const { error } = await supabase.rpc('cambiar_estado_oficinista', {
+                    p_perfil_id: perfilId,
+                    p_estado: nuevoEstado
+                });
+
+                if (error) throw error;
+
+                mostrarAlerta('Estado actualizado.', 'success');
+                await cargarOficinistas();
+            } catch (error) {
+                console.error(error);
+                mostrarAlerta(
+                    esFaltaMigracion(error) ? TEXTO_FALTA_MIGRACION : 'Error: ' + error.message,
+                    'danger'
+                );
+            } finally {
+                ocupado = false;
             }
+        }
 
-            mostrarAlerta('Estado actualizado.', 'success');
-            cargarOficinistas();
-        };
+        // 3. Quitar al oficinista de la cooperativa
+        async function eliminarOficinista(perfilId) {
+            if (ocupado) return;
 
-        // 3. Eliminar oficinista (quitar de la cooperativa)
-        window.eliminarOficinista = async (perfilId) => {
             if (!confirm('¿Estás seguro de quitar a este oficinista de tu cooperativa?')) return;
 
             if (!miCooperativaId) {
@@ -176,33 +275,51 @@
                 return;
             }
 
-            const { error } = await supabase
-                .from('cooperativas_usuarios')
-                .delete()
-                .eq('cooperativa_id', miCooperativaId)
-                .eq('perfil_id', perfilId);
+            ocupado = true;
 
-            if (error) {
-                mostrarAlerta('Error: ' + error.message, 'danger');
-                return;
+            try {
+                const { error } = await supabase.rpc('quitar_oficinista', {
+                    p_perfil_id: perfilId
+                });
+
+                if (error) throw error;
+
+                mostrarAlerta('Oficinista removido de la cooperativa.', 'success');
+                await cargarOficinistas();
+            } catch (error) {
+                console.error(error);
+                mostrarAlerta(
+                    esFaltaMigracion(error) ? TEXTO_FALTA_MIGRACION : 'Error: ' + error.message,
+                    'danger'
+                );
+            } finally {
+                ocupado = false;
             }
-
-            mostrarAlerta('Oficinista removido de la cooperativa.', 'success');
-            cargarOficinistas();
-        };
+        }
 
         // 4. Crear nuevo oficinista
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            if (ocupado) return;
+
+            if (!miCooperativaId) {
+                mostrarAlerta('No se pudo identificar la cooperativa.', 'danger');
+                return;
+            }
+
+            ocupado = true;
             btn.disabled = true;
             btn.textContent = 'Creando usuario...';
 
-            const email = document.getElementById('email').value;
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
 
             const { data: { session: gerenteSession } } = await supabase.auth.getSession();
+
             if (!gerenteSession) {
                 mostrarAlerta('No hay una sesión activa.', 'danger');
+                ocupado = false;
                 btn.disabled = false;
                 btn.textContent = 'Crear Oficinista';
                 return;
@@ -214,16 +331,16 @@
                     password: password,
                     options: {
                         data: {
-                            cedula: document.getElementById('cedula').value,
-                            nombres: document.getElementById('nombres').value,
-                            apellidos: document.getElementById('apellidos').value,
-                            telefono: '0999999999' 
+                            cedula: document.getElementById('cedula').value.trim(),
+                            nombres: document.getElementById('nombres').value.trim(),
+                            apellidos: document.getElementById('apellidos').value.trim(),
+                            telefono: '0999999999'
                         }
                     }
                 });
 
                 if (authError) throw authError;
-                if (!authData.user) throw new Error("No se pudo crear el usuario.");
+                if (!authData.user) throw new Error('No se pudo crear el usuario.');
 
                 // Restaurar la sesión del gerente para no perder permisos
                 await supabase.auth.setSession(gerenteSession);
@@ -240,20 +357,30 @@
 
                 mostrarAlerta('¡Oficinista creado con éxito!', 'success');
                 form.reset();
-                cargarOficinistas();
-
+                await cargarOficinistas();
             } catch (error) {
                 console.error(error);
-                mostrarAlerta('Error: ' + error.message, 'danger');
-                if (gerenteSession) await supabase.auth.setSession(gerenteSession);
+                mostrarAlerta(
+                    esFaltaMigracion(error) ? TEXTO_FALTA_MIGRACION : 'Error: ' + error.message,
+                    'danger'
+                );
+
+                if (gerenteSession) {
+                    try {
+                        await supabase.auth.setSession(gerenteSession);
+                    } catch (errorSesion) {
+                        console.error('No se pudo restaurar la sesión del gerente:', errorSesion);
+                    }
+                }
             } finally {
+                ocupado = false;
                 btn.disabled = false;
                 btn.textContent = 'Crear Oficinista';
             }
         });
 
-        // Iniciar la carga
-        cargarOficinistas();
+        // Iniciar la carga solo si la guarda confirmó el acceso.
+        if (rol) await cargarOficinistas();
     </script>
 </body>
 </html>

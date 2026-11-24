@@ -1,5 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 import { exigirRoles } from "./guardas.js";
+import { crearLote } from "./buses-lote.js";
+import { normalizarPlaca, prepararCampoPlaca } from "./validaciones.js";
 
 const columnas = "id, placa, chasis, carroceria, cooperativa_id, tipo_bus";
 
@@ -40,6 +42,7 @@ function cambiarOcupado(valor) {
     const sinCooperativa = !cooperativaGerente;
 
     botonNuevo.disabled = valor || !accesoPermitido || sinCooperativa;
+    lote.bloquear(botonNuevo.disabled);
     botonGuardar.disabled = valor || !accesoPermitido || sinCooperativa;
 
     botonGuardar.textContent = valor
@@ -117,7 +120,7 @@ function abrirEdicion(id) {
 
 function mostrarBuses() {
     if (buses.length === 0) {
-        mostrarEstadoTabla("Aún no has registrado buses. Pulsa «Nuevo Bus» para empezar.");
+        mostrarEstadoTabla("Aún no has registrado buses. Pulsa «Nuevo bus» o «Agregar varios» para empezar.");
         return;
     }
 
@@ -286,7 +289,9 @@ async function guardarBus(evento) {
 
     const idActual = busId.value;
 
-    placa.value = placa.value.trim().toUpperCase();
+    const placaNormalizada = normalizarPlaca(placa.value);
+
+    placa.value = placaNormalizada.placa;
     chasis.value = chasis.value.trim();
     carroceria.value = carroceria.value.trim();
 
@@ -296,9 +301,14 @@ async function guardarBus(evento) {
         return bus.placa === placa.value && bus.id !== idActual;
     });
 
-    if (placaDuplicada) {
+    if (!placaNormalizada.valida) {
+        placa.setCustomValidity("Formato de placa no válido. Usa 3 letras y 4 números, por ejemplo ABC-1234.");
+    } else if (placaDuplicada) {
         placa.setCustomValidity("Ya existe un bus con esta placa.");
     }
+
+    // El aviso junto al campo dice el motivo exacto
+    placa.nextElementSibling.textContent = placa.validationMessage;
 
     formulario.classList.add("was-validated");
 
@@ -366,6 +376,8 @@ botonNuevo.addEventListener("click", function () {
     modal.show();
 });
 
+prepararCampoPlaca(placa);
+
 placa.addEventListener("input", function () {
     placa.setCustomValidity("");
 });
@@ -380,6 +392,33 @@ elementoModal.addEventListener("hide.bs.modal", function (evento) {
 
 elementoModal.addEventListener("hidden.bs.modal", prepararFormulario);
 formulario.addEventListener("submit", guardarBus);
+
+// Crear varios buses del mismo tipo a la vez (ver buses-lote.js)
+const lote = crearLote({
+    supabase,
+    columnas,
+    botonNuevo,
+    tipoBus,
+    obtenerEstado: function () {
+        return { ocupado, accesoPermitido, cooperativaGerente, buses };
+    },
+    cambiarOcupado,
+    obtenerMensajeError,
+    alGuardar: function (nuevos) {
+        buses = buses.concat(nuevos);
+
+        buses.sort(function (a, b) {
+            return a.placa.localeCompare(b.placa, "es");
+        });
+
+        mostrarBuses();
+
+        mostrarMensaje(
+            `${nuevos.length} buses registrados correctamente. Ahora configura los asientos de este tipo de bus: una sola configuración sirve para todos.`,
+            "success"
+        );
+    }
+});
 
 async function iniciar() {
     cambiarOcupado(true);

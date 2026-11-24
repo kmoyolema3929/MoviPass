@@ -1,3 +1,35 @@
 [build]
   command = "sh scripts/generar-config.sh"
   publish = "frontend"
+
+# La portada antigua vivía en /pages/index.html. Ahora la portada pública es /.
+[[redirects]]
+  from = "/pages/index.html"
+  to = "/"
+  status = 301
+  force = true
+
+# Cabeceras de seguridad para todo el sitio.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Strict-Transport-Security = "max-age=31536000"
+
+# El HTML nunca se guarda en caché. Después de cerrar sesión, el botón "atrás"
+# no debe mostrar una copia autenticada de la página.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+    Pragma = "no-cache"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+    Pragma = "no-cache"
