@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar Usuarios bus - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass - Cooperativa</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al Panel</a>
+                <!-- guardas.js cierra la sesión y vuelve al index raíz -->
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 flex-grow-1">
+        <h1 class="h2 mb-4">Gestionar Usuarios bus</h1>
+        <p class="text-muted">
+            Crea las cuentas de las personas que usarán la app del bus desde el teléfono: chofer, controlador o dueño.
+            Luego asígnalas a un bus en <a href="../bus/buses.html">Gestión de buses</a>.
+        </p>
+
+        <div id="alertContainer" class="mb-3"></div>
+
+        <div class="row g-4">
+            <!-- Formulario de creación y edición -->
+            <div class="col-md-5">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold py-3" id="tituloFormulario">Registrar Nuevo Usuario bus</div>
+                    <div class="card-body">
+                        <p class="text-muted small">Los campos marcados con * son obligatorios.</p>
+                        <form id="formUsuarioBus" novalidate>
+                            <input type="hidden" id="perfilId">
+                            <div class="mb-3">
+                                <label for="cedula" class="form-label">Cédula *</label>
+                                <input type="text" class="form-control" id="cedula" required maxlength="10" inputmode="numeric" autocomplete="off">
+                                <div class="invalid-feedback" data-error="cedula"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="nombres" class="form-label">Nombres *</label>
+                                <input type="text" class="form-control" id="nombres" required maxlength="80" autocomplete="off">
+                                <div class="invalid-feedback" data-error="nombres"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="apellidos" class="form-label">Apellidos *</label>
+                                <input type="text" class="form-control" id="apellidos" required maxlength="80" autocomplete="off">
+                                <div class="invalid-feedback" data-error="apellidos"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="funcion" class="form-label">Función *</label>
+                                <select class="form-select" id="funcion" required>
+                                    <option value="" selected disabled>Selecciona...</option>
+                                    <option value="chofer">Chofer</option>
+                                    <option value="controlador">Controlador</option>
+                                    <option value="dueno">Dueño</option>
+                                </select>
+                                <div class="invalid-feedback" data-error="funcion"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="telefono" class="form-label">Teléfono (opcional)</label>
+                                <input type="tel" class="form-control" id="telefono" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="09xxxxxxxx">
+                                <div class="invalid-feedback" data-error="telefono"></div>
+                            </div>
+                            <div id="camposCuenta">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Correo electrónico *</label>
+                                    <input type="email" class="form-control" id="email" required autocomplete="off">
+                                    <div class="invalid-feedback" data-error="email"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Contraseña *</label>
+                                    <input type="password" class="form-control" id="password" required minlength="8" autocomplete="new-password">
+                                    <div class="invalid-feedback" data-error="password"></div>
+                                    <div class="form-text">Mínimo 8 caracteres.</div>
+                                </div>
+                            </div>
+                            <p class="small text-muted d-none" id="notaEdicion">
+                                El correo y la contraseña son de la cuenta de la persona y no se cambian aquí.
+                            </p>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary flex-grow-1" id="btnGuardar">Crear Usuario bus</button>
+                                <button type="button" class="btn btn-outline-secondary d-none" id="btnCancelarEdicion">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de usuarios bus -->
+            <div class="col-md-7">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold py-3">Usuarios bus Registrados</div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Cédula</th>
+                                        <th>Función</th>
+                                        <th>Estado</th>
+                                        <th>Bus asignado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaUsuariosBus">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-3 text-muted">Cargando usuarios bus...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container"><p class="mb-0">&copy; 2026 MoviPass.</p></div>
+    </footer>
+
+    <script type="module" src="../../js/usuarios-bus.js"></script>
+</body>
+</html>
