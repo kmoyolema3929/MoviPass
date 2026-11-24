@@ -15,7 +15,6 @@ const avisos = document.getElementById('avisos');
 const contenedor = document.getElementById('contenedorHoja');
 
 let buses = [];
-let tiposConPlantilla = new Set();
 let frecuencias = [];
 let hojas = [];
 let fechas = [];
@@ -46,8 +45,9 @@ const clave = (t) => String(t ?? '').trim().toLowerCase();
 
 /* ---------- Utilidades ---------- */
 
+// Cambio 6: cada bus tiene su propia plantilla (buses.plantilla_id).
 function esElegible(bus) {
-    return tiposConPlantilla.has(clave(bus.tipo_bus));
+    return Boolean(bus.plantilla_id);
 }
 
 function nombreFrecuencia(id) {
@@ -87,7 +87,6 @@ async function cargarCooperativa() {
     buses = [];
     frecuencias = [];
     hojas = [];
-    tiposConPlantilla = new Set();
     btnAuto.disabled = true;
     avisos.replaceChildren();
 
@@ -101,9 +100,8 @@ async function cargarCooperativa() {
     contenedor.replaceChildren(nuevoAviso('info', 'Cargando buses y frecuencias...'));
 
     try {
-        const [rb, rp, rf] = await Promise.all([
-            supabase.from('buses').select('id, placa, tipo_bus').eq('cooperativa_id', coopId).order('placa'),
-            supabase.from('plantillas_bus').select('tipo_bus').eq('cooperativa_id', coopId),
+        const [rb, rf] = await Promise.all([
+            supabase.from('buses').select('id, placa, tipo_bus, plantilla_id').eq('cooperativa_id', coopId).order('placa'),
             supabase
                 .from('frecuencias')
                 .select('id, origen, destino, hora, tipo, activa, numero_resolucion')
@@ -112,10 +110,9 @@ async function cargarCooperativa() {
                 .order('origen', { ascending: true })
         ]);
 
-        for (const r of [rb, rp, rf]) if (r.error) throw r.error;
+        for (const r of [rb, rf]) if (r.error) throw r.error;
 
         buses = rb.data ?? [];
-        tiposConPlantilla = new Set((rp.data ?? []).map((p) => clave(p.tipo_bus)));
         frecuencias = rf.data ?? [];
 
         await cargarHojas();
@@ -210,9 +207,9 @@ function dibujar() {
     btnAuto.disabled = activas.length === 0 || elegibles.length < activas.length;
 
     if (buses.length === 0) {
-        avisos.append(nuevoAviso('warning', 'Esta cooperativa aún no tiene buses. Regístralos en el paso 1 del panel.'));
+        avisos.append(nuevoAviso('warning', 'Esta cooperativa aún no tiene buses. Regístralos en el paso 3 del panel.'));
     } else if (elegibles.length === 0) {
-        avisos.append(nuevoAviso('warning', 'Ningún bus tiene plantilla de asientos. Configúrala en el paso 2 del panel.'));
+        avisos.append(nuevoAviso('warning', 'Ningún bus tiene plantilla de asientos. Créala en «Mis plantillas» (paso 2 del panel).'));
     } else if (sinPlantilla.length > 0) {
         avisos.append(nuevoAviso(
             'warning',
