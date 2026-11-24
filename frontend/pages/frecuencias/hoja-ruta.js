@@ -1,523 +1,334 @@
+// frontend/pages/frecuencias/hoja-ruta.js
+// Hoja de ruta automática por grupo de bus (cambio 7, parte 7.2). La rotación
+// la hace la base (generar_hoja_ruta); frontend/js/rotacion.js tiene la misma
+// regla (con pruebas) y arma la tabla.
+
 import { supabase } from '../../js/supabaseClient.js';
 import { exigirRoles } from '../../js/guardas.js';
 import { obtenerContextoGestion, textoError } from '../../js/contextoUsuario.js';
 import { mostrarAlerta } from '../../js/alertas.js';
-import { llenarCombo, vaciarCombo } from '../../js/combos.js';
+import { fechaHoyEcuador, llenarCombo, ponerOpciones, vaciarCombo } from '../../js/combos.js';
+import { obtenerGruposBus } from '../../js/gruposBus.js';
+import { sumarDias } from '../../js/validaciones.js';
+import { armarTablaHojaRuta, busesQueFaltan, textoFlota } from '../../js/rotacion.js';
 
-// Debe coincidir con validar_hoja_ruta() en la base de datos.
-const DIAS_MAX_ANTICIPACION = 14;
+const $ = id => document.getElementById(id);
+const DIAS_MAX = 14;
+const DIAS_SEMANA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
-const selCoop = document.getElementById('cooperativa');
-const inpInicio = document.getElementById('fechaInicio');
-const selDias = document.getElementById('numeroDias');
-const btnAuto = document.getElementById('btnAutomatico');
-const avisos = document.getElementById('avisos');
-const contenedor = document.getElementById('contenedorHoja');
+const selCooperativa = $('cooperativa');
+const selGrupo = $('grupo');
+const inpDesde = $('fechaInicio');
+const selDias = $('numeroDias');
+const btnGenerar = $('btnGenerar');
+const contenedor = $('contenedorHoja');
+const avisoFlota = $('flota');
+const resultado = $('resultado');
 
-let buses = [];
-let frecuencias = [];
-let hojas = [];
-let fechas = [];
-let hojaPor = new Map();   // "frecuenciaId|fecha" -> hoja
-let ocupado = new Map();   // "busId|fecha" -> frecuenciaId
+let rol = null;
+let resumen = null; // { frecuencias, buses } del grupo
+let ocupado = false;
 
-/* ---------- Fechas (siempre como texto AAAA-MM-DD) ---------- */
+const hoy = () => fechaHoyEcuador();
+const limite = () => sumarDias(hoy(), DIAS_MAX);
 
-const pad = (n) => String(n).padStart(2, '0');
-const aISO = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const deISO = (s) => {
-    const [y, m, d] = s.split('-').map(Number);
-    return new Date(y, m - 1, d);
-};
-const sumarDias = (iso, n) => {
-    const d = deISO(iso);
-    d.setDate(d.getDate() + n);
-    return aISO(d);
-};
-const numeroDeDia = (iso) => {
-    const [y, m, d] = iso.split('-').map(Number);
-    return Math.round(Date.UTC(y, m - 1, d) / 86400000);
-};
-const hoy = () => aISO(new Date());
-const limite = () => sumarDias(hoy(), DIAS_MAX_ANTICIPACION);
-const horaCorta = (h) => String(h).slice(0, 5);
-const clave = (t) => String(t ?? '').trim().toLowerCase();
-
-/* ---------- Utilidades ---------- */
-
-// Cambio 6: cada bus tiene su propia plantilla (buses.plantilla_id).
-function esElegible(bus) {
-    return Boolean(bus.plantilla_id);
-}
-
-function nombreFrecuencia(id) {
-    const f = frecuencias.find((x) => x.id === id);
-    return f ? `${f.origen} → ${f.destino}` : 'otra frecuencia';
-}
-
-function nuevoAviso(clase, texto) {
-    const div = document.createElement('div');
-    div.className = `alert alert-${clase} mb-3`;
-    div.textContent = texto;
-    return div;
-}
-
-function mensajeDeError(error) {
-    const texto = String(error?.message ?? '');
-
-    if (error?.code === '23505') {
-        if (texto.includes('hojas_ruta_bus_fecha_unique')) return 'Ese bus ya está asignado a otra frecuencia ese día.';
-        if (texto.includes('hojas_ruta_frecuencia_fecha_unique')) return 'Esa frecuencia ya tiene un bus asignado ese día.';
-        return 'Ya existe una asignación igual.';
-    }
-    if (error?.code === '23514') return texto;
-    if (error?.code === '23503') return 'No se puede quitar el bus: este viaje ya tiene boletos vendidos.';
-
+function mensajeError(error) {
+    if (['23502', '23503', '23505', '23514', '40001', '42501', '55006'].includes(error?.code) && error.message) return error.message;
     return textoError(error);
 }
 
-function indexar() {
-    hojaPor = new Map(hojas.map((h) => [`${h.frecuencia_id}|${h.fecha}`, h]));
-    ocupado = new Map(hojas.map((h) => [`${h.bus_id}|${h.fecha}`, h.frecuencia_id]));
+function fechaCorta(iso) {
+    const [a, m, d] = iso.split('-').map(Number);
+    const dia = new Date(Date.UTC(a, m - 1, d)).getUTCDay();
+    return `${DIAS_SEMANA[dia]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
 }
 
-/* ---------- Carga de datos ---------- */
+function fechasDelRango() {
+    const desde = inpDesde.value || hoy();
+    return Array.from({ length: Number(selDias.value) }, (_, i) => sumarDias(desde, i));
+}
 
-async function cargarCooperativa() {
-    buses = [];
-    frecuencias = [];
-    hojas = [];
-    btnAuto.disabled = true;
-    avisos.replaceChildren();
+function mostrarResultado(texto, tipo) {
+    resultado.className = `alert alert-${tipo}`;
+    resultado.textContent = texto;
+}
 
-    const coopId = selCoop.value;
+function el(etiqueta, clase = '', texto) {
+    const nodo = document.createElement(etiqueta);
+    if (clase) nodo.className = clase;
+    if (texto !== undefined) nodo.textContent = texto;
+    return nodo;
+}
 
-    if (!coopId) {
-        contenedor.replaceChildren(nuevoAviso('info', 'Selecciona una cooperativa.'));
+/* ---------- Carga ---------- */
+
+async function cargarGrupos() {
+    resumen = null;
+    contenedor.replaceChildren(el('p', 'text-center py-3 text-muted mb-0', 'Elige un grupo de bus.'));
+    avisoFlota.classList.add('d-none');
+    btnGenerar.disabled = true;
+
+    if (!selCooperativa.value) {
+        vaciarCombo(selGrupo, 'Primero elige la cooperativa');
         return;
     }
 
-    contenedor.replaceChildren(nuevoAviso('info', 'Cargando buses y frecuencias...'));
+    const grupos = await llenarCombo(selGrupo, {
+        cargar: () => obtenerGruposBus(selCooperativa.value),
+        inicial: 'Selecciona un grupo...',
+        vacio: 'La cooperativa no tiene grupos de bus',
+        error: 'No se pudieron cargar los grupos.',
+        alReintentar: () => void cargarHoja()
+    });
+
+    if (grupos && selGrupo.value) await cargarHoja();
+}
+
+async function cargarHoja() {
+    const grupoId = selGrupo.value;
+    if (!grupoId) return;
+
+    contenedor.replaceChildren(el('p', 'text-center py-3 text-muted mb-0', 'Cargando hoja de ruta...'));
 
     try {
-        const [rb, rf] = await Promise.all([
-            supabase.from('buses').select('id, placa, tipo_bus, plantilla_id').eq('cooperativa_id', coopId).order('placa'),
-            supabase
-                .from('frecuencias')
-                .select('id, origen, destino, hora, tipo, activa, numero_resolucion')
-                .eq('cooperativa_id', coopId)
-                .order('hora', { ascending: true })
-                .order('origen', { ascending: true })
+        const fechas = fechasDelRango();
+        const [r1, r2] = await Promise.all([
+            supabase.rpc('resumen_grupo_hoja_ruta', { p_grupo_id: grupoId }),
+            supabase.rpc('obtener_hoja_ruta', { p_grupo_id: grupoId, p_desde: fechas[0], p_hasta: fechas.at(-1) })
         ]);
 
-        for (const r of [rb, rf]) if (r.error) throw r.error;
+        if (r1.error) throw r1.error;
+        if (r2.error) throw r2.error;
 
-        buses = rb.data ?? [];
-        frecuencias = rf.data ?? [];
-
-        await cargarHojas();
+        resumen = r1.data;
+        mostrarFlota();
+        dibujarTabla(armarTablaHojaRuta({ frecuencias: resumen.frecuencias, turnos: r2.data ?? [], fechas }));
     } catch (error) {
-        console.error('Error al cargar la hoja de ruta:', error);
-        contenedor.replaceChildren(nuevoAviso('danger', 'No se pudieron cargar los datos de la cooperativa.'));
-        mostrarAlerta(textoError(error), 'danger');
+        console.error('No se pudo cargar la hoja de ruta:', error);
+        contenedor.replaceChildren(el('p', 'text-center py-3 text-danger mb-0', mensajeError(error)));
     }
 }
 
-async function cargarHojas() {
-    fechas = Array.from({ length: Number(selDias.value) }, (_, i) => sumarDias(inpInicio.value, i));
+function mostrarFlota() {
+    const frecuencias = resumen.frecuencias.filter(f => f.activa).length;
+    const buses = resumen.buses.filter(b => b.con_plantilla).length;
+    const faltan = frecuencias === 0 || busesQueFaltan(frecuencias, buses) > 0;
+    const sinPlantilla = resumen.buses.filter(b => !b.con_plantilla).map(b => b.numero_interno);
 
-    if (frecuencias.length === 0) {
-        hojas = [];
-    } else {
-        const { data, error } = await supabase
-            .from('hojas_ruta')
-            .select('id, frecuencia_id, bus_id, fecha, estado')
-            .in('frecuencia_id', frecuencias.map((f) => f.id))
-            .gte('fecha', fechas[0])
-            .lte('fecha', fechas[fechas.length - 1]);
+    avisoFlota.className = `alert ${faltan ? 'alert-danger' : 'alert-info'}`;
+    avisoFlota.textContent = textoFlota(frecuencias, buses) +
+        (sinPlantilla.length ? ` Sin plantilla (no entran en la rotación): ${sinPlantilla.join(', ')}.` : '');
 
-        if (error) throw error;
-        hojas = data ?? [];
-    }
-
-    indexar();
-    dibujar();
+    btnGenerar.disabled = faltan || ocupado;
+    btnGenerar.title = faltan ? 'No se puede generar: revisa el aviso de la flota.' : '';
 }
 
-async function recargarHojas() {
-    if (!selCoop.value) return;
-    try {
-        await cargarHojas();
-    } catch (error) {
-        console.error('Error al recargar las hojas:', error);
-        mostrarAlerta(textoError(error), 'danger');
-    }
+/* ---------- Tabla ---------- */
+
+function textoBuses(celda) {
+    return celda.buses.map(b => b.numero_interno).join(', ');
 }
 
-/* ---------- Dibujo de la cuadrícula ---------- */
+function dibujarTabla({ filas, columnas }) {
+    const tabla = el('table', 'table table-bordered align-middle mb-0 hoja-ruta');
+    const cabecera = el('thead', 'table-dark');
+    const filaCabecera = el('tr');
+    filaCabecera.appendChild(el('th', '', 'Frecuencia / parada'));
 
-function crearSelect(f, fecha, elegibles) {
-    const sel = document.createElement('select');
-    sel.className = 'form-select form-select-sm';
-    sel.setAttribute('aria-label', `Bus para ${f.origen} a ${f.destino} el ${fecha}`);
+    columnas.forEach(columna => {
+        const th = el('th', 'text-center');
+        th.appendChild(el('div', '', fechaCorta(columna.fecha)));
 
-    const hoja = hojaPor.get(`${f.id}|${fecha}`);
-
-    sel.append(new Option('— sin bus —', ''));
-
-    buses.forEach((b) => {
-        const esActual = hoja?.bus_id === b.id;
-        if (!esElegible(b) && !esActual) return;
-
-        const usadoEn = ocupado.get(`${b.id}|${fecha}`);
-        const op = new Option(`${b.placa} · ${b.tipo_bus}`, b.id);
-
-        if (usadoEn && !esActual) {
-            op.disabled = true;
-            op.textContent += ` (en ${nombreFrecuencia(usadoEn)})`;
-        }
-        sel.append(op);
-    });
-
-    sel.value = hoja?.bus_id ?? '';
-
-    const pasado = fecha < hoy();
-    const lejos = fecha > limite();
-
-    sel.disabled = hoja
-        ? !f.activa || pasado || hoja.estado !== 'Programado'
-        : !f.activa || pasado || lejos || elegibles.length === 0;
-
-    if (!hoja && lejos) sel.title = `No se permiten hojas con más de ${DIAS_MAX_ANTICIPACION} días de anticipación.`;
-    if (hoja && hoja.estado !== 'Programado') sel.title = `Viaje ${hoja.estado.toLowerCase()}.`;
-
-    sel.addEventListener('change', () => cambiarCelda(sel, f, fecha));
-
-    return sel;
-}
-
-function dibujar() {
-    avisos.replaceChildren();
-    contenedor.replaceChildren();
-
-    const elegibles = buses.filter(esElegible);
-    const sinPlantilla = buses.filter((b) => !esElegible(b));
-    const activas = frecuencias.filter((f) => f.activa);
-
-    btnAuto.disabled = activas.length === 0 || elegibles.length < activas.length;
-
-    if (buses.length === 0) {
-        avisos.append(nuevoAviso('warning', 'Esta cooperativa aún no tiene buses. Regístralos en el paso 3 del panel.'));
-    } else if (elegibles.length === 0) {
-        avisos.append(nuevoAviso('warning', 'Ningún bus tiene plantilla de asientos. Créala en «Mis plantillas» (paso 2 del panel).'));
-    } else if (sinPlantilla.length > 0) {
-        avisos.append(nuevoAviso(
-            'warning',
-            `Sin plantilla de asientos (no se pueden asignar): ${sinPlantilla.map((b) => b.placa).join(', ')}.`
-        ));
-    }
-
-    if (activas.length === 0) {
-        contenedor.append(nuevoAviso('warning', 'No hay frecuencias activas. Crea o activa una en "Gestionar frecuencias".'));
-        return;
-    }
-
-    if (elegibles.length > 0 && elegibles.length < activas.length) {
-        avisos.append(nuevoAviso(
-            'warning',
-            `Hay ${activas.length} frecuencias activas y solo ${elegibles.length} buses con asientos: necesitas al menos un bus por frecuencia.`
-        ));
-    } else if (elegibles.length >= activas.length) {
-        const enParada = elegibles.length - activas.length;
-        avisos.append(nuevoAviso(
-            'info',
-            `Con ${elegibles.length} buses y ${activas.length} frecuencias activas, ` +
-            `${enParada} ${enParada === 1 ? 'bus queda' : 'buses quedan'} en parada cada día.`
-        ));
-    }
-
-    // Se muestran las frecuencias activas y las desactivadas que aún tienen hojas en el rango.
-    const filas = frecuencias.filter((f) => f.activa || hojas.some((h) => h.frecuencia_id === f.id));
-
-    const tabla = document.createElement('table');
-    tabla.className = 'table table-bordered align-middle mb-0 hoja-ruta';
-
-    const thead = document.createElement('thead');
-    thead.className = 'table-dark';
-    const trHead = document.createElement('tr');
-
-    const thFrec = document.createElement('th');
-    thFrec.scope = 'col';
-    thFrec.textContent = 'Frecuencia';
-    trHead.append(thFrec);
-
-    fechas.forEach((fecha) => {
-        const th = document.createElement('th');
-        th.scope = 'col';
-        th.className = 'text-center text-nowrap';
-        th.textContent = deISO(fecha).toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: '2-digit' });
-        if (fecha < hoy()) th.title = 'Día pasado';
-        trHead.append(th);
-    });
-    thead.append(trHead);
-
-    const tbody = document.createElement('tbody');
-
-    filas.forEach((f) => {
-        const tr = document.createElement('tr');
-        if (!f.activa) tr.className = 'table-secondary';
-
-        const th = document.createElement('th');
-        th.scope = 'row';
-        th.className = 'fw-normal';
-        const titulo = document.createElement('strong');
-        titulo.textContent = `${f.origen} → ${f.destino}`;
-        const detalle = document.createElement('div');
-        detalle.className = 'small text-muted';
-        detalle.textContent =
-            `${horaCorta(f.hora)} · ${f.tipo === 'compartida' ? 'Compartida' : 'Directa'}` +
-            (f.activa ? '' : ' · desactivada');
-        th.append(titulo, detalle);
-        tr.append(th);
-
-        fechas.forEach((fecha) => {
-            const td = document.createElement('td');
-            td.append(crearSelect(f, fecha, elegibles));
-            tr.append(td);
-        });
-
-        tbody.append(tr);
-    });
-
-    // Buses de la cooperativa que ese día no tienen frecuencia: están en parada.
-    const tfoot = document.createElement('tfoot');
-    const trPie = document.createElement('tr');
-    const thPie = document.createElement('th');
-    thPie.scope = 'row';
-    thPie.textContent = 'En parada (disponibles)';
-    trPie.append(thPie);
-
-    fechas.forEach((fecha) => {
-        const td = document.createElement('td');
-        const libres = elegibles.filter((b) => !ocupado.has(`${b.id}|${fecha}`));
-
-        if (libres.length === 0) {
-            td.className = 'text-muted';
-            td.textContent = '—';
-        } else {
-            libres.forEach((b) => {
-                const badge = document.createElement('span');
-                badge.className = 'badge text-bg-light border me-1 mb-1';
-                badge.textContent = b.placa;
-                td.append(badge);
-            });
-        }
-        trPie.append(td);
-    });
-    tfoot.append(trPie);
-
-    tabla.append(thead, tbody, tfoot);
-    contenedor.append(tabla);
-}
-
-/* ---------- Asignar, cambiar o quitar un bus ---------- */
-
-async function cambiarCelda(sel, f, fecha) {
-    const previa = hojaPor.get(`${f.id}|${fecha}`);
-    const nuevoBus = sel.value;
-
-    if (!nuevoBus && !previa) return;
-
-    if (!nuevoBus && !confirm(`¿Quitar el bus de ${f.origen} → ${f.destino} del ${fecha}?`)) {
-        sel.value = previa.bus_id;
-        return;
-    }
-
-    sel.disabled = true;
-
-    try {
-        if (!nuevoBus) {
-            const { data, error } = await supabase
-                .from('hojas_ruta')
-                .delete()
-                .eq('id', previa.id)
-                .select('id');
-
-            if (error) throw error;
-            if (!data || data.length === 0) throw new Error('No se pudo quitar el bus (sin permiso).');
-
-            hojas = hojas.filter((h) => h.id !== previa.id);
-        } else if (previa) {
-            const { data, error } = await supabase
-                .from('hojas_ruta')
-                .update({ bus_id: nuevoBus })
-                .eq('id', previa.id)
-                .select('id, frecuencia_id, bus_id, fecha, estado')
-                .single();
-
-            if (error) throw error;
-
-            hojas = hojas.map((h) => (h.id === previa.id ? data : h));
-        } else {
-            const { data, error } = await supabase
-                .from('hojas_ruta')
-                .insert({ frecuencia_id: f.id, bus_id: nuevoBus, fecha })
-                .select('id, frecuencia_id, bus_id, fecha, estado')
-                .single();
-
-            if (error) throw error;
-
-            hojas = [...hojas, data];
+        if (!columna.generado) {
+            th.appendChild(el('div', 'small fw-normal text-warning', 'sin generar'));
+        } else if (columna.boletos > 0) {
+            th.appendChild(el('div', 'small fw-normal', `🎫 ${columna.boletos}`));
+        } else if (columna.fecha >= hoy()) {
+            const borrar = el('button', 'btn btn-link btn-sm text-white-50 p-0', 'Borrar día');
+            borrar.type = 'button';
+            borrar.addEventListener('click', () => void borrarDia(columna.fecha));
+            th.appendChild(borrar);
         }
 
-        indexar();
-        dibujar();
-    } catch (error) {
-        console.error('Error al guardar la hoja de ruta:', error);
-        mostrarAlerta(mensajeDeError(error), 'danger');
-        sel.value = previa?.bus_id ?? '';
-        sel.disabled = false;
-    }
-}
+        filaCabecera.appendChild(th);
+    });
 
-/* ---------- Relleno automático con rotación ---------- */
+    cabecera.appendChild(filaCabecera);
 
-// Los buses (ordenados por placa) giran un lugar cada día por las frecuencias
-// activas y por los lugares de parada, como en la tabla de la hoja de ruta.
-async function rellenarAutomatico() {
-    const activas = frecuencias.filter((f) => f.activa);
-    const elegibles = buses.filter(esElegible);
-    const n = elegibles.length;
+    const cuerpo = el('tbody');
+    const reten = filas.find(f => f.tipo === 'reten');
 
-    if (activas.length === 0 || n < activas.length) {
-        mostrarAlerta('Necesitas al menos un bus con plantilla por cada frecuencia activa.', 'warning');
-        return;
-    }
+    filas.forEach(fila => {
+        const tr = el('tr', fila.tipo === 'frecuencia' ? '' : 'fila-parada');
+        const titulo = el('td', fila.tipo === 'frecuencia' ? '' : 'fst-italic', fila.etiqueta);
+        if (fila.tipo === 'frecuencia' && !fila.activa) titulo.appendChild(el('span', 'badge bg-secondary ms-1', 'Inactiva'));
+        tr.appendChild(titulo);
 
-    const nuevas = [];
-    const usadoNuevo = new Set();
-    let omitidas = 0;
+        fila.celdas.forEach((celda, i) => {
+            const td = el('td');
 
-    fechas
-        .filter((fecha) => fecha >= hoy() && fecha <= limite())
-        .forEach((fecha) => {
-            const k = numeroDeDia(fecha);
+            if (celda.buses.length === 0) {
+                td.appendChild(el('span', 'sin-generar', '—'));
+            } else {
+                const bus = el('div', 'bus', textoBuses(celda));
+                bus.title = celda.buses.map(b => `${b.numero_interno} · ${b.placa}`).join('\n');
+                td.appendChild(bus);
+                if (celda.boletos) td.appendChild(el('div', 'small text-muted', `🎫 ${celda.boletos}`));
 
-            activas.forEach((f, s) => {
-                if (hojaPor.has(`${f.id}|${fecha}`)) return;
-
-                const bus = elegibles[(((s - k) % n) + n) % n];
-                const claveBus = `${bus.id}|${fecha}`;
-
-                if (ocupado.has(claveBus) || usadoNuevo.has(claveBus)) {
-                    omitidas++;
-                    return;
+                // Reemplazo rápido con el bus del retén (desde hoy).
+                const busReten = reten.celdas[i].buses[0];
+                if (fila.tipo === 'frecuencia' && celda.hoja_ruta_id && busReten && celda.fecha >= hoy()) {
+                    const usar = el('button', 'btn btn-outline-secondary btn-sm py-0 mt-1', 'Usar retén');
+                    usar.type = 'button';
+                    usar.title = `Poner el bus ${busReten.numero_interno} (retén) en lugar del ${textoBuses(celda)}`;
+                    usar.addEventListener('click', () => void usarReten(celda, fila, busReten));
+                    td.appendChild(usar);
                 }
+            }
 
-                usadoNuevo.add(claveBus);
-                nuevas.push({ frecuencia_id: f.id, bus_id: bus.id, fecha });
-            });
+            tr.appendChild(td);
         });
 
-    if (nuevas.length === 0) {
-        mostrarAlerta(
-            omitidas > 0
-                ? 'No se pudo rellenar: los buses que tocaban ya están ocupados esos días. Libera alguno y vuelve a intentar.'
-                : 'No hay celdas vacías que rellenar en este rango.',
-            'info'
-        );
+        cuerpo.appendChild(tr);
+    });
+
+    tabla.append(cabecera, cuerpo);
+    contenedor.replaceChildren(tabla);
+}
+
+/* ---------- Acciones ---------- */
+
+async function generar() {
+    if (ocupado || !selGrupo.value) return;
+
+    const fechas = fechasDelRango();
+    const desde = fechas[0];
+    const hasta = fechas.at(-1);
+
+    if (desde < hoy()) {
+        mostrarResultado('No se pueden generar días pasados: elige desde hoy.', 'warning');
         return;
     }
 
-    if (!confirm(`Se asignarán ${nuevas.length} celdas vacías con la rotación de buses. ¿Continuar?`)) return;
+    if (hasta > limite()) {
+        mostrarResultado(`Solo se puede generar hasta 14 días de anticipación (hasta el ${fechaCorta(limite())}). Elige menos días.`, 'warning');
+        return;
+    }
 
-    btnAuto.disabled = true;
+    const confirmar = `¿Generar la hoja de ruta del ${fechaCorta(desde)} al ${fechaCorta(hasta)}? ` +
+        'Los días que ya estaban generados se rehacen, menos los que tienen boletos vendidos.';
+    if (!confirm(confirmar)) return;
+
+    ocupado = true;
+    btnGenerar.disabled = true;
+    btnGenerar.textContent = 'Generando...';
 
     try {
-        const { data, error } = await supabase
-            .from('hojas_ruta')
-            .insert(nuevas)
-            .select('id, frecuencia_id, bus_id, fecha, estado');
+        const { data, error } = await supabase.rpc('generar_hoja_ruta', {
+            p_grupo_id: selGrupo.value,
+            p_desde: desde,
+            p_hasta: hasta
+        });
 
         if (error) throw error;
 
-        hojas = [...hojas, ...(data ?? [])];
-        indexar();
-        dibujar();
+        const generados = data?.generados ?? [];
+        const conservados = data?.conservados ?? [];
+        let texto = `Se ${generados.length === 1 ? 'generó 1 día' : `generaron ${generados.length} días`}.`;
 
-        mostrarAlerta(
-            `Se asignaron ${data?.length ?? nuevas.length} celdas.` +
-            (omitidas > 0 ? ` ${omitidas} se omitieron porque el bus ya estaba ocupado ese día.` : ''),
-            'success'
-        );
+        if (conservados.length) {
+            texto += ' Se conservaron (tienen boletos vendidos): ' +
+                conservados.map(c => `${fechaCorta(c.fecha)} (${c.boletos} ${c.boletos === 1 ? 'boleto' : 'boletos'})`).join(', ') + '.';
+        }
+
+        mostrarResultado(texto, conservados.length ? 'warning' : 'success');
     } catch (error) {
-        console.error('Error al rellenar la hoja de ruta:', error);
-        mostrarAlerta(mensajeDeError(error), 'danger');
-        btnAuto.disabled = false;
+        console.error('No se pudo generar la hoja de ruta:', error);
+        mostrarResultado(mensajeError(error), 'danger');
+    } finally {
+        ocupado = false;
+        btnGenerar.textContent = 'Generar';
+        await cargarHoja();
+    }
+}
+
+async function usarReten(celda, fila, busReten) {
+    if (ocupado) return;
+    if (!confirm(`${fechaCorta(celda.fecha)} · ${fila.etiqueta}: ¿poner el bus ${busReten.numero_interno} (retén) en lugar del ${textoBuses(celda)}?`)) return;
+
+    ocupado = true;
+    try {
+        const { error } = await supabase.rpc('reemplazar_con_reten', { p_hoja_ruta_id: celda.hoja_ruta_id });
+        if (error) throw error;
+        mostrarResultado(`Listo: el bus ${busReten.numero_interno} hace ${fila.etiqueta} el ${fechaCorta(celda.fecha)} y el ${textoBuses(celda)} queda de retén.`, 'success');
+    } catch (error) {
+        console.error('No se pudo usar el retén:', error);
+        mostrarResultado(mensajeError(error), 'danger');
+    } finally {
+        ocupado = false;
+        await cargarHoja();
+    }
+}
+
+async function borrarDia(fecha) {
+    if (ocupado) return;
+    if (!confirm(`¿Borrar la hoja de ruta del ${fechaCorta(fecha)} de este grupo? Ese día no se podrá vender hasta que lo generes otra vez.`)) return;
+
+    ocupado = true;
+    try {
+        const { error } = await supabase.rpc('borrar_dia_hoja_ruta', { p_grupo_id: selGrupo.value, p_fecha: fecha });
+        if (error) throw error;
+        mostrarResultado(`Se borró la hoja de ruta del ${fechaCorta(fecha)}.`, 'success');
+    } catch (error) {
+        console.error('No se pudo borrar el día:', error);
+        mostrarResultado(mensajeError(error), 'danger');
+    } finally {
+        ocupado = false;
+        await cargarHoja();
     }
 }
 
 /* ---------- Inicio ---------- */
 
 async function iniciar() {
-    const rol = await exigirRoles(['administrador', 'cooperativa']);
+    rol = await exigirRoles(['administrador', 'cooperativa', 'oficinista']);
     if (!rol) return;
 
-    document.getElementById('btnVolver').href = `../${rol}/index.html`;
+    $('btnVolver').href = `../${rol}/index.html`;
+    $('marca').href = `../${rol}/index.html`;
+    if (rol === 'oficinista') {
+        $('marca').textContent = 'MoviPass - Oficinista';
+        $('enlaceFrecuencias').classList.add('d-none'); // las frecuencias las gestiona el gerente
+    }
 
-    inpInicio.value = hoy();
-    inpInicio.min = hoy();
-    inpInicio.max = limite();
-
-    selCoop.addEventListener('change', cargarCooperativa);
-    inpInicio.addEventListener('change', () => {
-        if (!inpInicio.value) inpInicio.value = hoy();
-        recargarHojas();
-    });
-    selDias.addEventListener('change', recargarHojas);
-    btnAuto.addEventListener('click', rellenarAutomatico);
-
-    // El contexto se consulta dentro de la carga del combo para que "Reintentar" lo repita.
-    let rolContexto = rol;
-    const alCargar = async (cooperativas) => {
-        if (rolContexto === 'cooperativa' && cooperativas.length === 0) {
-            vaciarCombo(selCoop, 'Sin cooperativa asignada');
-            contenedor.replaceChildren(
-                nuevoAviso('danger', 'Tu cuenta aún no está asignada a una cooperativa. Contacta al administrador.')
-            );
-            return;
-        }
-
-        // Con una sola cooperativa, llenarCombo ya la dejó elegida.
-        await cargarCooperativa();
-    };
+    inpDesde.value = hoy();
+    inpDesde.max = limite();
 
     try {
-        const cooperativas = await llenarCombo(selCoop, {
-            cargar: async () => {
-                const contexto = await obtenerContextoGestion();
-                rolContexto = contexto.rol;
-                return contexto.cooperativas;
-            },
-            inicial: 'Selecciona una cooperativa...',
-            vacio: 'Sin cooperativas disponibles',
-            error: 'No se pudieron cargar las cooperativas.',
-            alReintentar: alCargar
-        });
+        const { cooperativas } = await obtenerContextoGestion();
 
-        if (cooperativas === null) {
-            contenedor.replaceChildren(
-                nuevoAviso('danger', 'No se pudieron cargar las cooperativas. Pulsa «Reintentar» debajo del selector.')
-            );
+        ponerOpciones(selCooperativa, cooperativas, {
+            inicial: 'Selecciona una cooperativa...',
+            vacio: 'Tu cuenta no tiene cooperativas asignadas'
+        });
+        $('grupoCooperativa').classList.toggle('d-none', cooperativas.length === 1);
+
+        if (cooperativas.length === 0) {
+            contenedor.replaceChildren(el('p', 'text-center py-3 text-danger mb-0', 'Tu cuenta no está asignada a una cooperativa.'));
             return;
         }
 
-        await alCargar(cooperativas);
+        await cargarGrupos();
     } catch (error) {
         console.error('Error al iniciar la hoja de ruta:', error);
-        contenedor.replaceChildren(nuevoAviso('danger', 'No se pudo cargar la página.'));
-        mostrarAlerta(textoError(error), 'danger');
+        mostrarAlerta(mensajeError(error), 'danger');
     }
 }
+
+selCooperativa.addEventListener('change', () => void cargarGrupos());
+selGrupo.addEventListener('change', () => { resultado.className = 'alert d-none'; void cargarHoja(); });
+inpDesde.addEventListener('change', () => { if (!inpDesde.value) inpDesde.value = hoy(); void cargarHoja(); });
+selDias.addEventListener('change', () => void cargarHoja());
+btnGenerar.addEventListener('click', () => void generar());
 
 iniciar();
