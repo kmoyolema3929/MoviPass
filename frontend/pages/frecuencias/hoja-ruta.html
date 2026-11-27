@@ -79,9 +79,13 @@
                 <p class="form-text mb-0 mt-2">
                     Se puede generar desde hoy y hasta 14 días (fecha de Ecuador). Los días con boletos vendidos no se
                     regeneran: se conservan y la rotación continúa desde ellos. Los clientes solo pueden comprar los días generados.
+                    Cada noche (02:00) MoviPass genera sola los días que falten hasta 7 días adelante (hoy + 6).
                 </p>
             </div>
         </div>
+
+        <!-- Cambio 4.4: motivo por el que la generación nocturna no se pudo hacer -->
+        <div id="avisoAutomatico" class="alert alert-danger d-none" role="alert"></div>
 
         <div id="flota" class="alert d-none" role="status"></div>
 
