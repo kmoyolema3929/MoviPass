@@ -2,10 +2,10 @@ import { supabase } from './supabaseClient.js';
 import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
 import { dinero, formatearFecha, formatearHora } from './validaciones.js';
+import { ACEPTA_COMPROBANTE, revisarComprobante, tipoDeComprobante } from './reglasCompra.js';
+import { mensajeErrorBase } from './erroresBase.js';
 
 const $ = (id) => document.getElementById(id);
-const TAMANO_MAXIMO = 5 * 1024 * 1024;
-const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
 let compra = null;
 let compraId = null;
@@ -132,6 +132,18 @@ function ajustarFormulario() {
     aviso.appendChild(enlace);
 }
 
+/** Revisa el archivo elegido y pone el mensaje junto al campo. */
+function revisarArchivo() {
+    const input = $('comprobante');
+    const problema = revisarComprobante(input.files?.[0]);
+
+    input.classList.toggle('is-invalid', Boolean(problema));
+    $('errorComprobante').textContent = problema;
+    return problema;
+}
+
+let subiendo = false;
+
 async function subirComprobante(evento) {
     evento.preventDefault();
 
@@ -139,22 +151,14 @@ async function subirComprobante(evento) {
     const boton = $('btnSubirPago');
     const archivo = input.files?.[0];
 
-    if (!archivo) {
-        mostrarAlerta('Selecciona un archivo de comprobante.', 'warning');
-        return;
-    }
-
-    if (!TIPOS_PERMITIDOS.includes(archivo.type)) {
-        mostrarAlerta('El comprobante debe ser una imagen JPG, PNG, WEBP o un PDF.', 'danger');
-        return;
-    }
-
-    if (archivo.size > TAMANO_MAXIMO) {
-        mostrarAlerta('El archivo no puede superar los 5 MB.', 'danger');
+    if (subiendo) return;
+    if (revisarArchivo()) {
+        input.focus();
         return;
     }
 
     const textoOriginal = boton.textContent;
+    subiendo = true;
     boton.disabled = true;
     boton.textContent = 'Subiendo comprobante...';
 
@@ -168,11 +172,11 @@ async function subirComprobante(evento) {
         const { error: errorSubida } = await supabase.storage
             .from('comprobantes')
             .upload(ruta, archivo, {
-                contentType: archivo.type,
+                contentType: tipoDeComprobante(archivo),
                 upsert: false,
             });
 
-        if (errorSubida) throw errorSubida;
+        if (errorSubida) throw Object.assign(errorSubida, { deStorage: true });
 
         const { error: errorRegistro } = await supabase.rpc('registrar_comprobante', {
             p_compra_id: compra.id,
@@ -189,19 +193,35 @@ async function subirComprobante(evento) {
 
         mostrarAlerta('Comprobante subido. Ahora un oficinista validará tu pago.', 'success');
 
+        // Redirigiendo: el botón queda bloqueado para no subir dos veces.
         setTimeout(() => {
             window.location.href = `boleto.html?compra_id=${encodeURIComponent(compra.id)}`;
         }, 1200);
     } catch (error) {
         console.error('No se pudo subir el comprobante:', error);
-        mostrarAlerta(
-            error.message || 'No se pudo subir el comprobante. Inténtalo de nuevo.',
-            'danger'
-        );
-    } finally {
+        mostrarAlerta(mensajeErrorComprobante(error), 'danger');
         boton.disabled = false;
         boton.textContent = textoOriginal;
+        subiendo = false;
     }
+}
+
+/** Mensaje claro para los errores del almacenamiento y de registrar_comprobante. */
+function mensajeErrorComprobante(error) {
+    const estado = Number(error?.statusCode ?? error?.status ?? 0);
+    const texto = String(error?.message ?? '');
+
+    if (error?.deStorage) {
+        if (estado === 413 || /maximum allowed size|too large/i.test(texto)) return 'El archivo supera el máximo de 5 MB.';
+        if (estado === 415 || /mime type|not supported/i.test(texto)) {
+            return 'El comprobante debe ser una imagen JPG, PNG o WebP, o un PDF.';
+        }
+        if (estado === 403 || /row-level security|unauthorized/i.test(texto)) {
+            return 'No tienes permiso para subir este comprobante. Vuelve a iniciar sesión.';
+        }
+    }
+
+    return mensajeErrorBase(error, 'subir el comprobante');
 }
 
 async function iniciar() {
@@ -236,10 +256,12 @@ async function iniciar() {
         await cargarCompra();
         renderizarCompra();
         ajustarFormulario();
+        $('comprobante').accept = ACEPTA_COMPROBANTE;
+        $('comprobante').addEventListener('change', revisarArchivo);
         $('formPago').addEventListener('submit', subirComprobante);
     } catch (error) {
         console.error('No se pudo cargar la compra:', error);
-        mostrarAlerta(error.message || 'No se pudo cargar la compra.', 'danger');
+        mostrarAlerta(mensajeErrorBase(error, 'cargar la compra'), 'danger');
         $('formPago').classList.add('d-none');
     }
 }

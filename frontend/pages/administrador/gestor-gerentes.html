@@ -30,32 +30,51 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white fw-bold py-3">Registrar Nuevo Gerente</div>
                     <div class="card-body">
-                        <form id="formGerente">
+                        <p class="text-muted small">* Campo obligatorio</p>
+                        <form id="formGerente" novalidate>
                             <div class="mb-3">
                                 <label for="cooperativa" class="form-label">Cooperativa a Asignar *</label>
-                                <select id="cooperativa" class="form-select" required disabled>
+                                <select id="cooperativa" class="form-select" data-campo="cooperativa" required disabled>
                                     <option value="" selected disabled>Cargando...</option>
                                 </select>
+                                <div class="invalid-feedback" data-error="cooperativa"></div>
                             </div>
                             <div class="mb-3">
                                 <label for="nombres" class="form-label">Nombres *</label>
-                                <input type="text" class="form-control" id="nombres" required>
+                                <input type="text" class="form-control" id="nombres" data-campo="nombres" required maxlength="80" autocomplete="off">
+                                <div class="invalid-feedback" data-error="nombres"></div>
                             </div>
                             <div class="mb-3">
                                 <label for="apellidos" class="form-label">Apellidos *</label>
-                                <input type="text" class="form-control" id="apellidos" required>
+                                <input type="text" class="form-control" id="apellidos" data-campo="apellidos" required maxlength="80" autocomplete="off">
+                                <div class="invalid-feedback" data-error="apellidos"></div>
                             </div>
                             <div class="mb-3">
                                 <label for="cedula" class="form-label">Cédula *</label>
-                                <input type="text" class="form-control" id="cedula" required maxlength="10">
+                                <input type="text" class="form-control" id="cedula" data-campo="cedula" required maxlength="10" inputmode="numeric" autocomplete="off">
+                                <div class="invalid-feedback" data-error="cedula"></div>
                             </div>
                             <div class="mb-3">
-                                <label for="email" class="form-label">Correo Electrónico (será su usuario) *</label>
-                                <input type="email" class="form-control" id="email" required>
+                                <label for="fecha_nacimiento" class="form-label">Fecha de nacimiento *</label>
+                                <input type="date" class="form-control" id="fecha_nacimiento" data-campo="fecha_nacimiento" required min="1900-01-01">
+                                <div class="invalid-feedback" data-error="fecha_nacimiento"></div>
+                                <div class="form-text">Debe ser mayor de 18 años.</div>
                             </div>
                             <div class="mb-3">
-                                <label for="password" class="form-label">Contraseña Temporal *</label>
-                                <input type="password" class="form-control" id="password" required minlength="6">
+                                <label for="telefono" class="form-label">Teléfono (opcional)</label>
+                                <input type="tel" class="form-control" id="telefono" data-campo="telefono" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="09xxxxxxxx">
+                                <div class="invalid-feedback" data-error="telefono"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Correo electrónico (será su usuario) *</label>
+                                <input type="email" class="form-control" id="email" data-campo="email" required maxlength="254" autocomplete="off">
+                                <div class="invalid-feedback" data-error="email"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Contraseña temporal *</label>
+                                <input type="password" class="form-control" id="password" data-campo="password" required maxlength="72" autocomplete="new-password">
+                                <div class="invalid-feedback" data-error="password"></div>
+                                <div class="form-text">Mínimo 8 caracteres, con minúscula, mayúscula, número y símbolo (por ejemplo ! @ # $). Le llegará un código a su correo para activar la cuenta.</div>
                             </div>
                             <button type="submit" class="btn btn-primary w-100" id="btnGuardar">Crear Gerente y Asignar</button>
                         </form>
@@ -69,132 +88,6 @@
         <div class="container"><p class="mb-0">&copy; 2026 MoviPass.</p></div>
     </footer>
 
-    <script type="module">
-        import { supabase } from '../../js/supabaseClient.js';
-        import { mostrarAlerta } from '../../js/alertas.js';
-        import { exigirRoles } from '../../js/guardas.js';
-        import { llenarCombo } from '../../js/combos.js';
-
-        // Solo el administrador puede ver esta página
-        exigirRoles(['administrador']);
-
-        const selectCoop = document.getElementById('cooperativa');
-        const form = document.getElementById('formGerente');
-        const btn = document.getElementById('btnGuardar');
-        const TEXTO_BTN = 'Crear Gerente y Asignar';
-
-        // 1. Cargar las cooperativas existentes en el select
-        function cargarCooperativas() {
-            return llenarCombo(selectCoop, {
-                cargar: async () => {
-                    const { data, error } = await supabase.from('cooperativas').select('id, nombre').order('nombre');
-                    if (error) throw error;
-                    return data;
-                },
-                inicial: 'Selecciona una cooperativa...',
-                vacio: 'No hay cooperativas registradas',
-                error: 'No se pudieron cargar las cooperativas.',
-            });
-        }
-        cargarCooperativas();
-
-        // Restaura la sesión del administrador
-        async function restaurarAdmin(adminSession) {
-            if (!adminSession) return;
-            const { error } = await supabase.auth.setSession({
-                access_token: adminSession.access_token,
-                refresh_token: adminSession.refresh_token
-            });
-            if (error) throw error;
-        }
-
-        // 2. Crear el usuario y asignarlo
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const coopId = selectCoop.value;
-            if (!coopId) {
-                mostrarAlerta('Por favor, selecciona una cooperativa.', 'warning');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.textContent = 'Creando usuario...';
-
-            const email = document.getElementById('email').value.trim().toLowerCase();
-            const password = document.getElementById('password').value;
-
-            // Guardamos la sesión actual del administrador ANTES del signUp
-            const { data: { session: adminSession } } = await supabase.auth.getSession();
-
-            if (!adminSession) {
-                mostrarAlerta('Tu sesión de administrador expiró. Inicia sesión de nuevo.', 'danger');
-                btn.disabled = false;
-                btn.textContent = TEXTO_BTN;
-                return;
-            }
-
-            try {
-                // A. Crear el usuario en Supabase Auth (el trigger crea el perfil como 'cliente')
-                const { data: authData, error: authError } = await supabase.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            cedula: document.getElementById('cedula').value.trim(),
-                            nombres: document.getElementById('nombres').value.trim(),
-                            apellidos: document.getElementById('apellidos').value.trim(),
-                            telefono: '0999999999'
-                        }
-                    }
-                });
-
-                if (authError) throw authError;
-                if (!authData.user) throw new Error('No se pudo crear el usuario.');
-
-                const nuevoId = authData.user.id;
-
-                // B. RESTAURAR LA SESIÓN DE ADMIN INMEDIATAMENTE
-                //    (signUp cambia la sesión al usuario nuevo)
-                await restaurarAdmin(adminSession);
-
-                // C. Esperar un momento al trigger
-                await new Promise(r => setTimeout(r, 1000));
-
-                // D. Subir el rol a 'cooperativa' (ya como administrador)
-                const { data: filas, error: rolError } = await supabase
-                    .from('perfiles')
-                    .update({ rol: 'cooperativa' })
-                    .eq('id', nuevoId)
-                    .select('id');
-
-                if (rolError) throw rolError;
-                if (!filas || filas.length === 0) {
-                    throw new Error('No se pudo actualizar el rol. Verifica que tu usuario tenga rol "administrador" y que el trigger exista.');
-                }
-
-                // E. Asignar la cooperativa al gerente
-                const { error: asignError } = await supabase
-                    .from('cooperativas_usuarios')
-                    .insert([{ cooperativa_id: coopId, perfil_id: nuevoId }]);
-
-                if (asignError) throw asignError;
-
-                // F. Éxito
-                mostrarAlerta('¡Gerente creado y asignado a la cooperativa con éxito!', 'success');
-                // Vuelve a la opción por defecto ("Selecciona..." o la única cooperativa).
-                form.reset();
-
-            } catch (error) {
-                console.error(error);
-                mostrarAlerta('Error: ' + error.message, 'danger');
-                // Si falló antes de restaurar, intentamos volver a ser admin
-                try { await restaurarAdmin(adminSession); } catch (_) { /* ignorar */ }
-            } finally {
-                btn.disabled = false;
-                btn.textContent = TEXTO_BTN;
-            }
-        });
-    </script>
+    <script type="module" src="../../js/gerentes.js"></script>
 </body>
 </html>

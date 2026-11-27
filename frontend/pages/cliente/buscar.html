@@ -76,15 +76,18 @@
                                 <div id="errores-busqueda" class="alert alert-danger mb-0" role="alert" tabindex="-1" hidden></div>
                             </div>
 
+                            <p class="col-12 small text-muted mb-0">* Campo obligatorio</p>
+
                             <!-- Origen -->
                             <div class="col-12 col-md-6 col-lg-3">
                                 <label for="origen" class="form-label fw-bold small text-uppercase text-muted">Origen *</label>
                                 <div class="position-relative">
                                     <i class="bi bi-geo-alt search-icon"></i>
-                                    <select id="origen" name="origen" class="form-select form-control-icon" required disabled>
+                                    <select id="origen" name="origen" aria-describedby="origen-error" class="form-select form-control-icon" required disabled>
                                         <option value="" selected disabled>Cargando...</option>
                                     </select>
                                 </div>
+                                <div id="origen-error" class="small text-danger mt-1" aria-live="polite"></div>
                             </div>
 
                             <!-- Destino -->
@@ -92,10 +95,11 @@
                                 <label for="destino" class="form-label fw-bold small text-uppercase text-muted">Destino *</label>
                                 <div class="position-relative">
                                     <i class="bi bi-geo-fill search-icon"></i>
-                                    <select id="destino" name="destino" class="form-select form-control-icon" required disabled>
+                                    <select id="destino" name="destino" aria-describedby="destino-error" class="form-select form-control-icon" required disabled>
                                         <option value="" selected disabled>Cargando...</option>
                                     </select>
                                 </div>
+                                <div id="destino-error" class="small text-danger mt-1" aria-live="polite"></div>
                             </div>
 
                             <!-- Fecha -->
@@ -103,8 +107,9 @@
                                 <label for="fecha" class="form-label fw-bold small text-uppercase text-muted">Fecha de viaje *</label>
                                 <div class="position-relative">
                                     <i class="bi bi-calendar-event search-icon"></i>
-                                    <input id="fecha" name="fecha" type="date" class="form-control form-control-icon" required>
+                                    <input id="fecha" name="fecha" aria-describedby="fecha-error" type="date" class="form-control form-control-icon" required>
                                 </div>
+                                <div id="fecha-error" class="small text-danger mt-1" aria-live="polite"></div>
                             </div>
 
                             <!-- Botón Buscar -->

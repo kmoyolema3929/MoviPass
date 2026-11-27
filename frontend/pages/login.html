@@ -43,30 +43,44 @@
                             <p class="text-muted mb-0">Ingresa a tu cuenta de MoviPass</p>
                         </div>
 
-                        <form id="formLogin">
+                        <form id="formLogin" novalidate>
                             <!-- Aquí js/alertas.js muestra los mensajes; role="alert" para lectores de pantalla -->
                             <div id="alertContainer" class="mb-3" role="alert" aria-live="polite"></div>
 
+                            <!-- Cuenta sin verificar: enlace para escribir el código (lo muestra login.js) -->
+                            <div id="avisoVerificar" class="alert alert-warning d-none" role="alert">
+                                Tu cuenta todavía no está verificada.
+                                <a id="enlaceVerificar" href="verificar-correo.html" class="alert-link">Escribe el código que llegó a tu correo</a>.
+                            </div>
+
+                            <p class="small text-muted">* Campo obligatorio</p>
+
                             <!-- Correo -->
                             <div class="mb-3">
-                                <label for="emailInput" class="form-label fw-bold">Correo electrónico</label>
-                                <input type="email" class="form-control form-control-lg" id="emailInput"
-                                       name="email" placeholder="ejemplo@correo.com"
+                                <label for="emailInput" class="form-label fw-bold">Correo electrónico *</label>
+                                <input type="email" class="form-control form-control-lg" id="emailInput" data-campo="email"
+                                       name="email" placeholder="ejemplo@correo.com" maxlength="254"
                                        autocomplete="email" inputmode="email" autofocus required>
+                                <div class="invalid-feedback" data-error="email"></div>
                             </div>
 
                             <!-- Contraseña -->
-                            <div class="mb-4">
-                                <label for="passwordInput" class="form-label fw-bold">Contraseña</label>
-                                <div class="input-group">
-                                    <input type="password" class="form-control form-control-lg" id="passwordInput"
-                                           name="password" placeholder="Tu contraseña"
-                                           autocomplete="current-password" minlength="6" required>
+                            <div class="mb-2">
+                                <label for="passwordInput" class="form-label fw-bold">Contraseña *</label>
+                                <div class="input-group has-validation">
+                                    <input type="password" class="form-control form-control-lg" id="passwordInput" data-campo="password"
+                                           name="password" placeholder="Tu contraseña" maxlength="72"
+                                           autocomplete="current-password" required>
                                     <button class="btn btn-outline-secondary" type="button" id="btnTogglePass"
                                             aria-label="Mostrar u ocultar contraseña" aria-pressed="false">
                                         👁️
                                     </button>
+                                    <div class="invalid-feedback" data-error="password"></div>
                                 </div>
+                            </div>
+
+                            <div class="text-end mb-4">
+                                <a href="recuperar-contrasena.html" class="small" style="color: var(--primary-color);">¿Olvidaste tu contraseña?</a>
                             </div>
 
                             <!-- Botón (el id permite que login.js lo deshabilite mientras carga) -->

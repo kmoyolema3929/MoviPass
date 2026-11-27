@@ -94,11 +94,13 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-muted">Los asientos quedarán libres otra vez.</p>
-                    <label for="motivoRechazo" class="form-label">Motivo del rechazo</label>
-                    <textarea id="motivoRechazo" class="form-control" rows="3" maxlength="300"
+                    <p class="small text-muted">Los asientos quedarán libres otra vez. * Campo obligatorio</p>
+                    <label for="motivoRechazo" class="form-label">Motivo del rechazo *</label>
+                    <textarea id="motivoRechazo" class="form-control" rows="3" maxlength="300" required
+                              aria-describedby="errorMotivoRechazo"
                               placeholder="Ej. El monto no coincide con el total"></textarea>
-                    <div class="invalid-feedback">Escribe el motivo (mínimo 3 letras).</div>
+                    <div class="invalid-feedback" id="errorMotivoRechazo"></div>
+                    <div class="form-text">De 3 a 300 caracteres. El cliente verá este motivo.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

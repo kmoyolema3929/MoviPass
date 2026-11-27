@@ -8,6 +8,7 @@ import {
 import { obtenerCeldasEspecialesDeBus } from '../../js/asientosService.js';
 import { claseTipoAsiento, columnasDelMapa, crearAsientoBloqueado, crearCeldaEspecial } from '../../js/celdasEspeciales.js';
 import { ponerOpciones } from '../../js/combos.js';
+import { LIMITES_COMPRA, pasajeroParaEnviar, revisarPasajero } from '../../js/reglasCompra.js';
 
 const MAX_ASIENTOS = 10;
 const DIAS_VISIBLES = 15;
@@ -343,12 +344,28 @@ function crearCampo(etiqueta, id, valor, atributos = {}) {
     input.id = id;
     input.value = valor;
     input.type = 'text';
-    if (atributos.maxLength) input.maxLength = atributos.maxLength;
+    input.required = true;
+    input.maxLength = atributos.maxLength ?? LIMITES_COMPRA.nombre;
     if (atributos.inputMode) input.inputMode = atributos.inputMode;
     if (atributos.autocomplete) input.autocomplete = atributos.autocomplete;
 
-    col.append(label, input);
+    // Mensaje junto al campo.
+    const aviso = document.createElement('div');
+    aviso.className = 'invalid-feedback';
+    aviso.id = `${id}-error`;
+    input.setAttribute('aria-describedby', aviso.id);
+
+    col.append(label, input, aviso);
     return { col, input };
+}
+
+/** Marca un campo con su problema ('' lo limpia). */
+function marcarCampo(id, problema) {
+    const campo = $(id);
+    if (!campo) return;
+    campo.classList.toggle('is-invalid', Boolean(problema));
+    const aviso = $(`${id}-error`);
+    if (aviso) aviso.textContent = problema;
 }
 
 function dibujarPasajeros() {
@@ -372,17 +389,17 @@ function dibujarPasajeros() {
         const fila = document.createElement('div');
         fila.className = 'row g-2';
 
-        const cedula = crearCampo('Cédula', `cedula-${numero}`, d.cedula,
+        const cedula = crearCampo('Cédula *', `cedula-${numero}`, d.cedula,
             { maxLength: 10, inputMode: 'numeric', autocomplete: 'off' });
-        const nombres = crearCampo('Nombres', `nombres-${numero}`, d.nombres, { autocomplete: 'off' });
-        const apellidos = crearCampo('Apellidos', `apellidos-${numero}`, d.apellidos, { autocomplete: 'off' });
+        const nombres = crearCampo('Nombres *', `nombres-${numero}`, d.nombres, { autocomplete: 'off' });
+        const apellidos = crearCampo('Apellidos *', `apellidos-${numero}`, d.apellidos, { autocomplete: 'off' });
 
         const colTipo = document.createElement('div');
         colTipo.className = 'col-md-6';
         const labelTipo = document.createElement('label');
         labelTipo.className = 'form-label small mb-1';
         labelTipo.htmlFor = `tipo-${numero}`;
-        labelTipo.textContent = 'Tipo de pasajero';
+        labelTipo.textContent = 'Tipo de pasajero *';
         const selectTipo = document.createElement('select');
         selectTipo.className = 'form-select form-select-sm';
         selectTipo.id = `tipo-${numero}`;
@@ -395,11 +412,6 @@ function dibujarPasajeros() {
             vacio: 'No hay tipos de pasajero'
         });
         colTipo.append(labelTipo, selectTipo);
-
-        const ayuda = document.createElement('div');
-        ayuda.className = 'invalid-feedback';
-        ayuda.textContent = 'Cédula no válida (10 dígitos).';
-        cedula.col.appendChild(ayuda);
 
         cedula.input.addEventListener('input', () => {
             cedula.input.value = cedula.input.value.replace(/\D/g, '');
@@ -418,7 +430,7 @@ function dibujarPasajeros() {
 
     const nota = document.createElement('p');
     nota.className = 'small text-muted mb-0';
-    nota.textContent = 'Si un niño no tiene cédula, usa la de su representante.';
+    nota.textContent = '* Campo obligatorio. Si un niño no tiene cédula, usa la de su representante.';
     listaPasajeros.appendChild(nota);
 }
 
@@ -428,7 +440,7 @@ async function buscarPasajero(numero) {
 
     const cedula = d.cedula.trim();
     if (!cedulaValida(cedula)) {
-        if (cedula !== '') $(`cedula-${numero}`)?.classList.add('is-invalid');
+        if (cedula !== '') marcarCampo(`cedula-${numero}`, 'La cédula ingresada no es válida.');
         return;
     }
     if (d.nombres.trim() || d.apellidos.trim()) return;
@@ -497,47 +509,34 @@ function validarPasajeros() {
     let primerError = null;
 
     seleccionados.forEach((numero) => {
-        const d = datos.get(numero);
-        const revisar = (ok, id) => {
-            const campo = $(id);
-            campo.classList.toggle('is-invalid', !ok);
-            if (!ok && !primerError) primerError = campo;
-        };
+        const errores = revisarPasajero(datos.get(numero));
 
-        revisar(cedulaValida(d.cedula.trim()), `cedula-${numero}`);
-        revisar(d.nombres.trim().length >= 2, `nombres-${numero}`);
-        revisar(d.apellidos.trim().length >= 2, `apellidos-${numero}`);
+        ['cedula', 'nombres', 'apellidos'].forEach((campo) => {
+            const id = `${campo}-${numero}`;
+            marcarCampo(id, errores[campo] ?? '');
+            if (errores[campo] && !primerError) primerError = $(id);
+        });
     });
 
-    if (primerError) {
-        primerError.focus();
-        mostrarAlerta('Revisa los datos marcados en rojo.', 'warning');
-        return false;
-    }
-    return true;
+    primerError?.focus();
+    return !primerError;
 }
 
+let vendiendo = false;
+
 btnConfirmar.addEventListener('click', async () => {
-    if (seleccionados.length === 0 || !validarPasajeros()) return;
+    if (vendiendo || seleccionados.length === 0 || !validarPasajeros()) return;
 
     const total = seleccionados.reduce((suma, n) => suma + precioConDescuento(datos.get(n).tipo), 0);
     if (!confirm(`¿Cobrar ${dinero(total)} en efectivo y emitir ${seleccionados.length} boleto(s)?`)) return;
 
     const textoOriginal = btnConfirmar.textContent;
+    vendiendo = true;
     btnConfirmar.disabled = true;
     btnConfirmar.textContent = 'Procesando...';
 
     try {
-        const pasajeros = seleccionados.map((numero) => {
-            const d = datos.get(numero);
-            return {
-                numero_asiento: numero,
-                cedula: d.cedula.trim(),
-                nombres: d.nombres.trim(),
-                apellidos: d.apellidos.trim(),
-                tipo: d.tipo
-            };
-        });
+        const pasajeros = seleccionados.map((numero) => pasajeroParaEnviar(numero, datos.get(numero)));
 
         const { data, error } = await supabase.rpc('vender_en_oficina', {
             p_viaje_id: viaje.id,
@@ -557,6 +556,7 @@ btnConfirmar.addEventListener('click', async () => {
             actualizarResumen();
         } catch (_) { }
     } finally {
+        vendiendo = false;
         btnConfirmar.textContent = textoOriginal;
         btnConfirmar.disabled = seleccionados.length === 0;
     }

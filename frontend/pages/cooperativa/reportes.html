@@ -114,6 +114,7 @@
         import { exigirRoles } from '../../js/guardas.js';
         import { supabase } from '../../js/supabaseClient.js';
         import { dinero, fechaLocalISO, formatearFecha, formatearHora } from '../../js/validaciones.js';
+        import { mensajeErrorBase } from '../../js/erroresBase.js';
 
         // Solo el gerente (rol 'cooperativa'). guardas.js conecta #btnCerrarSesion.
         const rol = await exigirRoles(['cooperativa']);
@@ -332,7 +333,7 @@
             } catch (error) {
                 console.error('No se pudieron cargar los reportes:', error);
                 $('estadoCarga').textContent = '';
-                mostrarMensaje('No se pudieron cargar los reportes: ' + (error?.message ?? 'error desconocido'));
+                mostrarMensaje(mensajeErrorBase(error, 'cargar los reportes'));
             }
         }
 

@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient.js';
 import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
 import { dinero, formatearFecha, formatearHora } from './validaciones.js';
+import { mensajeErrorBase } from './erroresBase.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -166,7 +167,7 @@ async function cargarHistorial() {
         console.error('No se pudo cargar el historial:', error);
         tbody.replaceChildren();
         filaInformativa('No se pudo cargar tu historial. Inténtalo de nuevo más tarde.', 'text-danger');
-        mostrarAlerta(error.message || 'No se pudo cargar el historial.', 'danger');
+        mostrarAlerta(mensajeErrorBase(error, 'cargar el historial'), 'danger');
     }
 }
 

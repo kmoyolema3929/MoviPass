@@ -1,129 +1,94 @@
+// frontend/js/registro.js
+// Registro del cliente (cambio 3, parte 3.1). Las reglas están en
+// reglasCuenta.js y la base las repite (crear_perfil_al_registrar).
+// Después del registro se pide el código de 6 dígitos (verificar-correo.html).
+
 import { mostrarAlerta } from './alertas.js';
 import { supabase } from './supabaseClient.js';
+import {
+    datosDeSignUp, fechaMaximaNacimiento, limpiarCorreo, mensajeErrorAuth, revisarRegistro, textoEdad
+} from './reglasCuenta.js';
+import { conBotonOcupado, limpiarAlEscribir, mostrarErrores, soloDigitos } from './formularios.js';
+import { PANEL_POR_ROL } from './auth.js';
 
-const formRegistro = document.getElementById('formRegistro');
-const btn = formRegistro.querySelector('button[type="submit"]');
-const textoOriginalBtn = btn.textContent;
+const form = document.getElementById('formRegistro');
+const btn = document.getElementById('btnRegistro');
+const $ = id => document.getElementById(id);
 
-/* ---------- Validaciones ---------- */
+const campoFecha = $('fechaNacimientoInput');
+const edadTexto = $('edadTexto');
 
-// Algoritmo módulo 10 de la cédula ecuatoriana
-function cedulaValida(cedula) {
-    if (!/^\d{10}$/.test(cedula)) return false;
+// El calendario no deja elegir una fecha de alguien menor de 18 años.
+campoFecha.max = fechaMaximaNacimiento();
 
-    const provincia = parseInt(cedula.slice(0, 2), 10);
-    if (provincia < 1 || (provincia > 24 && provincia !== 30)) return false;
+campoFecha.addEventListener('input', () => {
+    const edad = textoEdad(campoFecha.value);
+    edadTexto.textContent = edad ? `Edad: ${edad}.` : 'Debes ser mayor de 18 años.';
+});
 
-    const tercerDigito = parseInt(cedula[2], 10);
-    if (tercerDigito > 5) return false;
+soloDigitos($('cedulaInput'));
+soloDigitos($('telefonoInput'));
+limpiarAlEscribir(form);
 
-    let suma = 0;
-    for (let i = 0; i < 9; i++) {
-        let n = parseInt(cedula[i], 10) * (i % 2 === 0 ? 2 : 1);
-        if (n > 9) n -= 9;
-        suma += n;
-    }
-    const verificador = (10 - (suma % 10)) % 10;
-    return verificador === parseInt(cedula[9], 10);
-}
-
-function validarDatos({ nombres, apellidos, cedula, telefono, password }) {
-    if (nombres.length < 2 || apellidos.length < 2) {
-        return 'Ingresa tus nombres y apellidos completos.';
-    }
-    if (!cedulaValida(cedula)) {
-        return 'La cédula ingresada no es válida.';
-    }
-    if (!/^09\d{8}$/.test(telefono)) {
-        return 'El teléfono debe tener 10 dígitos y empezar con 09.';
-    }
-    if (password.length < 8) {
-        return 'La contraseña debe tener al menos 8 caracteres.';
-    }
-    return null; // todo correcto
-}
-
-/* ---------- Envío del formulario ---------- */
-
-formRegistro.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    // .trim() evita espacios accidentales; el correo se guarda en minúsculas
-    const datos = {
-        nombres: document.getElementById('nombresInput').value.trim(),
-        apellidos: document.getElementById('apellidosInput').value.trim(),
-        cedula: document.getElementById('cedulaInput').value.trim(),
-        telefono: document.getElementById('telefonoInput').value.trim(),
-        email: document.getElementById('emailRegistro').value.trim().toLowerCase(),
-        password: document.getElementById('passRegistro').value
+function leerDatos() {
+    return {
+        cedula: $('cedulaInput').value,
+        nombres: $('nombresInput').value,
+        apellidos: $('apellidosInput').value,
+        fecha_nacimiento: campoFecha.value,
+        telefono: $('telefonoInput').value,
+        email: $('emailRegistro').value,
+        password: $('passRegistro').value,
+        confirmacion: $('passConfirmacion').value,
+        terminos: $('terminosInput').checked
     };
+}
 
-    const errorValidacion = validarDatos(datos);
-    if (errorValidacion) {
-        mostrarAlerta(errorValidacion, 'danger');
-        return;
-    }
+form.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
 
-    btn.textContent = 'Registrando...';
-    btn.disabled = true;
-    let exito = false;
+    const datos = leerDatos();
+    if (!mostrarErrores(form, revisarRegistro(datos))) return;
 
-    try {
-        // IMPORTANTE: el rol NO se envía desde el frontend.
-        // El trigger de la BD debe asignar 'cliente' por defecto al crear el perfil.
-        const { data, error } = await supabase.auth.signUp({
-            email: datos.email,
-            password: datos.password,
-            options: {
-                data: {
-                    nombres: datos.nombres,
-                    apellidos: datos.apellidos,
-                    cedula: datos.cedula,
-                    telefono: datos.telefono
-                }
+    await conBotonOcupado(btn, 'Registrando...', async () => {
+        const email = limpiarCorreo(datos.email);
+
+        try {
+            // El rol NO se envía: la base crea el perfil siempre como 'cliente'.
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password: datos.password,
+                options: { data: datosDeSignUp(datos, 'registro') }
+            });
+
+            if (error) {
+                mostrarAlerta(mensajeErrorAuth(error), 'danger');
+                return false;
             }
-        });
 
-        if (error) {
-            const msg = error.message || '';
-            if (msg.includes('already registered') || msg.includes('already exists')) {
-                mostrarAlerta('Este correo electrónico ya se encuentra registrado.', 'danger');
-            } else if (msg.includes('Database error')) {
-                // Normalmente: cédula duplicada (restricción UNIQUE en "perfiles")
-                mostrarAlerta('No se pudo crear el perfil. Revisa que la cédula no esté registrada.', 'danger');
-            } else if (msg.toLowerCase().includes('rate limit')) {
-                mostrarAlerta('Demasiados intentos. Espera unos minutos e inténtalo de nuevo.', 'warning');
-            } else {
-                mostrarAlerta('Ocurrió un error al registrarse: ' + msg, 'danger');
+            // Con la confirmación por correo activada, un correo repetido no da
+            // error: Supabase devuelve un usuario sin "identities".
+            if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+                mostrarErrores(form, { email: 'Este correo electrónico ya se encuentra registrado.' });
+                return false;
             }
-            return;
-        }
 
-        // Si la confirmación por correo está activada, Supabase NO devuelve error
-        // cuando el correo ya existe: devuelve un usuario sin "identities".
-        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-            mostrarAlerta('Este correo electrónico ya se encuentra registrado.', 'danger');
-            return;
-        }
+            // Sin confirmación por correo (no debería pasar): ya hay sesión.
+            if (data.session) {
+                window.location.replace(PANEL_POR_ROL.cliente);
+                return true;
+            }
 
-        // Si hay confirmación por correo no existe sesión todavía
-        const mensaje = data.session
-            ? '¡Registro exitoso! Redirigiendo al login...'
-            : '¡Registro exitoso! Revisa tu correo para confirmar tu cuenta. Redirigiendo al login...';
-        mostrarAlerta(mensaje, 'success');
+            try {
+                sessionStorage.setItem('movipass-correo-verificar', email);
+            } catch { /* sin almacenamiento: el correo va en la dirección */ }
 
-        // El botón queda deshabilitado para evitar un doble registro
-        exito = true;
-        setTimeout(() => {
-            window.location.href = 'login.html';
-        }, 2500);
-    } catch (err) {
-        mostrarAlerta('No se pudo conectar con el servidor. Revisa tu conexión.', 'danger');
-    } finally {
-        // Si hubo cualquier error, se vuelve a habilitar el botón
-        if (!exito) {
-            btn.textContent = textoOriginalBtn;
-            btn.disabled = false;
+            window.location.replace(`verificar-correo.html?correo=${encodeURIComponent(email)}&nuevo=1`);
+            return true;
+        } catch (error) {
+            console.error('Error al registrarse:', error);
+            mostrarAlerta(mensajeErrorAuth(error), 'danger');
+            return false;
         }
-    }
+    });
 });

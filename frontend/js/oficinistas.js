@@ -5,19 +5,36 @@
 import { supabase } from './supabaseClient.js';
 import { mostrarAlerta } from './alertas.js';
 import { exigirRoles } from './guardas.js';
-import { crearCuentaPersonal, obtenerMiCooperativa } from './cuentasPersonal.js';
-import { limpiar, mensajeErrorCuenta, mensajeErrorPersonal, revisarPersona, revisarUbicacion } from './personal.js';
+import { asignarCuentaExistente, crearCuentaPersonal, obtenerMiCooperativa } from './cuentasPersonal.js';
+import {
+    limpiar, mensajeErrorCuenta, mensajeErrorPersonal, revisarCuentaExistente, revisarPersona, revisarUbicacion
+} from './personal.js';
+import { fechaMaximaNacimiento } from './reglasCuenta.js';
 
 const form = document.getElementById('formOficinista');
 const btn = document.getElementById('btnGuardar');
 const tbody = document.getElementById('tablaOficinistas');
 const COLUMNAS = 5;
 
-const campos = ['nombres', 'apellidos', 'cedula', 'ubicacion', 'email', 'password']
+const campos = ['nombres', 'apellidos', 'cedula', 'fecha_nacimiento', 'ubicacion', 'email', 'password']
     .reduce((todos, id) => ({ ...todos, [id]: document.getElementById(id) }), {});
 
 let miCooperativaId = null;
 let ocupado = false;
+
+// "Crear una cuenta nueva" o "Asignar una cuenta existente" (cambio 3).
+const esExistente = () => document.getElementById('modoExistente').checked;
+const textoBoton = () => (esExistente() ? 'Asignar Oficinista' : 'Crear Oficinista');
+
+function cambiarModo() {
+    form.querySelectorAll('.solo-nueva').forEach(bloque => bloque.classList.toggle('d-none', esExistente()));
+    document.getElementById('notaExistente').classList.toggle('d-none', !esExistente());
+    btn.textContent = textoBoton();
+    mostrarErrores({});
+}
+
+form.querySelectorAll('input[name="modo"]').forEach(radio => radio.addEventListener('change', cambiarModo));
+campos.fecha_nacimiento.max = fechaMaximaNacimiento();
 
 function filaMensaje(texto, clase = 'text-muted') {
     const tr = document.createElement('tr');
@@ -232,7 +249,7 @@ async function cambiarEstadoOficinista(perfilId, estadoActual) {
 async function eliminarOficinista(perfilId) {
     if (ocupado) return;
 
-    if (!confirm('¿Estás seguro de quitar a este oficinista de tu cooperativa?')) return;
+    if (!confirm('¿Quitar a este oficinista de tu cooperativa? Su cuenta volverá a ser de cliente.')) return;
 
     ocupado = true;
 
@@ -241,7 +258,7 @@ async function eliminarOficinista(perfilId) {
 
         if (error) throw error;
 
-        mostrarAlerta('Oficinista removido de la cooperativa.', 'success');
+        mostrarAlerta('Oficinista quitado de la cooperativa. Su cuenta vuelve a ser de cliente.', 'success');
         await cargarOficinistas();
     } catch (error) {
         console.error(error);
@@ -263,7 +280,10 @@ form.addEventListener('submit', async (evento) => {
     }
 
     const datos = Object.fromEntries(Object.entries(campos).map(([clave, campo]) => [clave, campo.value]));
-    const errores = revisarPersona(datos);
+    const existente = esExistente();
+    const errores = existente
+        ? revisarCuentaExistente(datos, { ubicacion: true })
+        : revisarPersona(datos);
     const problemaUbicacion = revisarUbicacion(datos.ubicacion);
     if (problemaUbicacion) errores.ubicacion = problemaUbicacion;
 
@@ -272,30 +292,43 @@ form.addEventListener('submit', async (evento) => {
 
     ocupado = true;
     btn.disabled = true;
-    btn.textContent = 'Creando usuario...';
+    btn.textContent = existente ? 'Asignando...' : 'Creando usuario...';
 
     try {
-        await crearCuentaPersonal({
-            datos: { ...datos, telefono: '' },
-            cooperativaId: miCooperativaId,
-            rol: 'oficinista',
-            ubicacion: limpiar(datos.ubicacion)
-        });
+        if (existente) {
+            await asignarCuentaExistente({
+                cedula: datos.cedula,
+                email: datos.email,
+                cooperativaId: miCooperativaId,
+                rol: 'oficinista',
+                ubicacion: limpiar(datos.ubicacion)
+            });
+            mostrarAlerta('¡Cuenta asignada como oficinista de tu cooperativa!', 'success');
+        } else {
+            await crearCuentaPersonal({
+                datos: { ...datos, telefono: '' },
+                cooperativaId: miCooperativaId,
+                rol: 'oficinista',
+                ubicacion: limpiar(datos.ubicacion)
+            });
+            mostrarAlerta('¡Oficinista creado! Le llegará un código a su correo: lo escribirá la primera vez que entre.', 'success');
+        }
 
-        mostrarAlerta('¡Oficinista creado con éxito!', 'success');
         form.reset();
+        cambiarModo();
         await cargarOficinistas();
     } catch (error) {
         console.error(error);
-        mostrarAlerta(mensajeErrorCuenta(error), 'danger');
+        mostrarAlerta(existente ? mensajeErrorPersonal(error) : mensajeErrorCuenta(error), 'danger');
     } finally {
         ocupado = false;
         btn.disabled = false;
-        btn.textContent = 'Crear Oficinista';
+        btn.textContent = textoBoton();
     }
 });
 
 Object.values(campos).forEach(campo => campo.addEventListener('input', () => campo.classList.remove('is-invalid')));
+campos.cedula.addEventListener('input', () => { campos.cedula.value = campos.cedula.value.replace(/\D/g, ''); });
 
 // Solo el gerente (rol 'cooperativa') puede administrar su personal.
 // guardas.js también conecta el botón #btnCerrarSesion.

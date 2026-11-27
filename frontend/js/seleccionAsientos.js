@@ -5,6 +5,7 @@ import { dinero, formatearFecha, formatearHora } from './validaciones.js';
 import { leerViajeId, urlResumenCompra } from './rutasCompra.js';
 import { obtenerCeldasEspecialesDeBus } from './asientosService.js';
 import { claseTipoAsiento, columnasDelMapa, crearAsientoBloqueado, crearCeldaEspecial } from './celdasEspeciales.js';
+import { mensajeErrorBase } from './erroresBase.js';
 
 const MAX_ASIENTOS = 10;
 const $ = (id) => document.getElementById(id);
@@ -328,7 +329,7 @@ async function iniciar() {
             textoSuave('No se pudieron cargar los asientos de este viaje.', 'text-danger')
         );
         $('btnContinuar').disabled = true;
-        mostrarAlerta(error.message || 'No se pudo cargar el viaje.', 'danger');
+        mostrarAlerta(mensajeErrorBase(error, 'cargar el viaje'), 'danger');
     }
 }
 

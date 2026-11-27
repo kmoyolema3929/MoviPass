@@ -26,7 +26,8 @@
 
         <div class="row g-3 mb-4" id="resumen"></div>
 
-        <input type="search" id="buscador" class="form-control mb-3" placeholder="Buscar cooperativa por nombre...">
+        <label for="buscador" class="form-label">Buscar cooperativa (opcional)</label>
+        <input type="search" id="buscador" class="form-control mb-3" maxlength="120" placeholder="Buscar cooperativa por nombre...">
 
         <div id="listado" class="accordion">
             <div class="text-center text-muted py-5">Cargando...</div>
@@ -41,6 +42,7 @@
     <script type="module">
         import { exigirRoles } from '../../js/guardas.js';
         import { supabase } from '../../js/supabaseClient.js';
+        import { mensajeErrorBase } from '../../js/erroresBase.js';
 
         // Solo el administrador. guardas.js conecta #btnCerrarSesion.
         const rol = await exigirRoles(['administrador']);
@@ -149,7 +151,7 @@
             const fallo = [coops, asign, perfiles, buses].find(r => r.error);
             if (fallo) {
                 console.error(fallo.error);
-                mostrarError('No se pudieron cargar todos los datos: ' + fallo.error.message);
+                mostrarError(mensajeErrorBase(fallo.error, 'cargar todos los datos'));
                 listado.replaceChildren();
                 return;
             }

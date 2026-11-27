@@ -34,20 +34,35 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white fw-bold py-3" id="tituloFormulario">Registrar Nuevo Usuario bus</div>
                     <div class="card-body">
-                        <p class="text-muted small">Los campos marcados con * son obligatorios.</p>
+                        <p class="text-muted small">* Campo obligatorio</p>
                         <form id="formUsuarioBus" novalidate>
                             <input type="hidden" id="perfilId">
+                            <fieldset class="mb-3" id="grupoModo">
+                                <legend class="form-label fs-6">¿Cómo lo registras?</legend>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="modo" id="modoNueva" value="nueva" checked>
+                                    <label class="form-check-label" for="modoNueva">Crear una cuenta nueva</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="modo" id="modoExistente" value="existente">
+                                    <label class="form-check-label" for="modoExistente">Asignar una cuenta existente</label>
+                                </div>
+                                <div class="form-text d-none" id="notaExistente">
+                                    La persona debe tener una cuenta de cliente verificada y su fecha de nacimiento
+                                    (mayor de 18 años). Escribe su cédula y el correo con el que se registró.
+                                </div>
+                            </fieldset>
                             <div class="mb-3">
                                 <label for="cedula" class="form-label">Cédula *</label>
                                 <input type="text" class="form-control" id="cedula" required maxlength="10" inputmode="numeric" autocomplete="off">
                                 <div class="invalid-feedback" data-error="cedula"></div>
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-3 oculto-existente">
                                 <label for="nombres" class="form-label">Nombres *</label>
                                 <input type="text" class="form-control" id="nombres" required maxlength="80" autocomplete="off">
                                 <div class="invalid-feedback" data-error="nombres"></div>
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-3 oculto-existente">
                                 <label for="apellidos" class="form-label">Apellidos *</label>
                                 <input type="text" class="form-control" id="apellidos" required maxlength="80" autocomplete="off">
                                 <div class="invalid-feedback" data-error="apellidos"></div>
@@ -62,22 +77,28 @@
                                 </select>
                                 <div class="invalid-feedback" data-error="funcion"></div>
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-3 oculto-existente">
                                 <label for="telefono" class="form-label">Teléfono (opcional)</label>
                                 <input type="tel" class="form-control" id="telefono" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="09xxxxxxxx">
                                 <div class="invalid-feedback" data-error="telefono"></div>
                             </div>
                             <div id="camposCuenta">
-                                <div class="mb-3">
-                                    <label for="email" class="form-label">Correo electrónico *</label>
-                                    <input type="email" class="form-control" id="email" required autocomplete="off">
-                                    <div class="invalid-feedback" data-error="email"></div>
+                                <div class="mb-3 oculto-existente">
+                                    <label for="fecha_nacimiento" class="form-label">Fecha de nacimiento *</label>
+                                    <input type="date" class="form-control" id="fecha_nacimiento" required min="1900-01-01">
+                                    <div class="invalid-feedback" data-error="fecha_nacimiento"></div>
+                                    <div class="form-text">Debe ser mayor de 18 años.</div>
                                 </div>
                                 <div class="mb-3">
+                                    <label for="email" class="form-label">Correo electrónico *</label>
+                                    <input type="email" class="form-control" id="email" required maxlength="254" autocomplete="off">
+                                    <div class="invalid-feedback" data-error="email"></div>
+                                </div>
+                                <div class="mb-3 oculto-existente">
                                     <label for="password" class="form-label">Contraseña *</label>
-                                    <input type="password" class="form-control" id="password" required minlength="8" autocomplete="new-password">
+                                    <input type="password" class="form-control" id="password" required maxlength="72" autocomplete="new-password">
                                     <div class="invalid-feedback" data-error="password"></div>
-                                    <div class="form-text">Mínimo 8 caracteres.</div>
+                                    <div class="form-text">Mínimo 8 caracteres, con minúscula, mayúscula, número y símbolo (por ejemplo ! @ # $). Le llegará un código a su correo para activar la cuenta.</div>
                                 </div>
                             </div>
                             <p class="small text-muted d-none" id="notaEdicion">

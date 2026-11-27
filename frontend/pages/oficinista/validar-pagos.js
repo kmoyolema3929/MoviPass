@@ -3,6 +3,8 @@ import { exigirRoles } from '../../js/guardas.js';
 import { obtenerContextoGestion, textoError } from '../../js/contextoUsuario.js';
 import { mostrarAlerta } from '../../js/alertas.js';
 import { formatearFecha, formatearHora, dinero } from '../../js/validaciones.js'; // <-- Ruta corregida
+import { limpiarTexto } from '../../js/reglasCuenta.js';
+import { revisarMotivoRechazo } from '../../js/reglasCompra.js';
 
 const COLUMNAS = `
     id, metodo_pago, estado, total, comprobante_ruta, comprobante_subido_en, creado_en, vence_en,
@@ -196,7 +198,7 @@ async function verComprobante(compra, boton) {
         modalComprobante.show();
     } catch (error) {
         console.error('No se pudo abrir el comprobante:', error);
-        mostrarAlerta('No se pudo abrir el comprobante. ' + (error.message ?? ''), 'danger');
+        mostrarAlerta(`No se pudo abrir el comprobante. ${textoError(error)}`, 'danger');
     } finally {
         boton.disabled = false;
     }
@@ -209,6 +211,8 @@ $('modalComprobante').addEventListener('hidden.bs.modal', () => {
 /* ---------- Aprobar / rechazar ---------- */
 
 async function aprobar(compra, boton) {
+    if (boton.disabled) return;
+
     const asientos = boletosActivos(compra).map((b) => b.numero_asiento).join(', ');
     if (!confirm(`¿Confirmas que recibiste ${dinero(compra.total)}?\nSe emitirán los boletos de los asientos: ${asientos}.`)) return;
 
@@ -234,16 +238,23 @@ function abrirRechazo(compra) {
     modalRechazo.show();
 }
 
-$('btnConfirmarRechazo').addEventListener('click', async () => {
-    const motivo = $('motivoRechazo').value.trim();
+$('motivoRechazo').addEventListener('input', () => $('motivoRechazo').classList.remove('is-invalid'));
 
-    if (motivo.length < 3) {
-        $('motivoRechazo').classList.add('is-invalid');
+$('btnConfirmarRechazo').addEventListener('click', async () => {
+    const boton = $('btnConfirmarRechazo');
+    if (boton.disabled) return;
+
+    const motivo = limpiarTexto($('motivoRechazo').value);
+    const problema = revisarMotivoRechazo(motivo);
+
+    $('motivoRechazo').classList.toggle('is-invalid', Boolean(problema));
+    $('errorMotivoRechazo').textContent = problema;
+    if (problema) {
+        $('motivoRechazo').focus();
         return;
     }
     if (!compraARechazar) return;
 
-    const boton = $('btnConfirmarRechazo');
     boton.disabled = true;
 
     try {

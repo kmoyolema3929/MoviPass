@@ -1,8 +1,10 @@
 import { supabase } from './supabaseClient.js';
 import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
-import { cedulaValida, dinero, formatearFecha, formatearHora } from './validaciones.js';
+import { dinero, formatearFecha, formatearHora } from './validaciones.js';
 import { ponerOpciones } from './combos.js';
+import { LIMITES_COMPRA, pasajeroParaEnviar, revisarPasajero } from './reglasCompra.js';
+import { mensajeErrorBase } from './erroresBase.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -41,12 +43,28 @@ function crearCampo(etiqueta, id, atributos = {}) {
     input.className = 'form-control form-control-sm';
     input.id = id;
     input.type = 'text';
-    if (atributos.maxLength) input.maxLength = atributos.maxLength;
+    input.required = true;
+    input.maxLength = atributos.maxLength ?? LIMITES_COMPRA.nombre;
     if (atributos.inputMode) input.inputMode = atributos.inputMode;
     input.autocomplete = atributos.autocomplete ?? 'off';
 
-    col.append(label, input);
+    // Mensaje junto al campo.
+    const aviso = document.createElement('div');
+    aviso.className = 'invalid-feedback';
+    aviso.id = `${id}-error`;
+    input.setAttribute('aria-describedby', aviso.id);
+
+    col.append(label, input, aviso);
     return { col, input };
+}
+
+/** Marca un campo con su problema ('' lo limpia). */
+function marcarCampo(id, problema) {
+    const campo = $(id);
+    if (!campo) return;
+    campo.classList.toggle('is-invalid', Boolean(problema));
+    const aviso = $(`${id}-error`);
+    if (aviso) aviso.textContent = problema;
 }
 
 function dibujarPasajeros() {
@@ -68,19 +86,19 @@ function dibujarPasajeros() {
         const fila = document.createElement('div');
         fila.className = 'row g-2';
 
-        const cedula = crearCampo('Cédula', `cedula-${numero}`, {
+        const cedula = crearCampo('Cédula *', `cedula-${numero}`, {
             maxLength: 10,
             inputMode: 'numeric',
         });
-        const nombres = crearCampo('Nombres', `nombres-${numero}`);
-        const apellidos = crearCampo('Apellidos', `apellidos-${numero}`);
+        const nombres = crearCampo('Nombres *', `nombres-${numero}`);
+        const apellidos = crearCampo('Apellidos *', `apellidos-${numero}`);
 
         const colTipo = document.createElement('div');
         colTipo.className = 'col-md-6';
         const labelTipo = document.createElement('label');
         labelTipo.className = 'form-label small mb-1';
         labelTipo.htmlFor = `tipo-${numero}`;
-        labelTipo.textContent = 'Tipo de pasajero';
+        labelTipo.textContent = 'Tipo de pasajero *';
         const selectTipo = document.createElement('select');
         selectTipo.className = 'form-select form-select-sm';
         selectTipo.id = `tipo-${numero}`;
@@ -157,54 +175,52 @@ function validarPasajeros() {
     let primerError = null;
 
     borrador.asientos.forEach((numero) => {
-        const d = datos.get(numero);
-        const revisar = (ok, id) => {
-            const campo = $(id);
-            if (!campo) return;
-            campo.classList.toggle('is-invalid', !ok);
-            if (!ok && !primerError) primerError = campo;
-        };
+        const errores = revisarPasajero(datos.get(numero));
 
-        revisar(cedulaValida(d.cedula.trim()), `cedula-${numero}`);
-        revisar(d.nombres.trim().length >= 2, `nombres-${numero}`);
-        revisar(d.apellidos.trim().length >= 2, `apellidos-${numero}`);
+        ['cedula', 'nombres', 'apellidos'].forEach((campo) => {
+            const id = `${campo}-${numero}`;
+            marcarCampo(id, errores[campo] ?? '');
+            if (errores[campo] && !primerError) primerError = $(id);
+        });
     });
 
-    if (primerError) {
-        primerError.focus();
-        mostrarAlerta('Revisa los datos marcados en rojo.', 'warning');
-        return false;
-    }
-
-    return true;
+    primerError?.focus();
+    return !primerError;
 }
+
+function metodoElegido() {
+    const metodo = document.querySelector('input[name="metodoPago"]:checked')?.value ?? '';
+    const aviso = $('errorMetodoPago');
+
+    document.querySelectorAll('input[name="metodoPago"]')
+        .forEach((radio) => radio.classList.toggle('is-invalid', !metodo));
+    if (aviso) aviso.textContent = metodo ? '' : 'Elige cómo vas a pagar.';
+
+    return metodo;
+}
+
+let reservando = false;
 
 async function confirmarCompra(evento) {
     evento.preventDefault();
 
-    if (!validarPasajeros()) return;
+    if (reservando) return;
 
-    const metodo = document.querySelector('input[name="metodoPago"]:checked')?.value;
+    const metodo = metodoElegido();
+    const pasajerosValidos = validarPasajeros();
 
     if (!metodo) {
-        mostrarAlerta('Selecciona el método de pago.', 'warning');
+        if (pasajerosValidos) document.querySelector('input[name="metodoPago"]')?.focus();
         return;
     }
+    if (!pasajerosValidos) return;
 
-    const pasajeros = borrador.asientos.map((numero) => {
-        const d = datos.get(numero);
-        return {
-            numero_asiento: numero,
-            cedula: d.cedula.trim(),
-            nombres: d.nombres.trim(),
-            apellidos: d.apellidos.trim(),
-            tipo: d.tipo,
-        };
-    });
+    const pasajeros = borrador.asientos.map((numero) => pasajeroParaEnviar(numero, datos.get(numero)));
 
     const boton = $('btnContinuarPago');
     const textoOriginal = boton.textContent;
 
+    reservando = true;
     boton.disabled = true;
     boton.textContent = 'Reservando asientos...';
 
@@ -227,16 +243,14 @@ async function confirmarCompra(evento) {
         sessionStorage.setItem('compraActual', JSON.stringify(compraActual));
         sessionStorage.removeItem('compraDraft');
 
+        // Redirigiendo: el botón queda bloqueado para no reservar dos veces.
         window.location.href = `pago.html?compra_id=${encodeURIComponent(data.compra_id)}`;
     } catch (error) {
         console.error('No se pudo crear la compra:', error);
-        mostrarAlerta(
-            error.message || 'No se pudieron reservar los asientos. Inténtalo de nuevo.',
-            'danger'
-        );
-    } finally {
+        mostrarAlerta(mensajeErrorBase(error, 'reservar los asientos'), 'danger');
         boton.textContent = textoOriginal;
         boton.disabled = false;
+        reservando = false;
     }
 }
 
@@ -278,6 +292,8 @@ async function iniciar() {
     actualizarResumen();
 
     $('formCompra').addEventListener('submit', confirmarCompra);
+    document.querySelectorAll('input[name="metodoPago"]')
+        .forEach((radio) => radio.addEventListener('change', metodoElegido));
 }
 
 iniciar();
