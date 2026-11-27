@@ -1,0 +1,141 @@
+/* frontend/css/usuario-bus.css
+   App del usuario bus (cambio 4, parte 4.3): pensada para el teléfono.
+   Botones grandes, alto contraste (texto oscuro sobre blanco, colores
+   fuertes) y las acciones principales abajo, al alcance del pulgar. */
+
+.app-bus {
+    font-size: 1.1rem;
+    background: #f1f3f5;
+    color: #111;
+}
+
+.app-bus .navbar { background: #111 !important; }
+.app-bus .navbar-brand { font-size: 1.15rem; }
+
+.app-bus .card { border: 2px solid #212529; border-radius: 14px; }
+.app-bus .form-label { font-weight: 700; color: #111; }
+.app-bus .form-control,
+.app-bus .form-select { min-height: 3.25rem; font-size: 1.15rem; border: 2px solid #495057; }
+.app-bus .form-control:focus,
+.app-bus .form-select:focus { border-color: #0a58ca; box-shadow: 0 0 0 .25rem rgba(10, 88, 202, .35); }
+.app-bus .text-muted { color: #343a40 !important; }
+
+/* Botones grandes para una mano */
+.btn-xl {
+    min-height: 3.75rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    border-radius: 12px;
+    border-width: 2px;
+}
+
+.btn-xl:disabled { opacity: .55; }
+
+.viaje-hora { font-size: 2.25rem; font-weight: 800; line-height: 1; }
+.viaje-ruta { font-size: 1.25rem; font-weight: 700; }
+
+.cifras { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; text-align: center; }
+.cifras div { background: #fff; border: 2px solid #212529; border-radius: 10px; padding: .4rem .2rem; }
+.cifras strong { display: block; font-size: 1.5rem; line-height: 1.1; }
+.cifras span { font-size: .8rem; font-weight: 600; }
+
+/* Barra inferior: Validar, Vender, Manifiesto */
+.barra-inferior {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1030;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: #111;
+    padding: .35rem .35rem calc(.35rem + env(safe-area-inset-bottom));
+    gap: .35rem;
+}
+
+.barra-inferior button {
+    min-height: 3.5rem;
+    border: 2px solid #fff;
+    border-radius: 10px;
+    background: #111;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.barra-inferior button[aria-selected="true"] { background: #ffc107; border-color: #ffc107; color: #111; }
+.barra-inferior button:disabled { opacity: .45; }
+.con-barra-inferior { padding-bottom: 6rem; }
+
+/* Resultado de la validación, en grande */
+.resultado-validacion {
+    border-radius: 16px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    border: 4px solid #111;
+}
+
+.resultado-validacion .resultado-titulo { font-size: 2.25rem; font-weight: 900; line-height: 1.1; }
+.resultado-validacion .resultado-tarifa { font-size: 1.9rem; font-weight: 900; margin: .5rem 0; }
+.resultado-validacion .resultado-asiento { font-size: 1.4rem; font-weight: 800; }
+.resultado-validacion .resultado-mensaje { font-size: 1.15rem; font-weight: 600; margin-top: .5rem; }
+.resultado-ok { background: #0f5132; color: #fff; }
+.resultado-aviso { background: #ffc107; color: #111; }
+.resultado-error { background: #842029; color: #fff; }
+
+/* Lector de QR */
+#lectorQR { width: 100%; max-width: 420px; margin: 0 auto; border-radius: 12px; overflow: hidden; }
+
+/* Manifiesto */
+.fila-manifiesto {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    background: #fff;
+    border: 2px solid #212529;
+    border-radius: 12px;
+    padding: .6rem .75rem;
+    margin-bottom: .5rem;
+}
+
+.fila-manifiesto .asiento-num {
+    flex: 0 0 3.25rem;
+    height: 3.25rem;
+    border-radius: 10px;
+    background: #111;
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fila-manifiesto .datos { flex: 1 1 auto; min-width: 0; }
+.fila-manifiesto .nombre { font-weight: 700; overflow-wrap: anywhere; }
+
+/* Mapa de asientos (venta en ruta) */
+.asientos-grid { display: grid; gap: 8px; justify-content: center; margin: 0 auto 1rem; }
+.asientos-libres { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 1rem; }
+.asiento {
+    width: 48px; height: 48px; border-radius: 8px; font-weight: 800; font-size: 1rem;
+    border: 3px solid #0f5132; background: #fff; color: #0f5132; cursor: pointer;
+}
+.asiento.vip { border-style: dashed; }
+.asiento.cama { border-style: double; border-width: 5px; }
+.asiento.seleccionado { background: #0a58ca; border-color: #0a58ca; color: #fff; }
+.asiento:disabled { background: #e9ecef; border-color: #6c757d; color: #495057; cursor: not-allowed; }
+.asiento.ocupado:disabled { background: #f8d7da; border-color: #842029; color: #842029; }
+.asiento.bloqueado:disabled { background: #ced4da; border-color: #495057; color: #212529; font-size: .75rem; }
+.asiento-bano {
+    display: flex; align-items: center; justify-content: center; width: 48px; height: 48px;
+    border-radius: 8px; border: 2px dashed #495057; background: #e2e3e5; font-size: 1.2rem;
+}
+.leyenda span { display: inline-block; width: 16px; height: 16px; border-radius: 4px; margin-right: 4px; vertical-align: middle; }
+
+.en-vivo { font-size: .85rem; font-weight: 700; }
+
+@media print {
+    .barra-inferior { display: none !important; }
+    .con-barra-inferior { padding-bottom: 0; }
+}

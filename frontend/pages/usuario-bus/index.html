@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111111">
+    <title>Mis viajes - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/usuario-bus.css">
+</head>
+<body class="app-bus d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass - Bus</a>
+            <div class="d-flex gap-2">
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-3 flex-grow-1" style="max-width: 640px;">
+        <h1 class="h3 mb-0">Mis viajes de hoy</h1>
+        <p class="mb-2"><span id="saludo"></span> <span id="fechaHoy" class="fw-bold"></span></p>
+        <p id="resumenViajes" class="fw-bold fs-5 mb-3" aria-live="polite"></p>
+
+        <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+        <div id="listaViajes">
+            <p class="text-muted">Cargando tus viajes...</p>
+        </div>
+
+        <div class="d-grid gap-2 mt-3">
+            <button id="btnActualizar" type="button" class="btn btn-outline-dark btn-xl">Actualizar</button>
+            <a href="historial.html" class="btn btn-outline-dark btn-xl">Historial de mis viajes</a>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0 small">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="index.js"></script>
+</body>
+</html>

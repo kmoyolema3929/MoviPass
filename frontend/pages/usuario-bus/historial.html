@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111111">
+    <title>Historial de viajes - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/usuario-bus.css">
+</head>
+<body class="app-bus d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html">MoviPass - Bus</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Mis viajes</a>
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-3 flex-grow-1" style="max-width: 640px;">
+        <h1 class="h3 mb-1">Historial de mis viajes</h1>
+        <p class="mb-3">Los viajes que la oficina te habilitó, con los pasajeros que abordaron y lo cobrado en ruta.</p>
+
+        <form id="formFiltro" class="card mb-3" novalidate>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label for="desde" class="form-label">Desde *</label>
+                        <input id="desde" type="date" class="form-control" data-campo="desde" aria-describedby="desde-error" required>
+                        <div id="desde-error" class="invalid-feedback" data-error="desde"></div>
+                    </div>
+                    <div class="col-6">
+                        <label for="hasta" class="form-label">Hasta *</label>
+                        <input id="hasta" type="date" class="form-control" data-campo="hasta" aria-describedby="hasta-error" required>
+                        <div id="hasta-error" class="invalid-feedback" data-error="hasta"></div>
+                    </div>
+                </div>
+                <div class="d-grid mt-2">
+                    <button type="submit" class="btn btn-dark btn-xl">Ver viajes</button>
+                </div>
+                <p class="small mb-0 mt-2">* Campo obligatorio. Hasta 92 días.</p>
+            </div>
+        </form>
+
+        <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+        <p id="totales" class="fw-bold fs-5" aria-live="polite"></p>
+        <div id="listaHistorial"></div>
+    </main>
+
+    <footer class="bg-dark text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0 small">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="historial.js"></script>
+</body>
+</html>
