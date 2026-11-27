@@ -1,0 +1,65 @@
+/* frontend/css/boleto.css
+   Boleto con código QR (cambio 4): ventanilla, bandeja de comprobantes y cliente.
+   Al imprimir solo se ve la zona .zona-impresion y cada boleto va en su hoja. */
+
+.boleto-qr {
+    border: 2px dashed #495057;
+    border-radius: 12px;
+    background: #fff;
+    color: #212529;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    max-width: 560px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.boleto-qr__cabecera {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: .5rem;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: .5rem;
+    margin-bottom: .75rem;
+}
+
+.boleto-qr__marca { font-weight: 800; font-size: 1.25rem; color: #0d6efd; }
+.boleto-qr__cooperativa { font-weight: 600; text-align: right; }
+
+.boleto-qr__cuerpo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.boleto-qr__datos {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: .75rem;
+    row-gap: .2rem;
+    margin: 0;
+    flex: 1 1 240px;
+}
+
+.boleto-qr__datos dt { font-weight: 600; color: #6c757d; font-size: .85rem; }
+.boleto-qr__datos dd { margin: 0; overflow-wrap: anywhere; }
+
+.boleto-qr__lado { text-align: center; flex: 0 0 auto; margin: 0 auto; }
+.boleto-qr__asiento { margin-bottom: .5rem; }
+.boleto-qr__asiento strong { display: block; font-size: 2.25rem; line-height: 1; }
+.boleto-qr__etiqueta { font-size: .8rem; color: #6c757d; }
+.boleto-qr__qr { display: flex; justify-content: center; min-height: 160px; }
+.boleto-qr__qr img, .boleto-qr__qr canvas { max-width: 160px; height: auto; }
+.boleto-qr__codigo { font-family: monospace; font-size: 1.15rem; font-weight: 700; letter-spacing: 2px; margin-top: .4rem; }
+.boleto-qr__pie { border-top: 1px solid #dee2e6; margin-top: .75rem; padding-top: .5rem; font-size: .8rem; color: #6c757d; }
+
+@media print {
+    body * { visibility: hidden; }
+    .zona-impresion, .zona-impresion * { visibility: visible; }
+    .zona-impresion { position: absolute; left: 0; top: 0; width: 100%; }
+    .no-imprimir { display: none !important; }
+    .boleto-qr { page-break-after: always; break-after: page; margin: 0 auto 1rem; }
+    .boleto-qr:last-child { page-break-after: auto; break-after: auto; }
+}
