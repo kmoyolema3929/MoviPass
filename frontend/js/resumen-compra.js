@@ -3,7 +3,11 @@ import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
 import { dinero, formatearFecha, formatearHora } from './validaciones.js';
 import { ponerOpciones } from './combos.js';
-import { LIMITES_COMPRA, pasajeroParaEnviar, revisarPasajero } from './reglasCompra.js';
+import {
+    LIMITES_COMPRA, pasajeroParaEnviar, puedeAutocompletar, resumenCobro, revisarPasajero
+} from './reglasCompra.js';
+import { revisarCedula } from './reglasCuenta.js';
+import { textoBus } from './reglasOperacion.js';
 import { mensajeErrorBase } from './erroresBase.js';
 
 const $ = (id) => document.getElementById(id);
@@ -11,14 +15,40 @@ const $ = (id) => document.getElementById(id);
 let borrador = null;
 const datos = new Map();
 
-function precioConDescuento(tipoCodigo) {
-    const tipo = borrador.tipos.find((t) => t.codigo === tipoCodigo);
-    const descuento = tipo ? Number(tipo.descuento) : 0;
-    return Math.round(borrador.viaje.precio * (100 - descuento)) / 100;
+/** Resumen del cobro con la tarifa de cada pasajero (igual que la base). */
+function resumenActual() {
+    return resumenCobro(
+        borrador.viaje.precio,
+        borrador.asientos.map((numero) => ({ numero_asiento: numero, tipo: datos.get(numero)?.tipo ?? 'normal' })),
+        borrador.tipos
+    );
 }
 
-function nombreTipo(tipoCodigo) {
-    return borrador.tipos.find((t) => t.codigo === tipoCodigo)?.nombre ?? tipoCodigo;
+/**
+ * Autocompleta nombres y apellidos de un acompañante con las compras de esta
+ * cuenta (pasajero_de_mis_compras). Nunca muestra datos de otras cuentas.
+ */
+async function autocompletar(numero, campos) {
+    const d = datos.get(numero);
+    const cedula = d.cedula;
+    if (cedula.length !== 10 || revisarCedula(cedula) || !puedeAutocompletar(d)) return;
+
+    const { data, error } = await supabase.rpc('pasajero_de_mis_compras', { p_cedula: cedula });
+
+    // Si mientras tanto cambió la cédula o el cliente escribió, no se toca nada.
+    if (error || !data || d.cedula !== cedula || !puedeAutocompletar(d)) {
+        if (error) console.warn('No se pudo autocompletar el pasajero:', error);
+        return;
+    }
+
+    d.nombres = data.nombres ?? '';
+    d.apellidos = data.apellidos ?? '';
+    d.autocompletado = true;
+    campos.nombres.value = d.nombres;
+    campos.apellidos.value = d.apellidos;
+    campos.nombres.classList.remove('is-invalid');
+    campos.apellidos.classList.remove('is-invalid');
+    campos.ayuda.textContent = 'Datos de tus compras anteriores. Revísalos o corrígelos.';
 }
 
 function renderizarViaje() {
@@ -26,7 +56,7 @@ function renderizarViaje() {
     $('rutaViaje').textContent = `${viaje.origen} → ${viaje.destino}`;
     $('fechaViaje').textContent = formatearFecha(viaje.fecha);
     $('horaViaje').textContent = formatearHora(viaje.hora);
-    $('busViaje').textContent = `${viaje.busPlaca} · ${viaje.tipoBus}`;
+    $('busViaje').textContent = `${textoBus({ numero_interno: viaje.busNumero, placa: viaje.busPlaca })} · ${viaje.tipoBus}`;
     $('cooperativaViaje').textContent = viaje.cooperativaNombre;
 }
 
@@ -71,8 +101,8 @@ function dibujarPasajeros() {
     const contenedor = $('listaPasajeros');
     contenedor.replaceChildren();
 
-    borrador.asientos.forEach((numero) => {
-        const d = { cedula: '', nombres: '', apellidos: '', tipo: 'normal' };
+    borrador.asientos.forEach((numero, indice) => {
+        const d = { cedula: '', nombres: '', apellidos: '', tipo: 'normal', autocompletado: false };
         datos.set(numero, d);
 
         const tarjeta = document.createElement('fieldset');
@@ -81,7 +111,7 @@ function dibujarPasajeros() {
 
         const leyenda = document.createElement('legend');
         leyenda.className = 'h6 float-none w-auto px-2 mb-2';
-        leyenda.textContent = `Asiento ${numero}`;
+        leyenda.textContent = `Pasajero ${indice + 1} · Asiento ${numero}`;
 
         const fila = document.createElement('div');
         fila.className = 'row g-2';
@@ -90,6 +120,13 @@ function dibujarPasajeros() {
             maxLength: 10,
             inputMode: 'numeric',
         });
+        const ayuda = document.createElement('div');
+        ayuda.className = 'form-text';
+        ayuda.id = `cedula-${numero}-ayuda`;
+        ayuda.setAttribute('aria-live', 'polite');
+        cedula.col.appendChild(ayuda);
+        cedula.input.setAttribute('aria-describedby', `cedula-${numero}-error ${ayuda.id}`);
+
         const nombres = crearCampo('Nombres *', `nombres-${numero}`);
         const apellidos = crearCampo('Apellidos *', `apellidos-${numero}`);
 
@@ -103,7 +140,7 @@ function dibujarPasajeros() {
         selectTipo.className = 'form-select form-select-sm';
         selectTipo.id = `tipo-${numero}`;
 
-        // "Adulto" (normal) por defecto: no lleva opción "Selecciona...".
+        // "Adulto" (normal, tarifa completa) por defecto: no lleva opción "Selecciona...".
         ponerOpciones(selectTipo, borrador.tipos, {
             valor: (tipo) => tipo.codigo,
             texto: (tipo) => (Number(tipo.descuento) > 0
@@ -119,15 +156,19 @@ function dibujarPasajeros() {
             cedula.input.value = cedula.input.value.replace(/\D/g, '');
             d.cedula = cedula.input.value;
             cedula.input.classList.remove('is-invalid');
+            ayuda.textContent = '';
+            autocompletar(numero, { nombres: nombres.input, apellidos: apellidos.input, ayuda });
         });
 
         nombres.input.addEventListener('input', () => {
             d.nombres = nombres.input.value;
+            d.autocompletado = false; // lo que escribe el cliente no se pisa
             nombres.input.classList.remove('is-invalid');
         });
 
         apellidos.input.addEventListener('input', () => {
             d.apellidos = apellidos.input.value;
+            d.autocompletado = false;
             apellidos.input.classList.remove('is-invalid');
         });
 
@@ -146,29 +187,29 @@ function actualizarResumen() {
     const lista = $('listaAsientosResumen');
     lista.replaceChildren();
 
-    let total = 0;
+    const resumen = resumenActual();
 
-    borrador.asientos.forEach((numero) => {
-        const d = datos.get(numero) ?? { tipo: 'normal' };
-        const precio = precioConDescuento(d.tipo);
-        total += precio;
-
+    resumen.lineas.forEach((l) => {
         const li = document.createElement('li');
         li.className = 'list-group-item d-flex justify-content-between px-0';
 
         const detalle = document.createElement('span');
-        detalle.textContent = `Asiento ${numero} · ${nombreTipo(d.tipo)}`;
+        detalle.textContent = `Asiento ${l.numero_asiento} · ${l.tarifa}${l.descuento > 0 ? ` (−${l.descuento}%)` : ''}`;
 
         const valor = document.createElement('span');
-        valor.textContent = dinero(precio);
+        valor.textContent = dinero(l.precio);
 
         li.append(detalle, valor);
         lista.appendChild(li);
     });
 
+    $('tarifaNormal').textContent = dinero(borrador.viaje.precio);
+    $('subtotalPagar').textContent = dinero(resumen.subtotal);
+    $('descuentoPagar').textContent = resumen.descuento > 0 ? `−${dinero(resumen.descuento)}` : dinero(0);
+
     const totalEl = $('totalPagar');
-    totalEl.textContent = dinero(total);
-    totalEl.dataset.total = String(total);
+    totalEl.textContent = dinero(resumen.total);
+    totalEl.dataset.total = String(resumen.total);
 }
 
 function validarPasajeros() {
