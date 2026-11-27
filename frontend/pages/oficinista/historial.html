@@ -39,12 +39,13 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label for="filtroDesde" class="form-label">Desde</label>
+                        <label for="filtroDesde" class="form-label">Desde (opcional)</label>
                         <input type="date" id="filtroDesde" class="form-control">
                     </div>
                     <div class="col-md-3">
-                        <label for="filtroHasta" class="form-label">Hasta</label>
-                        <input type="date" id="filtroHasta" class="form-control">
+                        <label for="filtroHasta" class="form-label">Hasta (opcional)</label>
+                        <input type="date" id="filtroHasta" class="form-control" aria-describedby="errorFiltroHasta">
+                        <div class="invalid-feedback" id="errorFiltroHasta"></div>
                     </div>
                     <div class="col-md-3 d-grid">
                         <button id="btnBuscar" type="button" class="btn btn-primary">Buscar</button>

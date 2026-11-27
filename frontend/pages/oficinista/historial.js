@@ -49,7 +49,23 @@ function fechaHora(iso) {
     return `${dos(f.getDate())}/${dos(f.getMonth() + 1)}/${f.getFullYear()} ${dos(f.getHours())}:${dos(f.getMinutes())}`;
 }
 
+/** "Desde" no puede ser posterior a "Hasta" (mensaje junto al campo). */
+function rangoValido() {
+    const desde = $('filtroDesde').value;
+    const hasta = $('filtroHasta').value;
+    const problema = desde && hasta && desde > hasta ? '"Hasta" no puede ser anterior a "Desde".' : '';
+
+    $('filtroHasta').classList.toggle('is-invalid', Boolean(problema));
+    $('errorFiltroHasta').textContent = problema;
+    return !problema;
+}
+
 async function buscar() {
+    if (!rangoValido()) {
+        $('filtroHasta').focus();
+        return;
+    }
+
     filaInformativa('Cargando...');
 
     let consulta = supabase
@@ -64,11 +80,11 @@ async function buscar() {
     const hasta = $('filtroHasta').value;
 
     if (estado) consulta = consulta.eq('estado', estado);
-    // Se convierte la hora local a UTC para que el filtro respete el día elegido
-    if (desde) consulta = consulta.gte('creado_en', new Date(`${desde}T00:00:00`).toISOString());
+    // Los días son de Ecuador (UTC-5, sin horario de verano), sin importar la zona del equipo.
+    if (desde) consulta = consulta.gte('creado_en', new Date(`${desde}T00:00:00-05:00`).toISOString());
     if (hasta) {
-        const fin = new Date(`${hasta}T00:00:00`);
-        fin.setDate(fin.getDate() + 1);
+        const fin = new Date(`${hasta}T00:00:00-05:00`);
+        fin.setUTCDate(fin.getUTCDate() + 1);
         consulta = consulta.lt('creado_en', fin.toISOString());
     }
 
