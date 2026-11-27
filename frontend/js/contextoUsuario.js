@@ -6,6 +6,7 @@
 
 import { supabase } from './supabaseClient.js';
 import { obtenerSesion, obtenerRol } from './auth.js';
+import { mensajeErrorBase } from './erroresBase.js';
 
 /**
  * @returns {Promise<{rol: string, cooperativas: {id: string, nombre: string}[]}>}
@@ -59,6 +60,7 @@ export function textoError(error) {
         case '42501':
             return 'Tu cuenta no tiene permiso para realizar esta operación.';
         default:
-            return 'No se pudo completar la operación. ' + msg;
+            // Sin conexión, migración pendiente o mensaje propio de la base; nunca el texto técnico.
+            return mensajeErrorBase(error);
     }
 }
