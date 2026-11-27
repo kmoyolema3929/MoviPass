@@ -32,14 +32,17 @@
                         <div class="card-body">
                             <h2 class="h5 mb-3">Iniciar sesión</h2>
                             <p class="text-muted small">Ingresa con una cuenta de administrador de MoviPass.</p>
-                            <form id="formAcceso">
+                            <form id="formAcceso" novalidate>
+                                <p class="small text-muted">* Campo obligatorio</p>
                                 <div class="mb-3">
-                                    <label for="correo" class="form-label">Correo</label>
-                                    <input id="correo" type="email" class="form-control" autocomplete="username" required>
+                                    <label for="correo" class="form-label">Correo *</label>
+                                    <input id="correo" type="email" class="form-control" data-campo="correo" maxlength="254" autocomplete="username" required>
+                                    <div class="invalid-feedback" data-error="correo"></div>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="clave" class="form-label">Contraseña</label>
-                                    <input id="clave" type="password" class="form-control" autocomplete="current-password" required>
+                                    <label for="clave" class="form-label">Contraseña *</label>
+                                    <input id="clave" type="password" class="form-control" data-campo="clave" maxlength="72" autocomplete="current-password" required>
+                                    <div class="invalid-feedback" data-error="clave"></div>
                                 </div>
                                 <button id="btnIngresar" type="submit" class="btn btn-primary w-100">Ingresar</button>
                             </form>
@@ -92,24 +95,29 @@
                     </div>
                     <div class="modal-body">
                         <input id="cooperativaId" type="hidden">
-                        <p class="small text-muted">Todos los campos son obligatorios.</p>
+                        <p class="small text-muted">* Campo obligatorio</p>
                         <div class="row g-3">
                             <div class="col-12 col-md-6">
-                                <label for="nombre" class="form-label">Nombre</label>
-                                <input id="nombre" name="nombre" type="text" class="form-control" maxlength="120" autocomplete="organization" required>
+                                <label for="nombre" class="form-label">Nombre *</label>
+                                <input id="nombre" name="nombre" type="text" class="form-control" data-campo="nombre" maxlength="120" autocomplete="organization" required>
+                                <div class="invalid-feedback" data-error="nombre"></div>
                             </div>
                             <div class="col-12 col-md-6">
-                                <label for="ruc" class="form-label">RUC</label>
-                                <input id="ruc" name="ruc" type="text" class="form-control" inputmode="numeric" pattern="[0-9]{13}" maxlength="13" aria-describedby="ayudaRuc" required>
-                                <div id="ayudaRuc" class="form-text">Ingresa 13 dígitos, sin espacios.</div>
+                                <label for="ruc" class="form-label">RUC *</label>
+                                <input id="ruc" name="ruc" type="text" class="form-control" data-campo="ruc" inputmode="numeric" maxlength="13" aria-describedby="ayudaRuc" required>
+                                <div class="invalid-feedback" data-error="ruc"></div>
+                                <div id="ayudaRuc" class="form-text">13 dígitos, sin espacios. Termina en 001 o más.</div>
                             </div>
                             <div class="col-12 col-md-6">
-                                <label for="direccion" class="form-label">Dirección</label>
-                                <input id="direccion" name="direccion" type="text" class="form-control" maxlength="200" autocomplete="street-address" required>
+                                <label for="direccion" class="form-label">Dirección *</label>
+                                <input id="direccion" name="direccion" type="text" class="form-control" data-campo="direccion" maxlength="200" autocomplete="street-address" required>
+                                <div class="invalid-feedback" data-error="direccion"></div>
                             </div>
                             <div class="col-12 col-md-6">
-                                <label for="telefono" class="form-label">Teléfono</label>
-                                <input id="telefono" name="telefono" type="tel" class="form-control" maxlength="20" autocomplete="tel" required>
+                                <label for="telefono" class="form-label">Teléfono *</label>
+                                <input id="telefono" name="telefono" type="tel" class="form-control" data-campo="telefono" inputmode="tel" maxlength="15" autocomplete="tel" aria-describedby="ayudaTelefono" required>
+                                <div class="invalid-feedback" data-error="telefono"></div>
+                                <div id="ayudaTelefono" class="form-text">Celular 09xxxxxxxx o fijo con código de provincia, por ejemplo 022345678.</div>
                             </div>
                         </div>
                     </div>
