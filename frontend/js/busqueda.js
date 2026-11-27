@@ -38,6 +38,15 @@ function mostrarErrores(errores) {
     erroresBusqueda.focus();
 }
 
+/** Mensaje junto al campo (elemento "<id>-error"); '' lo limpia. */
+function marcarCampo(id, mensaje) {
+    const campo = document.getElementById(id);
+    const aviso = document.getElementById(`${id}-error`);
+
+    campo?.classList?.toggle('is-invalid', Boolean(mensaje));
+    if (aviso) aviso.textContent = mensaje;
+}
+
 // Origen y destino comparten una sola consulta; si falla, el reintento vuelve a consultar.
 let pedidoCiudades = null;
 
@@ -74,6 +83,11 @@ if (formulario) {
 
     cargarCiudades();
 
+    // Al corregir un campo se quita su mensaje.
+    [origen, destino, fecha].forEach((campo) => {
+        campo?.addEventListener?.('change', () => marcarCampo(campo.id, ''));
+    });
+
     formulario.addEventListener('submit', (evento) => {
         evento.preventDefault();
 
@@ -85,25 +99,32 @@ if (formulario) {
         if (fecha) fecha.min = hoy;
 
         const errores = [];
+        const porCampo = { origen: '', destino: '', fecha: '' };
+        const agregar = (campo, mensaje) => {
+            errores.push(mensaje);
+            porCampo[campo] ||= mensaje;
+        };
 
         if (!origen?.value) {
-            errores.push('Selecciona una ciudad de origen.');
+            agregar('origen', 'Selecciona una ciudad de origen.');
         }
 
         if (!destino?.value) {
-            errores.push('Selecciona una ciudad de destino.');
+            agregar('destino', 'Selecciona una ciudad de destino.');
         }
 
         if (!fecha?.value) {
-            errores.push('Selecciona una fecha de viaje válida.');
+            agregar('fecha', 'Selecciona una fecha de viaje válida.');
         } else if (fecha.value < hoy) {
-            errores.push('La fecha de viaje no puede ser anterior a hoy.');
+            agregar('fecha', 'La fecha de viaje no puede ser anterior a hoy.');
         }
 
         if (origen?.value && destino?.value && origen.value === destino.value) {
-            errores.push('El origen y el destino deben ser diferentes.');
+            agregar('destino', 'El origen y el destino deben ser diferentes.');
         }
 
+        // Mensaje junto a cada campo; el recuadro de arriba los resume.
+        Object.entries(porCampo).forEach(([campo, mensaje]) => marcarCampo(campo, mensaje));
         mostrarErrores(errores);
 
         if (errores.length > 0) {

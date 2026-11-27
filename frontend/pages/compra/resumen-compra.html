@@ -38,9 +38,10 @@
         </div>
 
         <form id="formCompra" novalidate>
+          <p class="small text-muted">* Campo obligatorio</p>
           <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white fw-semibold">Método de pago</div>
-            <div class="card-body">
+            <div class="card-header bg-white fw-semibold" id="tituloMetodoPago">Método de pago *</div>
+            <div class="card-body" role="radiogroup" aria-labelledby="tituloMetodoPago" aria-describedby="errorMetodoPago">
               <div class="form-check mb-2">
                 <input class="form-check-input" type="radio" name="metodoPago" id="metodoTransferencia" value="transferencia" required>
                 <label class="form-check-label" for="metodoTransferencia">
@@ -53,6 +54,7 @@
                   Depósito bancario
                 </label>
               </div>
+              <div class="invalid-feedback d-block" id="errorMetodoPago" aria-live="polite"></div>
               <p class="small text-muted mt-3 mb-0">
                 Al continuar, tus asientos quedan reservados por 3 horas. Debes subir el comprobante antes de ese plazo.
               </p>
