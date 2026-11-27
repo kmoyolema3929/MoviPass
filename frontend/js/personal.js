@@ -1,16 +1,21 @@
 // frontend/js/personal.js
 // Personal de la cooperativa (cambio 6, parte 4): oficinistas y usuarios bus.
 // Reglas sin DOM ni Supabase (se prueban con node --test). Son las mismas del
-// registro de clientes; la base las repite (exigir_datos_de_persona).
+// registro de clientes (reglasCuenta.js, cambio 3); la base las repite
+// (validar_perfil, exigir_datos_de_persona y asignar_cuenta_existente).
 
-import { cedulaValida } from './validaciones.js';
+import {
+    LIMITES_CUENTA, limpiarTexto, mensajeErrorAuth, revisarCedula, revisarCorreo, revisarFechaNacimiento,
+    revisarNombre, revisarPassword, revisarTelefono
+} from './reglasCuenta.js';
+import { mensajeErrorBase } from './erroresBase.js';
 
 /** Funciones de un usuario bus (valor guardado -> texto). */
 export const FUNCIONES_BUS = { chofer: 'Chofer', controlador: 'Controlador', dueno: 'Dueño' };
 
-export const LIMITES_PERSONAL = { ubicacion: 120, minimoUbicacion: 3, password: 8 };
+export const LIMITES_PERSONAL = { ubicacion: 120, minimoUbicacion: 3, password: LIMITES_CUENTA.passwordMinimo };
 
-export const limpiar = texto => String(texto ?? '').trim().replace(/\s+/g, ' ');
+export const limpiar = limpiarTexto;
 
 /** "chofer" -> "Chofer"; vacío si no tiene. */
 export function textoFuncion(funcion) {
@@ -30,66 +35,71 @@ export function revisarUbicacion(texto) {
         : '';
 }
 
+function sinVacios(errores) {
+    return Object.fromEntries(Object.entries(errores).filter(([, problema]) => problema));
+}
+
 /**
  * Revisa los datos de una persona. Devuelve { campo: problema } (vacío si está bien).
- * datos: { cedula, nombres, apellidos, email, telefono, password, funcion }
- * opciones.cuenta: también correo y contraseña (al crear la cuenta).
+ * datos: { cedula, nombres, apellidos, email, telefono, password, funcion, fecha_nacimiento }
+ * opciones.cuenta: también correo, contraseña y fecha de nacimiento (al crear la cuenta).
  * opciones.funcion: exige la función de usuario bus.
+ * opciones.hoy: fecha de referencia para la edad (AAAA-MM-DD; por defecto hoy en Ecuador).
  */
-export function revisarPersona(datos, { cuenta = true, funcion = false } = {}) {
-    const errores = {};
-    const cedula = limpiar(datos.cedula);
-    const telefono = limpiar(datos.telefono);
-
-    if (!cedulaValida(cedula)) errores.cedula = 'La cédula ingresada no es válida.';
-    if (limpiar(datos.nombres).length < 2) errores.nombres = 'Escribe los nombres (mínimo 2 caracteres).';
-    if (limpiar(datos.apellidos).length < 2) errores.apellidos = 'Escribe los apellidos (mínimo 2 caracteres).';
-    if (telefono && !/^09\d{8}$/.test(telefono)) errores.telefono = 'El teléfono debe tener 10 dígitos y empezar con 09.';
+export function revisarPersona(datos, { cuenta = true, funcion = false, hoy } = {}) {
+    const errores = {
+        cedula: revisarCedula(datos.cedula),
+        nombres: revisarNombre(datos.nombres, 'nombres'),
+        apellidos: revisarNombre(datos.apellidos, 'apellidos'),
+        telefono: revisarTelefono(datos.telefono)
+    };
 
     if (cuenta) {
-        const email = limpiar(datos.email).toLowerCase();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errores.email = 'Escribe un correo electrónico válido.';
-        if (String(datos.password ?? '').length < LIMITES_PERSONAL.password) {
-            errores.password = `La contraseña debe tener al menos ${LIMITES_PERSONAL.password} caracteres.`;
-        }
+        errores.email = revisarCorreo(datos.email);
+        errores.password = revisarPassword(datos.password);
+        errores.fecha_nacimiento = hoy === undefined
+            ? revisarFechaNacimiento(datos.fecha_nacimiento)
+            : revisarFechaNacimiento(datos.fecha_nacimiento, hoy);
     }
 
     if (funcion && !FUNCIONES_BUS[datos.funcion]) {
         errores.funcion = 'Elige la función: chofer, controlador o dueño.';
     }
 
-    return errores;
+    return sinVacios(errores);
+}
+
+/** "Asignar una cuenta existente": cédula y correo de una cuenta de cliente. */
+export function revisarCuentaExistente(datos, { funcion = false, ubicacion = false } = {}) {
+    const errores = {
+        cedula: revisarCedula(datos.cedula),
+        email: revisarCorreo(datos.email)
+    };
+
+    if (funcion && !FUNCIONES_BUS[datos.funcion]) errores.funcion = 'Elige la función: chofer, controlador o dueño.';
+    if (ubicacion) errores.ubicacion = revisarUbicacion(datos.ubicacion);
+
+    return sinVacios(errores);
 }
 
 /** Mensaje claro para los errores al crear la cuenta (Supabase Auth). */
 export function mensajeErrorCuenta(error) {
     const texto = String(error?.message ?? '');
 
-    if (/already registered|already exists/i.test(texto)) return 'Este correo electrónico ya se encuentra registrado.';
-    if (/Database error/i.test(texto)) return 'No se pudo crear la cuenta. Revisa que la cédula no esté registrada.';
-    if (/rate limit/i.test(texto)) return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
-    if (/password/i.test(texto)) return 'La contraseña no cumple los requisitos de seguridad. Usa al menos 8 caracteres.';
+    if (/Database error/i.test(texto)) {
+        return 'No se pudo crear la cuenta. Revisa que la cédula no esté registrada y que la persona sea mayor de 18 años.';
+    }
+    if (error?.code && /^[0-9A-Z]{5}$/.test(error.code)) return mensajeErrorPersonal(error);
 
-    return mensajeErrorPersonal(error);
+    return mensajeErrorAuth(error);
 }
 
 /** Mensaje claro para los errores de las funciones de personal de la base. */
 export function mensajeErrorPersonal(error) {
-    const texto = String(error?.message ?? '');
-
-    if (error?.code === 'PGRST202' || /could not find the function|schema cache/i.test(texto)) {
+    if (error?.code === 'PGRST202' || /could not find the function|schema cache/i.test(String(error?.message ?? ''))) {
         return 'Falta aplicar una migración de base de datos para gestionar al personal. ' +
             'Pide al administrador que ejecute las migraciones pendientes.';
     }
 
-    switch (error?.code) {
-        case '23503': // asignado a un bus
-        case '23505': // cédula repetida
-        case '23514': // datos no válidos (mensaje de la base en español)
-            return texto;
-        case '42501':
-            return texto || 'Tu cuenta no tiene permiso para realizar esta operación.';
-        default:
-            return texto ? `No se pudo completar la operación: ${texto}` : 'No se pudo completar la operación. Revisa tu conexión.';
-    }
+    return mensajeErrorBase(error);
 }

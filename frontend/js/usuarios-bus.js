@@ -5,8 +5,11 @@
 import { supabase } from './supabaseClient.js';
 import { mostrarAlerta } from './alertas.js';
 import { exigirRoles } from './guardas.js';
-import { crearCuentaPersonal, obtenerMiCooperativa } from './cuentasPersonal.js';
-import { limpiar, mensajeErrorCuenta, mensajeErrorPersonal, revisarPersona, textoFuncion } from './personal.js';
+import { asignarCuentaExistente, crearCuentaPersonal, obtenerMiCooperativa } from './cuentasPersonal.js';
+import {
+    limpiar, mensajeErrorCuenta, mensajeErrorPersonal, revisarCuentaExistente, revisarPersona, textoFuncion
+} from './personal.js';
+import { fechaMaximaNacimiento } from './reglasCuenta.js';
 
 const form = document.getElementById('formUsuarioBus');
 const btn = document.getElementById('btnGuardar');
@@ -15,7 +18,7 @@ const tbody = document.getElementById('tablaUsuariosBus');
 const perfilId = document.getElementById('perfilId');
 const COLUMNAS = 6;
 
-const campos = ['cedula', 'nombres', 'apellidos', 'funcion', 'telefono', 'email', 'password']
+const campos = ['cedula', 'nombres', 'apellidos', 'funcion', 'telefono', 'fecha_nacimiento', 'email', 'password']
     .reduce((todos, id) => ({ ...todos, [id]: document.getElementById(id) }), {});
 
 let miCooperativaId = null;
@@ -23,6 +26,22 @@ let usuarios = [];
 let ocupado = false;
 
 const editando = () => Boolean(perfilId.value);
+
+// "Crear una cuenta nueva" o "Asignar una cuenta existente" (cambio 3); al editar no aplica.
+const esExistente = () => !editando() && document.getElementById('modoExistente').checked;
+
+function aplicarModo() {
+    form.querySelectorAll('.oculto-existente').forEach(bloque => bloque.classList.toggle('d-none', esExistente()));
+    document.getElementById('notaExistente').classList.toggle('d-none', !esExistente());
+    document.getElementById('grupoModo').classList.toggle('d-none', editando());
+}
+
+form.querySelectorAll('input[name="modo"]').forEach(radio => radio.addEventListener('change', () => {
+    aplicarModo();
+    mostrarErrores({});
+    btn.textContent = textoBoton();
+}));
+campos.fecha_nacimiento.max = fechaMaximaNacimiento();
 
 function filaMensaje(texto, clase = 'text-muted') {
     const tr = document.createElement('tr');
@@ -57,12 +76,14 @@ function mostrarErrores(errores) {
 }
 
 function textoBoton() {
-    return editando() ? 'Guardar cambios' : 'Crear Usuario bus';
+    if (editando()) return 'Guardar cambios';
+    return esExistente() ? 'Asignar Usuario bus' : 'Crear Usuario bus';
 }
 
 function modoCreacion() {
     form.reset();
     perfilId.value = '';
+    aplicarModo();
     mostrarErrores({});
     document.getElementById('tituloFormulario').textContent = 'Registrar Nuevo Usuario bus';
     document.getElementById('camposCuenta').classList.remove('d-none');
@@ -81,6 +102,7 @@ function editar(usuario) {
     campos.apellidos.value = usuario.apellidos ?? '';
     campos.telefono.value = usuario.telefono ?? '';
     campos.funcion.value = usuario.funcion_bus ?? '';
+    aplicarModo();
 
     document.getElementById('tituloFormulario').textContent = `Editar a ${usuario.nombres} ${usuario.apellidos}`;
     document.getElementById('camposCuenta').classList.add('d-none');
@@ -201,7 +223,7 @@ async function cambiarEstado(usuario) {
 async function quitarUsuario(usuario) {
     if (ocupado || usuario.buses_asignados) return;
 
-    if (!confirm(`¿Estás seguro de quitar a ${usuario.nombres} ${usuario.apellidos} de tu cooperativa?`)) return;
+    if (!confirm(`¿Estás seguro de quitar a ${usuario.nombres} ${usuario.apellidos} de tu cooperativa? Su cuenta volverá a ser de cliente.`)) return;
 
     ocupado = true;
 
@@ -211,7 +233,7 @@ async function quitarUsuario(usuario) {
         if (error) throw error;
 
         if (perfilId.value === usuario.id) modoCreacion();
-        mostrarAlerta('Usuario bus removido de la cooperativa.', 'success');
+        mostrarAlerta('Usuario bus quitado de la cooperativa. Su cuenta vuelve a ser de cliente.', 'success');
         await cargarUsuarios();
     } catch (error) {
         console.error(error);
@@ -233,17 +255,29 @@ form.addEventListener('submit', async (evento) => {
     }
 
     const datos = Object.fromEntries(Object.entries(campos).map(([clave, campo]) => [clave, campo.value]));
-    const errores = revisarPersona(datos, { cuenta: !editando(), funcion: true });
+    const existente = esExistente();
+    const errores = existente
+        ? revisarCuentaExistente(datos, { funcion: true })
+        : revisarPersona(datos, { cuenta: !editando(), funcion: true });
 
     mostrarErrores(errores);
     if (Object.keys(errores).length) return;
 
     ocupado = true;
     btn.disabled = true;
-    btn.textContent = editando() ? 'Guardando...' : 'Creando usuario...';
+    btn.textContent = editando() ? 'Guardando...' : existente ? 'Asignando...' : 'Creando usuario...';
 
     try {
-        if (editando()) {
+        if (existente) {
+            await asignarCuentaExistente({
+                cedula: datos.cedula,
+                email: datos.email,
+                cooperativaId: miCooperativaId,
+                rol: 'bus',
+                funcion: datos.funcion
+            });
+            mostrarAlerta('¡Cuenta asignada como usuario bus! Ya puedes asignarla a un bus en Gestión de buses.', 'success');
+        } else if (editando()) {
             const { error } = await supabase.rpc('actualizar_usuario_bus', {
                 p_perfil_id: perfilId.value,
                 p_cedula: limpiar(datos.cedula),
@@ -262,14 +296,15 @@ form.addEventListener('submit', async (evento) => {
                 rol: 'bus',
                 funcion: datos.funcion
             });
-            mostrarAlerta('¡Usuario bus creado con éxito! Ya puedes asignarlo a un bus en Gestión de buses.', 'success');
+            mostrarAlerta('¡Usuario bus creado! Le llegará un código a su correo: lo escribirá la primera vez que entre. ' +
+                'Ya puedes asignarlo a un bus en Gestión de buses.', 'success');
         }
 
         modoCreacion();
         await cargarUsuarios();
     } catch (error) {
         console.error(error);
-        mostrarAlerta(editando() ? mensajeErrorPersonal(error) : mensajeErrorCuenta(error), 'danger');
+        mostrarAlerta(editando() || existente ? mensajeErrorPersonal(error) : mensajeErrorCuenta(error), 'danger');
     } finally {
         ocupado = false;
         btn.disabled = false;
