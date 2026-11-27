@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar contraseña - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary-color);">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="../index.html">MoviPass</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Mostrar menú">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="../index.html">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="login.html">Iniciar sesión</a></li>
+                    <li class="nav-item"><a class="nav-link" href="registro.html">Registrarse</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container flex-grow-1 d-flex align-items-center justify-content-center py-5">
+        <div class="row w-100 justify-content-center">
+            <div class="col-12 col-md-8 col-lg-5 col-xl-4">
+                <div class="card shadow border-0 rounded-4">
+                    <div class="card-body p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <h1 class="h2 fw-bold" style="color: var(--primary-color);">Recuperar contraseña</h1>
+                            <p class="text-muted mb-0">Te enviaremos un enlace para crear una contraseña nueva.</p>
+                        </div>
+
+                        <form id="formRecuperar" novalidate>
+                            <div id="alertContainer" class="mb-3" role="alert" aria-live="polite"></div>
+                            <p class="small text-muted">* Campo obligatorio</p>
+
+                            <div class="mb-4">
+                                <label for="correoInput" class="form-label fw-bold">Correo electrónico *</label>
+                                <input type="email" class="form-control form-control-lg" id="correoInput" data-campo="correo"
+                                       placeholder="ejemplo@correo.com" autocomplete="email" maxlength="254" autofocus required>
+                                <div class="invalid-feedback" data-error="correo"></div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" id="btnEnviar" class="btn btn-primary btn-lg"
+                                        style="background-color: var(--primary-color); border: none;">
+                                    Enviar enlace
+                                </button>
+                            </div>
+                        </form>
+
+                        <div id="enviado" class="alert alert-success d-none mb-0" role="status">
+                            Si el correo está registrado en MoviPass, te llegará un enlace para crear una contraseña nueva.
+                            Revisa también la carpeta de correo no deseado.
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-center mt-3 mb-0">
+                    <a href="login.html" class="text-muted small">&larr; Volver a iniciar sesión</a>
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-white text-center py-3 mt-auto" style="background-color: var(--secondary-color);">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="../js/recuperarContrasena.js"></script>
+</body>
+</html>

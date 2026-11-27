@@ -1,4 +1,4 @@
-import { obtenerSesion, obtenerRol, cerrarSesion } from './auth.js';
+import { obtenerSesion, obtenerRol, cerrarSesion, RUTA_PERFIL } from './auth.js';
 
 const zonaSesion = document.getElementById('navSesion');
 const ctaHero = document.getElementById('ctaHero');
@@ -39,6 +39,7 @@ function pintarSesionActiva(user, rol) {
 
     zonaSesion.replaceChildren(saludo);
     if (panel) zonaSesion.append(crearBoton('Mi panel', 'btn btn-light text-primary fw-bold', panel));
+    if (rol) zonaSesion.append(crearBoton('Mi perfil', 'btn btn-outline-light', RUTA_PERFIL));
     zonaSesion.append(btnSalir);
 
     // En el hero ya no tiene sentido "Crear cuenta / Iniciar sesión"

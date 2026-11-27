@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva contraseña - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary-color);">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="../index.html">MoviPass</a>
+        </div>
+    </nav>
+
+    <main class="container flex-grow-1 d-flex align-items-center justify-content-center py-5">
+        <div class="row w-100 justify-content-center">
+            <div class="col-12 col-md-8 col-lg-5 col-xl-4">
+                <div class="card shadow border-0 rounded-4">
+                    <div class="card-body p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <h1 class="h2 fw-bold" style="color: var(--primary-color);">Nueva contraseña</h1>
+                            <p class="text-muted mb-0">Escribe la contraseña que usarás desde ahora.</p>
+                        </div>
+
+                        <div id="alertContainer" class="mb-3" role="alert" aria-live="polite"></div>
+
+                        <p id="cargando" class="text-center text-muted">Comprobando el enlace...</p>
+
+                        <div id="enlaceInvalido" class="alert alert-warning d-none" role="alert">
+                            El enlace no es válido o ya venció.
+                            <a href="recuperar-contrasena.html" class="alert-link">Pide un enlace nuevo</a>.
+                        </div>
+
+                        <form id="formNueva" class="d-none" novalidate>
+                            <p class="small text-muted">* Campo obligatorio</p>
+
+                            <div class="mb-3">
+                                <label for="passwordInput" class="form-label fw-bold">Contraseña nueva *</label>
+                                <input type="password" class="form-control" id="passwordInput" data-campo="password"
+                                       maxlength="72" autocomplete="new-password" required aria-describedby="reglaPassword">
+                                <div class="invalid-feedback" data-error="password"></div>
+                                <div class="form-text" id="reglaPassword">Mínimo 8 caracteres, con minúscula, mayúscula, número y símbolo (por ejemplo ! @ # $).</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="confirmacionInput" class="form-label fw-bold">Confirmar contraseña *</label>
+                                <input type="password" class="form-control" id="confirmacionInput" data-campo="confirmacion"
+                                       maxlength="72" autocomplete="new-password" required>
+                                <div class="invalid-feedback" data-error="confirmacion"></div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" id="btnGuardar" class="btn btn-primary btn-lg"
+                                        style="background-color: var(--primary-color); border: none;">
+                                    Guardar contraseña
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-white text-center py-3 mt-auto" style="background-color: var(--secondary-color);">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="../js/nuevaContrasena.js"></script>
+</body>
+</html>
