@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recaudación en ruta - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a id="marca" class="navbar-brand fw-bold" href="index.html">MoviPass - Oficinista</a>
+            <div class="d-flex gap-2">
+                <a id="btnVolver" href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al panel</a>
+                <button id="btnCerrarSesion" type="button" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-4 my-md-5 flex-grow-1">
+        <h1 class="h3 mb-1">Recaudación en ruta</h1>
+        <p class="text-muted">
+            Lo que cobró cada usuario bus en efectivo a los pasajeros que subieron en el camino (venta EN_RUTA),
+            por viaje en curso o finalizado. Abre un viaje para ver el detalle y descargarlo en PDF.
+        </p>
+
+        <form id="formFiltro" class="card shadow-sm mb-3" novalidate>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div id="filaCooperativa" class="col-md-4 d-none">
+                        <label for="cooperativa" class="form-label">Cooperativa *</label>
+                        <select id="cooperativa" class="form-select" data-campo="cooperativa" aria-describedby="cooperativa-error" required></select>
+                        <div id="cooperativa-error" class="invalid-feedback" data-error="cooperativa"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label for="desde" class="form-label">Desde *</label>
+                        <input id="desde" type="date" class="form-control" data-campo="desde" aria-describedby="desde-error" required>
+                        <div id="desde-error" class="invalid-feedback" data-error="desde"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label for="hasta" class="form-label">Hasta *</label>
+                        <input id="hasta" type="date" class="form-control" data-campo="hasta" aria-describedby="hasta-error" required>
+                        <div id="hasta-error" class="invalid-feedback" data-error="hasta"></div>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-primary">Consultar</button>
+                    </div>
+                </div>
+                <p class="small text-muted mb-0 mt-2">* Campo obligatorio. Hasta 92 días.</p>
+            </div>
+        </form>
+
+        <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Ruta</th>
+                                <th>Bus</th>
+                                <th>Usuario bus</th>
+                                <th>Estado</th>
+                                <th class="text-end">Pasajeros en ruta</th>
+                                <th class="text-end">Efectivo</th>
+                                <th class="text-center">Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaViajes">
+                            <tr><td colspan="9" class="text-center py-3 text-muted">Cargando...</td></tr>
+                        </tbody>
+                        <tfoot id="pieTabla"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="recaudacion-ruta.js"></script>
+</body>
+</html>

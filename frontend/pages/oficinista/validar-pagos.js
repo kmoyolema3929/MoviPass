@@ -5,19 +5,26 @@ import { mostrarAlerta } from '../../js/alertas.js';
 import { formatearFecha, formatearHora, dinero } from '../../js/validaciones.js'; // <-- Ruta corregida
 import { limpiarTexto } from '../../js/reglasCuenta.js';
 import { revisarMotivoRechazo } from '../../js/reglasCompra.js';
+import { esComprobanteNuevo, textoBus, textoPendientes } from '../../js/reglasOperacion.js';
+import { crearBoletoImpreso, datosBoleto } from '../../js/boletoImpreso.js';
 
 const COLUMNAS = `
     id, metodo_pago, estado, total, comprobante_ruta, comprobante_subido_en, creado_en, vence_en,
-    viajes ( fecha, frecuencias ( origen, destino, hora ), buses ( placa ) ),
-    boletos ( numero_asiento, pasajero_nombres, pasajero_apellidos, pasajero_cedula, tipo_pasajero, precio, estado )
+    viajes ( fecha, frecuencias ( origen, destino, hora ), buses ( placa, numero_interno ) ),
+    boletos ( numero_asiento, pasajero_nombres, pasajero_apellidos, pasajero_cedula, tipo_pasajero, precio, estado, codigo )
 `;
+const TITULO = document.title;
 
 const $ = (id) => document.getElementById(id);
 const modalComprobante = bootstrap.Modal.getOrCreateInstance($('modalComprobante'));
 const modalRechazo = bootstrap.Modal.getOrCreateInstance($('modalRechazo'));
 
 let idsCooperativas = [];
+let cooperativas = [];
+let tipos = [];
 let compraARechazar = null;
+let idsEnBandeja = new Set(); // compras pendientes de validación que ya se ven
+let recargaPendiente = null;
 
 const METODOS = { deposito: 'Depósito', transferencia: 'Transferencia', efectivo: 'Efectivo' };
 
@@ -78,7 +85,10 @@ async function cargar() {
 function dibujarPendientes(compras) {
     const lista = $('listaPendientes');
     lista.replaceChildren();
+    idsEnBandeja = new Set(compras.map((c) => c.id));
     $('contadorPendientes').textContent = compras.length;
+    $('textoPendientes').textContent = textoPendientes(compras.length);
+    document.title = compras.length ? `(${compras.length}) ${TITULO}` : TITULO;
 
     if (compras.length === 0) {
         lista.appendChild(elemento('p', 'text-muted', 'No hay pagos pendientes de validación.'));
@@ -94,7 +104,7 @@ function dibujarPendientes(compras) {
         izquierda.append(
             elemento('div', 'h6 mb-1', descripcionViaje(compra)),
             elemento('div', 'small text-muted',
-                `Bus ${compra.viajes?.buses?.placa ?? '-'} · Comprobante subido ${haceCuanto(compra.comprobante_subido_en)}`)
+                `Bus ${textoBus(compra.viajes?.buses)} · Comprobante subido ${haceCuanto(compra.comprobante_subido_en)}`)
         );
         const derecha = elemento('div', 'text-end');
         derecha.append(
@@ -177,6 +187,8 @@ async function verComprobante(compra, boton) {
 
         const contenido = $('contenidoComprobante');
         contenido.replaceChildren();
+        $('montoComprobante').textContent = dinero(compra.total);
+        $('viajeComprobante').textContent = descripcionViaje(compra);
 
         if (compra.comprobante_ruta.toLowerCase().endsWith('.pdf')) {
             const marco = document.createElement('iframe');
@@ -222,7 +234,8 @@ async function aprobar(compra, boton) {
         const { error } = await supabase.rpc('aprobar_pago', { p_compra_id: compra.id });
         if (error) throw error;
 
-        mostrarAlerta('Pago aprobado. Los boletos fueron emitidos.', 'success');
+        mostrarAlerta('Pago aprobado. Los boletos con código QR fueron emitidos.', 'success');
+        await mostrarEmitidos(compra);
     } catch (error) {
         console.error('Error al aprobar el pago:', error);
         mostrarAlerta(textoError(error), 'danger');
@@ -277,6 +290,77 @@ $('btnConfirmarRechazo').addEventListener('click', async () => {
     }
 });
 
+/* ---------- Boletos emitidos al aprobar ---------- */
+
+async function mostrarEmitidos(compra) {
+    const seccion = $('emitidos');
+    const contenedor = $('boletosEmitidos');
+
+    try {
+        const { data, error } = await supabase.from('compras').select(COLUMNAS).eq('id', compra.id).maybeSingle();
+        if (error) throw error;
+        if (!data) return;
+
+        const v = data.viajes;
+        const datosViaje = {
+            origen: v?.frecuencias?.origen,
+            destino: v?.frecuencias?.destino,
+            fecha: v?.fecha,
+            hora: v?.frecuencias?.hora,
+            bus: textoBus(v?.buses),
+            cooperativa: cooperativas[0]?.nombre ?? ''
+        };
+
+        contenedor.replaceChildren(...(data.boletos ?? [])
+            .filter((b) => b.estado === 'emitido' && b.codigo)
+            .sort((a, b) => a.numero_asiento - b.numero_asiento)
+            .map((b) => crearBoletoImpreso(datosBoleto(b, datosViaje, { tipos, origen: 'APP' }))));
+
+        seccion.classList.remove('d-none');
+        seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+        console.error('No se pudieron mostrar los boletos emitidos:', error);
+    }
+}
+
+$('btnImprimirEmitidos').addEventListener('click', () => window.print());
+$('btnCerrarEmitidos').addEventListener('click', () => {
+    $('emitidos').classList.add('d-none');
+    $('boletosEmitidos').replaceChildren();
+});
+
+/* ---------- Aviso en tiempo real (Supabase Realtime) ---------- */
+
+function recargarEnUnMomento() {
+    clearTimeout(recargaPendiente);
+    recargaPendiente = setTimeout(recargar, 400); // varios cambios seguidos = una sola recarga
+}
+
+function marcarEnVivo(conectado) {
+    const marca = $('estadoEnVivo');
+    marca.className = `badge ${conectado ? 'text-bg-success' : 'text-bg-secondary'}`;
+    marca.textContent = conectado ? '● En vivo' : 'Sin aviso en vivo (se actualiza cada minuto)';
+}
+
+function escucharComprobantes() {
+    idsCooperativas.forEach((id) => {
+        supabase
+            .channel(`comprobantes-${id}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'compras', filter: `cooperativa_id=eq.${id}` },
+                (cambio) => {
+                    if (esComprobanteNuevo(cambio, idsEnBandeja)) {
+                        mostrarAlerta('Llegó un comprobante nuevo para revisar.', 'info');
+                        const contador = $('contadorPendientes');
+                        contador.classList.add('aviso-nuevo');
+                        setTimeout(() => contador.classList.remove('aviso-nuevo'), 3000);
+                    }
+                    recargarEnUnMomento();
+                })
+            .subscribe((estado) => marcarEnVivo(estado === 'SUBSCRIBED'));
+    });
+}
+
 /* ---------- Inicio ---------- */
 
 async function recargar() {
@@ -296,7 +380,7 @@ async function iniciar() {
     if (!rol) return;
 
     try {
-        const { cooperativas } = await obtenerContextoGestion();
+        ({ cooperativas } = await obtenerContextoGestion());
         idsCooperativas = cooperativas.map((c) => c.id);
 
         if (idsCooperativas.length === 0) {
@@ -306,8 +390,12 @@ async function iniciar() {
             return;
         }
 
+        const { data: tarifas } = await supabase.from('tipos_pasajero').select('codigo, nombre, descuento');
+        tipos = tarifas ?? [];
+
         await recargar();
-        setInterval(recargar, 60000); // se actualiza sola cada minuto
+        escucharComprobantes();
+        setInterval(recargar, 60000); // respaldo si se corta el aviso en vivo
     } catch (error) {
         console.error('Error al iniciar:', error);
         mostrarAlerta(textoError(error), 'danger');
