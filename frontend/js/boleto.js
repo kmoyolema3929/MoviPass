@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient.js';
 import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
 import { dinero, formatearFecha, formatearHora } from './validaciones.js';
+import { mensajeErrorBase } from './erroresBase.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -278,7 +279,7 @@ async function iniciar() {
         renderizarBoletos();
     } catch (error) {
         console.error('No se pudo cargar el boleto:', error);
-        mostrarAlerta(error.message || 'No se pudo cargar el boleto.', 'danger');
+        mostrarAlerta(mensajeErrorBase(error, 'cargar el boleto'), 'danger');
         $('contenidoCompra').classList.add('d-none');
     }
 }

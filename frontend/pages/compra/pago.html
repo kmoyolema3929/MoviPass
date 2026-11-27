@@ -46,13 +46,14 @@
             </p>
 
             <form id="formPago" class="needs-validation" novalidate>
+              <p class="small text-muted">* Campo obligatorio</p>
               <div class="mb-4">
-                <label for="comprobante" class="form-label fw-bold">Selecciona tu comprobante</label>
+                <label for="comprobante" class="form-label fw-bold">Comprobante de pago *</label>
                 <input class="form-control" type="file" id="comprobante"
-                       accept="image/jpeg,image/png,image/webp,application/pdf" required>
-                <div class="invalid-feedback">
-                  Por favor, selecciona un archivo válido (imagen o PDF).
-                </div>
+                       accept="image/jpeg,image/png,image/webp,application/pdf" required
+                       aria-describedby="errorComprobante ayudaComprobante">
+                <div class="invalid-feedback" id="errorComprobante"></div>
+                <div class="form-text" id="ayudaComprobante">JPG, PNG, WebP o PDF. Máximo 5 MB.</div>
               </div>
 
               <div class="d-grid gap-2">
