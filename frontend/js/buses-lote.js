@@ -30,7 +30,7 @@ const PLANTILLA_MODAL = `
                 <div class="modal-body">
                     <div id="errorLote" class="alert alert-danger d-none" role="alert"></div>
 
-                    <p class="text-muted small">Los campos marcados con * son obligatorios. Estos datos son los mismos para todo el lote:</p>
+                    <p class="text-muted small">* Campo obligatorio. Estos datos son los mismos para todo el lote:</p>
 
                     <div class="row g-3 mb-3">
                         <div class="col-12 col-md-6 col-lg-3">
