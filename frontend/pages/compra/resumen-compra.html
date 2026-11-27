@@ -65,7 +65,8 @@
             <div class="card-header bg-white fw-semibold">Datos de los pasajeros</div>
             <div class="card-body">
               <div id="listaPasajeros"></div>
-              <p class="small text-muted mb-0">Si un niño no tiene cédula, usa la de su representante.</p>
+              <p class="small text-muted mb-1">Si un niño no tiene cédula, usa la de su representante.</p>
+              <p class="small text-muted mb-0">Al escribir la cédula de alguien que ya viajó en tus compras, sus nombres se completan solos.</p>
             </div>
           </div>
         </form>
@@ -76,7 +77,15 @@
           <div class="card-header bg-white fw-semibold">Asientos seleccionados</div>
           <div class="card-body">
             <ul class="list-group list-group-flush mb-3" id="listaAsientosResumen"></ul>
-            <div class="d-flex justify-content-between fs-5 mt-3 border-top pt-3">
+            <div class="d-flex justify-content-between border-top pt-3">
+              <span>Subtotal (tarifa normal <span id="tarifaNormal"></span> c/u)</span>
+              <span id="subtotalPagar">$0.00</span>
+            </div>
+            <div class="d-flex justify-content-between text-success">
+              <span>Descuentos</span>
+              <span id="descuentoPagar">$0.00</span>
+            </div>
+            <div class="d-flex justify-content-between fs-5 mt-2 border-top pt-2">
               <span>Total a pagar</span>
               <strong class="text-primary" id="totalPagar">$0.00</strong>
             </div>

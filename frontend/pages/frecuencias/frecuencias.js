@@ -110,8 +110,8 @@ async function cargarFrecuencias() {
                  cooperativas ( nombre ), grupos_bus ( nombre ),
                  paradas ( id, canton_id, nombre, hora_estimada, orden )`);
 
-    // Una cooperativa solo ve las suyas; el administrador ve todas.
-    if (rol === 'cooperativa') consulta = consulta.in('cooperativa_id', cooperativas.map(c => c.id));
+    // El gerente y el oficinista solo ven las de su cooperativa; el administrador ve todas.
+    if (rol !== 'administrador') consulta = consulta.in('cooperativa_id', cooperativas.map(c => c.id));
 
     const { data, error } = await consulta;
     if (error) throw error;
@@ -539,16 +539,19 @@ async function eliminar(f) {
 btnNueva.addEventListener('click', () => void abrirCrear());
 
 async function iniciar() {
-    rol = await exigirRoles(['administrador', 'cooperativa']);
+    // Cambio 4: el oficinista gestiona las frecuencias de su cooperativa igual que el gerente.
+    rol = await exigirRoles(['administrador', 'cooperativa', 'oficinista']);
     if (!rol) return;
 
     $('btnVolver').href = `../${rol}/index.html`;
+    $('marca').href = `../${rol}/index.html`;
+    if (rol === 'oficinista') $('marca').textContent = 'MoviPass - Oficinista';
 
     try {
         const contexto = await obtenerContextoGestion();
         cooperativas = contexto.cooperativas;
 
-        if (rol === 'cooperativa' && cooperativas.length === 0) {
+        if (rol !== 'administrador' && cooperativas.length === 0) {
             filaInformativa('Tu cuenta aún no está asignada a una cooperativa. Contacta al administrador.', 'text-danger');
             return;
         }

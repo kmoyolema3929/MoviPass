@@ -11,6 +11,7 @@ import { fechaHoyEcuador, llenarCombo, ponerOpciones, vaciarCombo } from '../../
 import { obtenerGruposBus } from '../../js/gruposBus.js';
 import { sumarDias } from '../../js/validaciones.js';
 import { armarTablaHojaRuta, busesQueFaltan, textoFlota } from '../../js/rotacion.js';
+import { avisoHojaRuta } from '../../js/reglasOperacion.js';
 
 const $ = id => document.getElementById(id);
 const DIAS_MAX = 14;
@@ -23,6 +24,7 @@ const selDias = $('numeroDias');
 const btnGenerar = $('btnGenerar');
 const contenedor = $('contenedorHoja');
 const avisoFlota = $('flota');
+const avisoAutomatico = $('avisoAutomatico');
 const resultado = $('resultado');
 
 let rol = null;
@@ -66,6 +68,7 @@ async function cargarGrupos() {
     resumen = null;
     contenedor.replaceChildren(el('p', 'text-center py-3 text-muted mb-0', 'Elige un grupo de bus.'));
     avisoFlota.classList.add('d-none');
+    avisoAutomatico.classList.add('d-none');
     btnGenerar.disabled = true;
 
     if (!selCooperativa.value) {
@@ -92,21 +95,37 @@ async function cargarHoja() {
 
     try {
         const fechas = fechasDelRango();
-        const [r1, r2] = await Promise.all([
+        const [r1, r2, r3] = await Promise.all([
             supabase.rpc('resumen_grupo_hoja_ruta', { p_grupo_id: grupoId }),
-            supabase.rpc('obtener_hoja_ruta', { p_grupo_id: grupoId, p_desde: fechas[0], p_hasta: fechas.at(-1) })
+            supabase.rpc('obtener_hoja_ruta', { p_grupo_id: grupoId, p_desde: fechas[0], p_hasta: fechas.at(-1) }),
+            supabase.from('grupos_bus').select('nombre, aviso_hoja_ruta, aviso_hoja_ruta_en').eq('id', grupoId).maybeSingle()
         ]);
 
         if (r1.error) throw r1.error;
         if (r2.error) throw r2.error;
+        if (r3.error) console.error('No se pudo leer el aviso de la hoja de ruta:', r3.error);
 
         resumen = r1.data;
+        mostrarAvisoAutomatico(r3.error ? null : r3.data);
         mostrarFlota();
         dibujarTabla(armarTablaHojaRuta({ frecuencias: resumen.frecuencias, turnos: r2.data ?? [], fechas }));
     } catch (error) {
         console.error('No se pudo cargar la hoja de ruta:', error);
         contenedor.replaceChildren(el('p', 'text-center py-3 text-danger mb-0', mensajeError(error)));
     }
+}
+
+// Cambio 4.4: lo que impidió la generación nocturna (se borra al generar bien).
+function mostrarAvisoAutomatico(grupo) {
+    const aviso = avisoHojaRuta(grupo);
+    avisoAutomatico.classList.toggle('d-none', !aviso);
+    if (!aviso) return;
+
+    avisoAutomatico.replaceChildren(
+        el('strong', '', 'La generación automática no se pudo hacer. '),
+        document.createTextNode(`${aviso.texto} ${aviso.cuando}`.trim()),
+        el('div', 'small mt-1', 'Corrige el problema (por ejemplo, agrega buses con plantilla al grupo) y genera la hoja de ruta: el aviso se quita solo.')
+    );
 }
 
 function mostrarFlota() {
@@ -297,8 +316,7 @@ async function iniciar() {
     $('btnVolver').href = `../${rol}/index.html`;
     $('marca').href = `../${rol}/index.html`;
     if (rol === 'oficinista') {
-        $('marca').textContent = 'MoviPass - Oficinista';
-        $('enlaceFrecuencias').classList.add('d-none'); // las frecuencias las gestiona el gerente
+        $('marca').textContent = 'MoviPass - Oficinista'; // cambio 4: también gestiona las frecuencias
     }
 
     inpDesde.value = hoy();

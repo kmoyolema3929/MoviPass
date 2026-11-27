@@ -44,6 +44,13 @@
             </div>
         </section>
 
+        <!-- Cambio 4.4: grupos cuya hoja de ruta automática no se pudo generar -->
+        <section id="avisosHojaRuta" class="alert alert-danger shadow-sm mb-4 d-none" role="alert" aria-live="polite">
+            <h2 class="h6 fw-bold mb-2">La hoja de ruta automática no se pudo generar</h2>
+            <ul id="listaAvisosHojaRuta" class="mb-2 ps-3"></ul>
+            <a href="../frecuencias/hoja-ruta.html" class="btn btn-sm btn-danger">Ir a la hoja de ruta</a>
+        </section>
+
         <!-- Preparación inicial: aquí el orden sí importa -->
         <h2 class="h5 mb-2">Prepara tu cooperativa</h2>
         <ol id="listaPasos" class="list-group list-group-flush shadow-sm rounded border mb-5 p-0"></ol>
@@ -66,9 +73,27 @@
             <div class="col-md-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-body d-flex flex-column">
+                        <h3 class="h6">Despacho del día</h3>
+                        <p class="text-muted small">Habilita los viajes de hoy a cada usuario bus. Tus oficinistas también pueden hacerlo y cada uno ve lo que hizo el otro.</p>
+                        <a href="../oficinista/despacho.html" class="btn btn-outline-primary btn-sm mt-auto align-self-start">Ir al despacho</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body d-flex flex-column">
                         <h3 class="h6">Reportes</h3>
                         <p class="text-muted small">Consulta ventas, ingresos, próximos viajes y pagos pendientes de validar.</p>
                         <a href="reportes.html" class="btn btn-outline-primary btn-sm mt-auto align-self-start">Ver reportes</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h3 class="h6">Recaudación en ruta</h3>
+                        <p class="text-muted small">Lo que cobró cada usuario bus a los pasajeros que subieron en el camino, por viaje y en PDF.</p>
+                        <a href="../oficinista/recaudacion-ruta.html" class="btn btn-outline-primary btn-sm mt-auto align-self-start">Ver recaudación</a>
                     </div>
                 </div>
             </div>
@@ -83,6 +108,7 @@
         import { exigirRoles } from '../../js/guardas.js';
         import { supabase } from '../../js/supabaseClient.js';
         import { obtenerBusesDeCooperativa } from '../../js/asientosService.js';
+        import { avisoHojaRuta, gruposConAviso } from '../../js/reglasOperacion.js';
 
         const $ = id => document.getElementById(id);
         const clave = t => String(t ?? '').trim().toLowerCase();
@@ -127,7 +153,7 @@
                 obtenerBusesDeCooperativa(coopId),
                 supabase.from('plantillas_bus').select('id', { count: 'exact', head: true }).eq('cooperativa_id', coopId),
                 supabase.from('frecuencias').select('id').eq('cooperativa_id', coopId),
-                supabase.from('grupos_bus').select('id', { count: 'exact', head: true }).eq('cooperativa_id', coopId)
+                supabase.from('grupos_bus').select('id, nombre, aviso_hoja_ruta, aviso_hoja_ruta_en').eq('cooperativa_id', coopId)
             ]);
 
             if (frecuencias.error) throw frecuencias.error;
@@ -149,7 +175,8 @@
             }
 
             return {
-                nGrupos: grupos.count ?? 0,
+                nGrupos: grupos.data.length,
+                avisos: gruposConAviso(grupos.data),
                 nPlantillas: plantillas.count ?? 0,
                 nBuses: buses.length,
                 // Placas de los buses que todavía no tienen plantilla de asientos
@@ -205,7 +232,7 @@
                 },
                 {
                     titulo: 'Genera la hoja de ruta',
-                    porque: 'Por cada grupo de bus, MoviPass reparte los buses entre las frecuencias, con un descanso y un retén, y los rota un lugar cada día. Se genera con hasta 14 días de anticipación, así que vuelve a generarla cada semana.',
+                    porque: 'Por cada grupo de bus, MoviPass reparte los buses entre las frecuencias, con un descanso y un retén, y los rota un lugar cada día. Cada noche se genera sola hasta 7 días adelante; si quieres vender más días, genéralos tú (hasta 14).',
                     detalle: d.hojasProximas > 0
                         ? `${plural(d.hojasProximas, 'hoja de ruta desde hoy', 'hojas de ruta desde hoy')}.`
                         : (d.nBuses === 0 || faltanAsientos || d.nFrecuencias === 0)
@@ -270,10 +297,25 @@
             $('heroTitulo').textContent = 'Tu cooperativa ya puede vender boletos';
             $('heroTexto').textContent =
                 `Tienes ${plural(d.hojasProximas, 'hoja de ruta programada', 'hojas de ruta programadas')} desde hoy. ` +
-                'Cuando se acerque el último día asignado, entra a la hoja de ruta y programa más días.';
+                'Cada noche MoviPass programa sola los días que falten hasta 7 días adelante.';
             boton.textContent = 'Generar más días';
             boton.href = '../frecuencias/hoja-ruta.html';
             boton.classList.remove('d-none');
+        }
+
+        // Cambio 4.4: avisos de la generación nocturna (se quitan al generar bien).
+        function pintarAvisosHojaRuta(grupos) {
+            const lista = $('listaAvisosHojaRuta');
+            lista.replaceChildren();
+
+            grupos.forEach(grupo => {
+                const aviso = avisoHojaRuta(grupo);
+                const item = el('li', 'mb-1');
+                item.append(el('strong', '', `${aviso.titulo}: `), document.createTextNode(`${aviso.texto} ${aviso.cuando}`.trim()));
+                lista.appendChild(item);
+            });
+
+            $('avisosHojaRuta').classList.toggle('d-none', grupos.length === 0);
         }
 
         function mostrarAviso(etiqueta, titulo, texto) {
@@ -298,6 +340,7 @@
 
                     pintarHero(pasos, actual, datos);
                     pintarPasos(pasos, actual);
+                    pintarAvisosHojaRuta(datos.avisos);
                 } catch (err) {
                     console.error('No se pudo calcular el avance:', err);
 

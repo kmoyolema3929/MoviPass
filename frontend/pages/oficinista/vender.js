@@ -3,15 +3,19 @@ import { exigirRoles } from '../../js/guardas.js';
 import { obtenerContextoGestion, textoError } from '../../js/contextoUsuario.js';
 import { mostrarAlerta } from '../../js/alertas.js';
 import {
-    cedulaValida, fechaLocalISO, sumarDias, formatearFecha, formatearHora, dinero
+    cedulaValida, sumarDias, formatearFecha, formatearHora, dinero
 } from '../../js/validaciones.js'; // <-- Ruta corregida
 import { obtenerCeldasEspecialesDeBus } from '../../js/asientosService.js';
 import { claseTipoAsiento, columnasDelMapa, crearAsientoBloqueado, crearCeldaEspecial } from '../../js/celdasEspeciales.js';
-import { ponerOpciones } from '../../js/combos.js';
-import { LIMITES_COMPRA, pasajeroParaEnviar, revisarPasajero } from '../../js/reglasCompra.js';
+import { fechaHoyEcuador, ponerOpciones } from '../../js/combos.js';
+import {
+    LIMITES_COMPRA, MAX_ASIENTOS_COMPRA, pasajeroParaEnviar, precioConDescuento, resumenCobro as calcularResumen, revisarPasajero
+} from '../../js/reglasCompra.js';
+import { horaEcuador, textoBus, viajesVendibles } from '../../js/reglasOperacion.js';
+import { crearBoletoImpreso, datosBoleto } from '../../js/boletoImpreso.js';
 
-const MAX_ASIENTOS = 10;
-const DIAS_VISIBLES = 15;
+const MAX_ASIENTOS = MAX_ASIENTOS_COMPRA;
+const DIAS_VISIBLES = 14; // igual que la hoja de ruta: hoy y hasta 14 días
 
 const $ = (id) => document.getElementById(id);
 
@@ -57,33 +61,28 @@ function celda(texto) {
 }
 
 async function cargarViajes() {
-    const hoy = fechaLocalISO();
+    const hoy = fechaHoyEcuador();
 
     const { data, error } = await supabase
         .from('viajes')
         .select(`
-            id, fecha, precio, bus_id,
+            id, fecha, precio, bus_id, estado_operativo,
             frecuencias!inner ( origen, destino, hora, activa ),
-            buses!inner ( placa, tipo_bus, cooperativa_id ),
+            buses!inner ( placa, numero_interno, tipo_bus, cooperativa_id ),
             hojas_ruta ( estado )
         `)
         .in('buses.cooperativa_id', cooperativas.map((c) => c.id))
         .eq('frecuencias.activa', true)
         .gte('fecha', hoy)
         .lte('fecha', sumarDias(hoy, DIAS_VISIBLES))
+        // Solo viajes a la venta (columna calculada public.a_la_venta, hora de Ecuador).
+        .eq('a_la_venta', true)
         .order('fecha', { ascending: true });
 
     if (error) throw error;
 
-    const ahora = new Date();
-    const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
-
-    viajes = (data ?? [])
-        .filter((v) => !v.hojas_ruta || v.hojas_ruta.estado === 'Programado')
-        .filter((v) => v.fecha !== hoy || formatearHora(v.frecuencias.hora) > horaActual)
-        .sort((a, b) =>
-            a.fecha.localeCompare(b.fecha) ||
-            String(a.frecuencias.hora).localeCompare(String(b.frecuencias.hora)));
+    // Fecha y hora de Ecuador: no se venden viajes que ya salieron, en curso ni finalizados.
+    viajes = viajesVendibles(data ?? [], hoy, horaEcuador());
 
     dibujarViajes();
 }
@@ -99,7 +98,9 @@ function dibujarViajes() {
         (!fecha || v.fecha === fecha));
 
     if (filtrados.length === 0) {
-        filaInformativa('No hay viajes disponibles con esos filtros.');
+        filaInformativa(fecha === fechaHoyEcuador()
+            ? 'Ya no quedan viajes para hoy con esos filtros. Prueba con la fecha de mañana.'
+            : 'No hay viajes disponibles con esos filtros.');
         return;
     }
 
@@ -122,7 +123,7 @@ function dibujarViajes() {
             celda(formatearFecha(v.fecha)),
             celda(formatearHora(v.frecuencias.hora)),
             celda(`${v.frecuencias.origen} → ${v.frecuencias.destino}`),
-            celda(`${v.buses.placa} · ${v.buses.tipo_bus}`),
+            celda(`${textoBus(v.buses)} · ${v.buses.tipo_bus}`),
             celda(dinero(v.precio)),
             tdAccion
         );
@@ -136,7 +137,7 @@ function dibujarViajes() {
 $('btnLimpiar').addEventListener('click', () => {
     $('filtroOrigen').value = '';
     $('filtroDestino').value = '';
-    $('filtroFecha').value = '';
+    $('filtroFecha').value = fechaHoyEcuador(); // punto de venta: los viajes del día
     dibujarViajes();
 });
 
@@ -151,7 +152,7 @@ async function elegirViaje(v) {
 
     $('infoViaje').textContent =
         `${v.frecuencias.origen} → ${v.frecuencias.destino} · ${formatearFecha(v.fecha)} a las ` +
-        `${formatearHora(v.frecuencias.hora)} · Bus ${v.buses.placa} · Precio base ${dinero(v.precio)}`;
+        `${formatearHora(v.frecuencias.hora)} · Bus ${textoBus(v.buses)} · Tarifa normal ${dinero(v.precio)}`;
 
     paso1.classList.add('d-none');
     paso2.classList.remove('d-none');
@@ -462,10 +463,21 @@ async function buscarPasajero(numero) {
 
 /* ---------- Resumen del cobro ---------- */
 
-function precioConDescuento(tipoCodigo) {
-    const tipo = tipos.find((t) => t.codigo === tipoCodigo);
-    const descuento = tipo ? Number(tipo.descuento) : 0;
-    return Math.round(Number(viaje.precio) * (100 - descuento)) / 100;
+function resumenActual() {
+    return calcularResumen(
+        viaje.precio,
+        seleccionados.map((numero) => ({ numero_asiento: numero, tipo: datos.get(numero).tipo })),
+        tipos
+    );
+}
+
+function filaResumen(texto, valor, clase = '') {
+    const tr = document.createElement('tr');
+    if (clase) tr.className = clase;
+    const tdValor = celda(valor);
+    tdValor.className = 'text-end';
+    tr.append(celda(texto), tdValor);
+    return tr;
 }
 
 function actualizarResumen() {
@@ -480,27 +492,17 @@ function actualizarResumen() {
         return;
     }
 
-    let total = 0;
+    const resumen = resumenActual();
 
-    seleccionados.forEach((numero) => {
-        const d = datos.get(numero);
-        const precio = precioConDescuento(d.tipo);
-        total += precio;
-
-        const tipo = tipos.find((t) => t.codigo === d.tipo);
-        const tr = document.createElement('tr');
-        const tdPrecio = celda(dinero(precio));
-        tdPrecio.className = 'text-end';
-        tr.append(celda(`Asiento ${numero} · ${tipo ? tipo.nombre : d.tipo}`), tdPrecio);
-        resumenCobro.appendChild(tr);
+    resumen.lineas.forEach((l) => {
+        const detalle = l.descuento > 0 ? ` (−${l.descuento}%)` : '';
+        resumenCobro.appendChild(filaResumen(`Asiento ${l.numero_asiento} · ${l.tarifa}${detalle}`, dinero(l.precio)));
     });
 
-    const trTotal = document.createElement('tr');
-    trTotal.className = 'table-light fw-bold';
-    const tdTotal = celda(dinero(total));
-    tdTotal.className = 'text-end';
-    trTotal.append(celda('Total a cobrar'), tdTotal);
-    resumenCobro.appendChild(trTotal);
+    resumenCobro.appendChild(filaResumen(`Subtotal (tarifa normal ${dinero(precioConDescuento(viaje.precio))} c/u)`,
+        dinero(resumen.subtotal), 'border-top'));
+    resumenCobro.appendChild(filaResumen('Descuentos', resumen.descuento > 0 ? `−${dinero(resumen.descuento)}` : dinero(0)));
+    resumenCobro.appendChild(filaResumen('Total a cobrar en efectivo', dinero(resumen.total), 'table-light fw-bold'));
 }
 
 /* ---------- Confirmar la venta ---------- */
@@ -527,7 +529,7 @@ let vendiendo = false;
 btnConfirmar.addEventListener('click', async () => {
     if (vendiendo || seleccionados.length === 0 || !validarPasajeros()) return;
 
-    const total = seleccionados.reduce((suma, n) => suma + precioConDescuento(datos.get(n).tipo), 0);
+    const { total } = resumenActual();
     if (!confirm(`¿Cobrar ${dinero(total)} en efectivo y emitir ${seleccionados.length} boleto(s)?`)) return;
 
     const textoOriginal = btnConfirmar.textContent;
@@ -574,49 +576,20 @@ function mostrarResultado(venta) {
     const contenedor = $('boletos');
     contenedor.replaceChildren();
 
-    const tipoNombre = (codigo) => tipos.find((t) => t.codigo === codigo)?.nombre ?? codigo;
+    const datosViaje = {
+        origen: viaje.frecuencias.origen,
+        destino: viaje.frecuencias.destino,
+        fecha: viaje.fecha,
+        hora: viaje.frecuencias.hora,
+        bus: textoBus(viaje.buses),
+        cooperativa: cooperativas.find((c) => c.id === viaje.buses.cooperativa_id)?.nombre ?? ''
+    };
 
     venta.boletos.forEach((b) => {
-        const caja = document.createElement('div');
-        caja.className = 'boleto';
-
-        const fila1 = document.createElement('div');
-        fila1.className = 'd-flex justify-content-between align-items-start flex-wrap gap-2';
-
-        const info = document.createElement('div');
-        const ruta = document.createElement('div');
-        ruta.className = 'h5 mb-1';
-        ruta.textContent = `${viaje.frecuencias.origen} → ${viaje.frecuencias.destino}`;
-        const detalle = document.createElement('div');
-        detalle.className = 'text-muted';
-        detalle.textContent =
-            `${formatearFecha(viaje.fecha)} · ${formatearHora(viaje.frecuencias.hora)} · Bus ${viaje.buses.placa}`;
-        info.append(ruta, detalle);
-
-        const asiento = document.createElement('div');
-        asiento.className = 'text-end';
-        const etiqueta = document.createElement('div');
-        etiqueta.className = 'small text-muted';
-        etiqueta.textContent = 'Asiento';
-        const numero = document.createElement('div');
-        numero.className = 'display-6 fw-bold';
-        numero.textContent = b.numero_asiento;
-        asiento.append(etiqueta, numero);
-
-        fila1.append(info, asiento);
-
-        const pasajero = document.createElement('div');
-        pasajero.className = 'mt-2';
-        pasajero.textContent =
-            `${b.pasajero} · C.I. ${b.cedula} · ${tipoNombre(b.tipo)} · ${dinero(b.precio)}`;
-
-        const codigo = document.createElement('div');
-        codigo.className = 'codigo mt-2';
-        codigo.textContent = b.codigo;
-
-        caja.append(fila1, pasajero, codigo);
-        contenedor.appendChild(caja);
+        contenedor.appendChild(crearBoletoImpreso(datosBoleto(b, datosViaje, { tipos, origen: 'OFICINA' })));
     });
+
+    resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 $('btnImprimir').addEventListener('click', () => window.print());
@@ -647,7 +620,10 @@ async function iniciar() {
     const rol = await exigirRoles(['oficinista']);
     if (!rol) return;
 
-    $('filtroFecha').min = fechaLocalISO();
+    const hoy = fechaHoyEcuador();
+    $('filtroFecha').min = hoy;
+    $('filtroFecha').max = sumarDias(hoy, DIAS_VISIBLES);
+    $('filtroFecha').value = hoy; // punto de venta: los viajes del día
 
     try {
         const contexto = await obtenerContextoGestion();
@@ -660,11 +636,12 @@ async function iniciar() {
 
         const { data, error } = await supabase
             .from('tipos_pasajero')
-            .select('codigo, nombre, descuento')
+            .select('codigo, nombre, descuento, activo')
             .order('descuento', { ascending: true });
 
         if (error) throw error;
-        tipos = data ?? [];
+        // Solo las tarifas activas (la base rechaza las demás).
+        tipos = (data ?? []).filter((t) => t.activo !== false);
 
         await cargarViajes();
     } catch (error) {

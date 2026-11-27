@@ -47,6 +47,44 @@ function marcarCampo(id, mensaje) {
     if (aviso) aviso.textContent = mensaje;
 }
 
+/** "2026-11-17" -> "2026-11-18" (sin depender de la zona horaria del equipo). */
+function diaSiguiente(fechaISO) {
+    const [anio, mes, dia] = fechaISO.split('-').map(Number);
+    return new Date(Date.UTC(anio, mes - 1, dia + 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * Cambio 4: la búsqueda ya no trae viajes que salieron. Si para hoy no
+ * queda ninguno, se dice claramente y se ofrece buscar mañana.
+ */
+function mostrarSinViajesHoy() {
+    const estado = document.getElementById('estado-resultados');
+    const tarjetas = document.getElementById('tarjetas-viajes');
+    if (!estado || !tarjetas) return;
+
+    const manana = diaSiguiente(obtenerFechaHoy());
+    const [anio, mes, dia] = manana.split('-');
+
+    estado.textContent = 'Ya no quedan viajes para hoy en esta ruta.';
+
+    const columna = document.createElement('div');
+    columna.className = 'col-12';
+    const sugerencia = document.createElement('p');
+    sugerencia.className = 'mb-2';
+    sugerencia.textContent = 'Los viajes de hoy ya salieron. Puedes buscar la misma ruta para mañana.';
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = 'btn btn-outline-primary';
+    boton.textContent = `Buscar mañana (${dia}/${mes}/${anio})`;
+    boton.addEventListener('click', () => {
+        fecha.value = manana;
+        marcarCampo('fecha', '');
+        formulario.requestSubmit();
+    });
+    columna.append(sugerencia, boton);
+    tarjetas.replaceChildren(columna);
+}
+
 // Origen y destino comparten una sola consulta; si falla, el reintento vuelve a consultar.
 let pedidoCiudades = null;
 
@@ -169,6 +207,10 @@ if (formulario) {
                     detail: viajes,
                 })
             );
+
+            if (viajes.length === 0 && evento.detail.fecha === obtenerFechaHoy()) {
+                mostrarSinViajesHoy();
+            }
         } catch (error) {
             console.error('Error al consultar viajes en Supabase:', error);
             formulario.dispatchEvent(new CustomEvent('busqueda:error'));

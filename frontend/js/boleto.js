@@ -3,10 +3,15 @@ import { exigirRoles } from './guardas.js';
 import { mostrarAlerta } from './alertas.js';
 import { dinero, formatearFecha, formatearHora } from './validaciones.js';
 import { mensajeErrorBase } from './erroresBase.js';
+import { NOMBRES_TARIFA, crearBoletoImpreso, datosBoleto } from './boletoImpreso.js';
+import { textoBus } from './reglasOperacion.js';
 
+// Cambio 4, parte 4.2: boleto digital con QR (el código único del boleto),
+// descargable e imprimible; se actualiza solo cuando aprueban el pago.
 const $ = (id) => document.getElementById(id);
 
 let compra = null;
+let canal = null;
 
 function nombreEstado(estado) {
     return {
@@ -77,7 +82,32 @@ function renderizarResumen() {
     $('resumenCompra').replaceChildren(dl);
 }
 
+/** Datos del viaje para el boleto impreso. */
+function datosViaje() {
+    const viaje = compra.viaje;
+    const frecuencia = viaje?.frecuencia;
+    return {
+        origen: frecuencia?.origen,
+        destino: frecuencia?.destino,
+        fecha: viaje?.fecha,
+        hora: frecuencia?.hora,
+        bus: viaje?.bus ? textoBus(viaje.bus) : '',
+        cooperativa: viaje?.bus?.cooperativa?.nombre ?? '',
+    };
+}
+
+// Boletos que muestran el QR: emitido y abordado (el usuario bus ya lo validó).
+const CON_QR = ['emitido', 'abordado'];
+
 function crearBoleto(boleto) {
+    // Boleto emitido (o ya abordado, cambio 4.3): tarjeta con QR, descargable e imprimible.
+    if (CON_QR.includes(boleto.estado) && boleto.codigo) {
+        return crearBoletoImpreso(
+            datosBoleto(boleto, datosViaje(), { origen: compra.origen ?? 'APP' }),
+            { descargar: true }
+        );
+    }
+
     const tarjeta = document.createElement('div');
     tarjeta.className = 'card shadow-sm mb-3';
 
@@ -98,7 +128,7 @@ function crearBoleto(boleto) {
 
     const cedula = document.createElement('p');
     cedula.className = 'text-muted small mb-0';
-    cedula.textContent = `C.I. ${boleto.pasajero_cedula} · ${boleto.tipo_pasajero}`;
+    cedula.textContent = `C.I. ${boleto.pasajero_cedula} · ${NOMBRES_TARIFA[boleto.tipo_pasajero] ?? boleto.tipo_pasajero}`;
 
     info.append(asiento, pasajero, cedula);
 
@@ -109,60 +139,18 @@ function crearBoleto(boleto) {
     fila.append(info, precio);
     cuerpo.appendChild(fila);
 
-    if (boleto.estado === 'emitido' && boleto.codigo) {
-        const codigo = document.createElement('p');
-        codigo.className = 'fw-bold text-center mt-3 mb-2';
-        codigo.textContent = `Código: ${boleto.codigo}`;
-
-        const qr = document.createElement('div');
-        qr.className = 'd-flex justify-content-center';
-        qr.id = `qr-${boleto.numero_asiento}`;
-
-        const acciones = document.createElement('div');
-        acciones.className = 'd-grid mt-3';
-
-        const btnDescargar = document.createElement('button');
-        btnDescargar.type = 'button';
-        btnDescargar.className = 'btn btn-outline-primary btn-sm';
-        btnDescargar.textContent = 'Descargar código QR';
-        btnDescargar.addEventListener('click', () => descargarQR(qr, boleto.codigo));
-
-        acciones.appendChild(btnDescargar);
-        cuerpo.append(codigo, qr, acciones);
-
-        // Se genera después de insertar el QR en el documento.
-        setTimeout(() => {
-            new QRCode(qr, {
-                text: boleto.codigo,
-                width: 180,
-                height: 180,
-                colorDark: '#000000',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.H,
-            });
-        }, 0);
+    const espera = document.createElement('p');
+    if (boleto.estado === 'anulado') {
+        espera.className = 'alert alert-secondary small mt-3 mb-0';
+        espera.textContent = 'Este boleto fue anulado y el asiento quedó libre.';
     } else {
-        const espera = document.createElement('p');
         espera.className = 'alert alert-warning small mt-3 mb-0';
         espera.textContent = 'Tu asiento está reservado. El código QR se genera cuando un oficinista apruebe el pago.';
-        cuerpo.appendChild(espera);
     }
+    cuerpo.appendChild(espera);
 
     tarjeta.appendChild(cuerpo);
     return tarjeta;
-}
-
-function descargarQR(contenedor, codigo) {
-    const canvas = contenedor.querySelector('canvas');
-    const img = contenedor.querySelector('img');
-    const url = canvas ? canvas.toDataURL('image/png') : img?.src;
-
-    if (!url) return;
-
-    const enlace = document.createElement('a');
-    enlace.href = url;
-    enlace.download = `boleto_${codigo}.png`;
-    enlace.click();
 }
 
 function renderizarEstado() {
@@ -211,6 +199,10 @@ function renderizarBoletos() {
     const contenedor = $('listaBoletos');
     contenedor.replaceChildren();
 
+    const emitidos = (compra.boletos ?? []).filter((b) => CON_QR.includes(b.estado) && b.codigo).length;
+    $('btnImprimir').classList.toggle('d-none', emitidos === 0);
+    $('notaImprimir').classList.toggle('d-none', emitidos === 0);
+
     if (!compra.boletos || compra.boletos.length === 0) {
         const vacio = document.createElement('p');
         vacio.className = 'text-muted';
@@ -232,11 +224,11 @@ async function cargarCompra(compraId) {
     const { data, error } = await supabase
         .from('compras')
         .select(`
-            id, estado, metodo_pago, subtotal, total, creado_en, vence_en, motivo_rechazo,
+            id, estado, origen, metodo_pago, subtotal, total, creado_en, vence_en, motivo_rechazo,
             viaje:viajes (
                 fecha,
                 frecuencia:frecuencias ( origen, destino, hora ),
-                bus:buses ( placa, tipo_bus, cooperativa:cooperativas ( nombre ) )
+                bus:buses ( placa, numero_interno, tipo_bus, cooperativa:cooperativas ( nombre ) )
             ),
             boletos ( numero_asiento, pasajero_cedula, pasajero_nombres, pasajero_apellidos,
                       tipo_pasajero, precio, estado, codigo )
@@ -250,6 +242,45 @@ async function cargarCompra(compraId) {
 
     return data;
 }
+
+function dibujarCompra() {
+    renderizarEstado();
+    renderizarResumen();
+    renderizarBoletos();
+}
+
+/**
+ * Mientras el pago está pendiente, la página se actualiza sola cuando el
+ * oficinista lo aprueba o rechaza (Realtime de compras, solo la compra propia).
+ */
+function escucharAprobacion(compraId) {
+    if (canal || !['pendiente_comprobante', 'pendiente_validacion'].includes(compra.estado)) return;
+
+    canal = supabase
+        .channel(`compra-${compraId}`)
+        .on('postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'compras', filter: `id=eq.${compraId}` },
+            async () => {
+                try {
+                    const antes = compra.estado;
+                    compra = await cargarCompra(compraId);
+                    dibujarCompra();
+
+                    if (antes !== compra.estado && compra.estado === 'aprobada') {
+                        mostrarAlerta('¡Tu pago fue aprobado! Ya tienes tus boletos con código QR.', 'success');
+                    }
+                    if (!['pendiente_comprobante', 'pendiente_validacion'].includes(compra.estado)) {
+                        supabase.removeChannel(canal);
+                        canal = null;
+                    }
+                } catch (error) {
+                    console.error('No se pudo actualizar la compra:', error);
+                }
+            })
+        .subscribe();
+}
+
+$('btnImprimir').addEventListener('click', () => window.print());
 
 async function iniciar() {
     const rol = await exigirRoles(['cliente']);
@@ -277,6 +308,7 @@ async function iniciar() {
         renderizarEstado();
         renderizarResumen();
         renderizarBoletos();
+        escucharAprobacion(compraId);
     } catch (error) {
         console.error('No se pudo cargar el boleto:', error);
         mostrarAlerta(mensajeErrorBase(error, 'cargar el boleto'), 'danger');

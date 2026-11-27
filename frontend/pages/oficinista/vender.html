@@ -6,6 +6,7 @@
     <title>Vender boleto - MoviPass</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/boleto.css">
     <style>
         .asientos-grid { display: grid; gap: 8px; justify-content: center; margin: 0 auto 1rem; }
         .asientos-libres { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 1rem; }
@@ -27,15 +28,6 @@
         }
         .leyenda span { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 4px; vertical-align: middle; }
 
-        .boleto { border: 2px dashed #6c757d; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; page-break-inside: avoid; background: #fff; }
-        .boleto .codigo { font-family: monospace; font-size: 1.4rem; letter-spacing: 2px; font-weight: 700; }
-
-        @media print {
-            body * { visibility: hidden; }
-            #resultado, #resultado * { visibility: visible; }
-            #resultado { position: absolute; left: 0; top: 0; width: 100%; }
-            .no-imprimir { display: none !important; }
-        }
     </style>
 </head>
 <body class="bg-light d-flex flex-column min-vh-100">
@@ -51,7 +43,7 @@
 
     <main class="container my-4 my-md-5 flex-grow-1">
         <h1 class="h3 mb-1 no-imprimir">Vender boleto en ventanilla</h1>
-        <p class="text-muted no-imprimir">Pago en efectivo. Elige el viaje, los asientos y registra a cada pasajero.</p>
+        <p class="text-muted no-imprimir">Punto de venta en efectivo: elige un viaje del día (según la hoja de ruta), los asientos libres y registra a cada pasajero. El boleto con código QR se emite al instante.</p>
 
         <div id="alertContainer" class="no-imprimir" role="alert" aria-live="polite"></div>
 
@@ -100,7 +92,7 @@
                     </div>
                 </div>
             </div>
-            <p class="small text-muted mt-2">Se muestran los viajes de los próximos 15 días de tu cooperativa.</p>
+            <p class="small text-muted mt-2">Se muestran los viajes de hoy de tu cooperativa que aún no salen. Borra la fecha para ver también los de los próximos 14 días.</p>
         </section>
 
         <!-- PASO 2: asientos y pasajeros -->
@@ -157,7 +149,7 @@
         </section>
 
         <!-- PASO 3: boletos emitidos -->
-        <section id="resultado" class="d-none">
+        <section id="resultado" class="d-none zona-impresion">
             <div class="alert alert-success no-imprimir">
                 <strong>Venta registrada.</strong> Total cobrado en efectivo: <strong id="totalCobrado"></strong>
             </div>
@@ -176,6 +168,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script type="module" src="vender.js"></script>
 </body>
 </html>

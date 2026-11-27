@@ -43,7 +43,8 @@ export const PANEL_POR_ROL = {
   cooperativa: new URL('../pages/cooperativa/index.html', import.meta.url).href,
   oficinista: new URL('../pages/oficinista/index.html', import.meta.url).href,
   cliente: new URL('../pages/cliente/index.html', import.meta.url).href,
-  bus: new URL('../pages/bus/buses.html', import.meta.url).href
+  // Cambio 4: el usuario bus entra a su app (pages/bus/buses.html es del gerente).
+  bus: new URL('../pages/usuario-bus/index.html', import.meta.url).href
 };
 
 export const RUTA_PERFIL = new URL('../pages/perfil.html', import.meta.url).href;

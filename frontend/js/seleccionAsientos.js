@@ -6,8 +6,15 @@ import { leerViajeId, urlResumenCompra } from './rutasCompra.js';
 import { obtenerCeldasEspecialesDeBus } from './asientosService.js';
 import { claseTipoAsiento, columnasDelMapa, crearAsientoBloqueado, crearCeldaEspecial } from './celdasEspeciales.js';
 import { mensajeErrorBase } from './erroresBase.js';
+import { fechaHoyEcuador } from './combos.js';
+import { limpiarAlEscribir, mostrarErrores } from './formularios.js';
+import {
+    MAX_ASIENTOS_COMPRA, ajustarSeleccion, revisarCantidadAsientos, textoSeleccionAsientos
+} from './reglasCompra.js';
+import { horaEcuador, textoBus, viajesVendibles } from './reglasOperacion.js';
 
-const MAX_ASIENTOS = 10;
+// Cambio 4, parte 4.2: el cliente indica cuántos asientos necesita y los elige en el mapa.
+const MAX_ASIENTOS = MAX_ASIENTOS_COMPRA;
 const $ = (id) => document.getElementById(id);
 
 let viaje = null;
@@ -16,6 +23,8 @@ let especiales = new Map(); // baño por piso: se muestra bloqueado
 let tipos = [];
 let ocupados = new Set();
 let seleccionados = [];
+let cantidad = 1;      // número de asientos que indicó el cliente
+let cerrado = '';      // motivo por el que el viaje ya no se vende ('' si se vende)
 const botonesAsiento = new Map();
 
 function textoSuave(texto, clase = 'text-muted') {
@@ -29,10 +38,12 @@ async function cargarViaje(viajeId) {
     const { data, error } = await supabase
         .from('viajes')
         .select(`
-            id, fecha, precio, bus_id,
+            id, fecha, precio, bus_id, estado_operativo,
             frecuencia:frecuencias ( origen, destino, hora ),
+            hoja:hojas_ruta ( estado ),
             bus:buses (
                 placa,
+                numero_interno,
                 tipo_bus,
                 cooperativa:cooperativas ( nombre )
             )
@@ -56,26 +67,38 @@ async function cargarViaje(viajeId) {
         destino: data.frecuencia.destino,
         busId: data.bus_id,
         busPlaca: data.bus.placa,
+        busNumero: data.bus.numero_interno ?? '',
         tipoBus: data.bus.tipo_bus,
         cooperativaNombre: data.bus.cooperativa?.nombre ?? 'Cooperativa',
     };
+
+    // Fecha y hora de Ecuador: un viaje que ya salió, en curso o finalizado no se vende.
+    const vendible = viajesVendibles([{
+        fecha: data.fecha,
+        estado_operativo: data.estado_operativo,
+        hojas_ruta: data.hoja ?? null,
+        frecuencias: { hora: data.frecuencia.hora },
+    }], fechaHoyEcuador(), horaEcuador()).length > 0;
+
+    cerrado = vendible ? '' : 'Este viaje ya salió o ya no está a la venta. Busca otro horario.';
 
     $('rutaViaje').textContent = `${viaje.origen} → ${viaje.destino}`;
     $('detalleViaje').textContent =
         `${formatearFecha(viaje.fecha)} · ${formatearHora(viaje.hora)} · ${viaje.tipoBus}`;
     $('infoCooperativa').textContent =
-        `${viaje.cooperativaNombre} · Bus ${viaje.busPlaca}`;
+        `${viaje.cooperativaNombre} · Bus ${textoBus({ numero_interno: viaje.busNumero, placa: viaje.busPlaca })}`;
     $('precioUnitario').textContent = dinero(viaje.precio);
 }
 
 async function cargarTipos() {
     const { data, error } = await supabase
         .from('tipos_pasajero')
-        .select('codigo, nombre, descuento')
+        .select('codigo, nombre, descuento, activo')
         .order('descuento', { ascending: true });
 
     if (error) throw error;
-    tipos = data ?? [];
+    // Solo las tarifas activas (la base rechaza las demás).
+    tipos = (data ?? []).filter((t) => t.activo !== false);
 }
 
 async function cargarAsientos() {
@@ -113,6 +136,36 @@ async function actualizarOcupados() {
     if (seleccionados.length !== antes) {
         mostrarAlerta('Algún asiento que elegiste ya fue ocupado y se quitó de tu selección.', 'warning');
     }
+}
+
+/** Asientos que todavía se pueden comprar (ni bloqueados ni ocupados). */
+function asientosLibres() {
+    return asientos.filter((a) => a.tipo !== 'bloqueado' && !ocupados.has(Number(a.numero))).length;
+}
+
+/** Revisa el número de asientos; si está bien lo aplica a la selección. */
+function aplicarCantidad({ avisar = true } = {}) {
+    const form = $('formCantidad');
+    const campo = $('cantidadAsientos');
+    const problema = revisarCantidadAsientos(campo.value, asientosLibres());
+
+    if (!mostrarErrores(form, { cantidad: problema })) {
+        cantidad = 0;
+        actualizarResumen();
+        return false;
+    }
+
+    cantidad = Number(campo.value);
+    const { seleccion, quitados } = ajustarSeleccion(seleccionados, cantidad);
+    seleccionados = seleccion;
+
+    if (avisar && quitados.length > 0) {
+        mostrarAlerta(`Se quitó de tu selección: asiento ${quitados.join(', ')}.`, 'info');
+    }
+
+    pintarAsientos();
+    actualizarResumen();
+    return true;
 }
 
 function crearBotonAsiento(asiento) {
@@ -219,13 +272,21 @@ function pintarAsientos() {
 }
 
 function alternarAsiento(numero) {
-    if (ocupados.has(numero)) return;
+    if (ocupados.has(numero) || cerrado) return;
 
     if (seleccionados.includes(numero)) {
         seleccionados = seleccionados.filter((n) => n !== numero);
     } else {
-        if (seleccionados.length >= MAX_ASIENTOS) {
-            mostrarAlerta(`Puedes elegir como máximo ${MAX_ASIENTOS} asientos por compra.`, 'warning');
+        if (!cantidad) {
+            $('cantidadAsientos').focus();
+            aplicarCantidad();
+            return;
+        }
+        if (seleccionados.length >= Math.min(cantidad, MAX_ASIENTOS)) {
+            mostrarAlerta(
+                `Ya elegiste ${cantidad} asiento${cantidad === 1 ? '' : 's'}. Quita uno o sube el número de asientos.`,
+                'warning'
+            );
             return;
         }
 
@@ -243,8 +304,9 @@ function actualizarResumen() {
     $('sinSeleccion').classList.toggle('d-none', seleccionados.length > 0);
     $('cantidad').textContent = String(seleccionados.length);
     $('total').textContent = dinero(seleccionados.length * viaje.precio);
-    $('btnContinuar').disabled = seleccionados.length === 0;
+    $('btnContinuar').disabled = Boolean(cerrado) || !cantidad || seleccionados.length !== cantidad;
     $('btnLimpiar').disabled = seleccionados.length === 0;
+    $('estadoSeleccion').textContent = cerrado || textoSeleccionAsientos(cantidad, seleccionados.length);
 
     seleccionados.forEach((numero) => {
         const li = document.createElement('li');
@@ -254,7 +316,7 @@ function actualizarResumen() {
         asiento.textContent = `Asiento ${numero}`;
 
         const precio = document.createElement('span');
-        precio.textContent = dinero(viaje.precio);
+        precio.textContent = `Tarifa normal ${dinero(viaje.precio)}`;
 
         li.append(asiento, precio);
         lista.appendChild(li);
@@ -271,15 +333,28 @@ $('btnActualizarMapa').addEventListener('click', async () => {
     try {
         await actualizarOcupados();
         pintarAsientos();
-        actualizarResumen();
+        aplicarCantidad({ avisar: false });
     } catch (error) {
         console.error('No se pudo actualizar el mapa:', error);
         mostrarAlerta('No se pudo actualizar la disponibilidad de asientos.', 'danger');
     }
 });
 
+$('formCantidad').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    aplicarCantidad();
+});
+limpiarAlEscribir($('formCantidad'));
+// "change" (flechas, Enter o al salir del campo): mientras escribe "10" no se
+// recorta la selección al pasar por "1".
+$('cantidadAsientos').addEventListener('change', () => aplicarCantidad());
+
 $('btnContinuar').addEventListener('click', () => {
-    if (seleccionados.length === 0) return;
+    if (cerrado || !aplicarCantidad({ avisar: false })) return;
+    if (seleccionados.length !== cantidad) {
+        mostrarAlerta(textoSeleccionAsientos(cantidad, seleccionados.length), 'warning');
+        return;
+    }
 
     const borrador = {
         viaje: {
@@ -291,6 +366,7 @@ $('btnContinuar').addEventListener('click', () => {
             destino: viaje.destino,
             busId: viaje.busId,
             busPlaca: viaje.busPlaca,
+            busNumero: viaje.busNumero,
             tipoBus: viaje.tipoBus,
             cooperativaNombre: viaje.cooperativaNombre,
         },
@@ -322,7 +398,12 @@ async function iniciar() {
         await Promise.all([cargarAsientos(), cargarTipos()]);
         await actualizarOcupados();
         dibujarMapa();
-        actualizarResumen();
+
+        if (cerrado) {
+            mostrarAlerta(cerrado, 'warning');
+            $('cantidadAsientos').disabled = true;
+        }
+        aplicarCantidad({ avisar: false });
     } catch (error) {
         console.error('No se pudo cargar la selección de asientos:', error);
         $('mapaAsientos').replaceChildren(

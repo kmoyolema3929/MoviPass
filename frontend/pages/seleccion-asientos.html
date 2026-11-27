@@ -96,10 +96,29 @@
     <p class="h5 text-primary mb-1" id="rutaViaje"></p>
     <p class="text-secondary mb-1" id="detalleViaje"></p>
     <p class="text-muted small mb-4">
-      <span id="infoCooperativa"></span> · Precio por asiento: <span id="precioUnitario"></span>
+      <span id="infoCooperativa"></span> · Tarifa normal por asiento: <span id="precioUnitario"></span>
     </p>
 
     <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+    <form id="formCantidad" class="card shadow-sm mb-4" novalidate>
+      <div class="card-body">
+        <div class="row g-2 align-items-end">
+          <div class="col-sm-6 col-md-4">
+            <label for="cantidadAsientos" class="form-label fw-semibold">Número de asientos *</label>
+            <input type="number" id="cantidadAsientos" class="form-control" min="1" max="10" step="1" value="1"
+                   inputmode="numeric" required data-campo="cantidad" aria-describedby="cantidadAsientos-error cantidadAsientos-ayuda">
+            <div class="invalid-feedback" id="cantidadAsientos-error" data-error="cantidad"></div>
+          </div>
+          <div class="col-sm-6 col-md-8">
+            <p class="form-text mb-2" id="cantidadAsientos-ayuda">
+              ¿Cuántas personas viajan? Luego elige esa cantidad de asientos en el mapa (máximo 10 por compra).
+            </p>
+          </div>
+        </div>
+        <p class="small text-muted mb-0 mt-2">* Campo obligatorio</p>
+      </div>
+    </form>
 
     <div class="row g-4">
       <div class="col-12 col-lg-7">
@@ -116,7 +135,7 @@
               <span style="background:#e2e3e5; border:2px dashed #6c757d; margin-left:10px"></span>🚻 Baño
             </div>
             <div id="mapaAsientos" role="group" aria-label="Mapa de asientos del bus"></div>
-            <p class="small text-muted mb-0 text-center">Máximo 10 asientos por compra.</p>
+            <p id="estadoSeleccion" class="fw-semibold mb-0 text-center" aria-live="polite"></p>
           </div>
         </div>
       </div>
@@ -133,10 +152,10 @@
               <strong id="cantidad">0</strong>
             </div>
             <div class="d-flex justify-content-between fs-5">
-              <span>Total base</span>
+              <span>Total con tarifa normal</span>
               <strong class="text-primary" id="total">$0.00</strong>
             </div>
-            <p class="small text-muted mt-2 mb-0">Los descuentos por tipo de pasajero se aplican en el siguiente paso.</p>
+            <p class="small text-muted mt-2 mb-0">En el siguiente paso eliges la tarifa de cada pasajero (adulto, niño o tercera edad) y se aplican los descuentos.</p>
           </div>
           <div class="card-footer d-grid gap-2">
             <button type="button" class="btn btn-primary" id="btnContinuar" disabled>Continuar</button>

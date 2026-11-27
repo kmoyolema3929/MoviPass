@@ -48,45 +48,51 @@ export async function buscarViajes({ origen, destino, fecha }) {
         `)
         .eq('frecuencia.origen', origen)
         .eq('frecuencia.destino', destino)
-        .eq('fecha', fecha);
+        .eq('fecha', fecha)
+        // Cambio 4: solo viajes a la venta (no salieron según la hora de
+        // Ecuador, ni están en curso o finalizados). Columna calculada
+        // public.a_la_venta; la política de lectura aplica la misma regla.
+        .eq('a_la_venta', true);
 
     if (error) {
         throw error;
     }
 
-    return (data ?? []).map((viaje) => {
-        const frecuencia = viaje.frecuencia;
-        const bus = viaje.bus;
-        const cooperativa = bus?.cooperativa;
+    return (data ?? [])
+        .sort((a, b) => String(a.frecuencia?.hora ?? '').localeCompare(String(b.frecuencia?.hora ?? '')))
+        .map((viaje) => {
+            const frecuencia = viaje.frecuencia;
+            const bus = viaje.bus;
+            const cooperativa = bus?.cooperativa;
 
-        if (!frecuencia || !bus || !cooperativa) {
-            throw new Error(
-                'No se pudieron consultar los datos relacionados del viaje. Revisa los permisos de lectura de buses y cooperativas.'
-            );
-        }
+            if (!frecuencia || !bus || !cooperativa) {
+                throw new Error(
+                    'No se pudieron consultar los datos relacionados del viaje. Revisa los permisos de lectura de buses y cooperativas.'
+                );
+            }
 
-        const precio = Number(viaje.precio);
+            const precio = Number(viaje.precio);
 
-        if (
-            viaje.precio === null ||
-            viaje.precio === '' ||
-            !Number.isFinite(precio)
-        ) {
-            throw new Error('El viaje tiene un precio inválido.');
-        }
+            if (
+                viaje.precio === null ||
+                viaje.precio === '' ||
+                !Number.isFinite(precio)
+            ) {
+                throw new Error('El viaje tiene un precio inválido.');
+            }
 
-        return {
-            id: String(viaje.id),
-            origen: frecuencia.origen,
-            destino: frecuencia.destino,
-            fecha: viaje.fecha,
-            hora: frecuencia.hora,
-            salidaEn: `${viaje.fecha}T${frecuencia.hora}-05:00`,
-            precio,
-            busId: String(bus.id),
-            tipoBusNombre: bus.tipo_bus,
-            cooperativaId: String(cooperativa.id),
-            cooperativaNombre: cooperativa.nombre,
-        };
-    });
+            return {
+                id: String(viaje.id),
+                origen: frecuencia.origen,
+                destino: frecuencia.destino,
+                fecha: viaje.fecha,
+                hora: frecuencia.hora,
+                salidaEn: `${viaje.fecha}T${frecuencia.hora}-05:00`,
+                precio,
+                busId: String(bus.id),
+                tipoBusNombre: bus.tipo_bus,
+                cooperativaId: String(cooperativa.id),
+                cooperativaNombre: cooperativa.nombre,
+            };
+        });
 }

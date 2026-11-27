@@ -24,7 +24,9 @@ function iniciar(consulta = async () => []) {
         value: '', children: [], hidden: true,
         options: [{ text: '' }], selectedIndex: 0,
         appendChild(hijo) { this.children.push(hijo); },
+        append(...hijos) { this.children.push(...hijos); },
         replaceChildren(...hijos) { this.children = hijos; },
+        addEventListener() {},
         focus() {},
     });
     const boton = { disabled: false };
@@ -140,4 +142,22 @@ test('un fallo de red muestra el error y permite reintentar', async () => {
     app.enviar();
     await terminar();
     assert.equal(app.llamadas.length, 2);
+});
+
+test('sin viajes para hoy: lo dice y ofrece buscar mañana', async () => {
+    const app = iniciar(async () => []);
+    // Elementos de resultados (en la página los dibuja resultadosBusqueda.js).
+    const crear = () => ({ children: [], textContent: '', replaceChildren(...h) { this.children = h; } });
+    const estado = crear();
+    const tarjetas = crear();
+    app.campos['estado-resultados'] = estado;
+    app.campos['tarjetas-viajes'] = tarjetas;
+
+    app.valido(); // fecha = hoy
+    app.enviar();
+    await terminar();
+
+    assert.equal(estado.textContent, 'Ya no quedan viajes para hoy en esta ruta.');
+    const boton = tarjetas.children[0].children[1];
+    assert.match(boton.textContent, /^Buscar mañana \(\d{2}\/\d{2}\/\d{4}\)$/);
 });
