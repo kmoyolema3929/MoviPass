@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Publicidad - MoviPass</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .miniatura-banner { width: 150px; aspect-ratio: 3 / 1; object-fit: cover; border-radius: .25rem; }
+        .vista-previa-banner { width: 100%; aspect-ratio: 3 / 1; object-fit: cover; border-radius: .5rem; border: 1px solid #dee2e6; background: #f8f9fa; }
+        .campo-cupo { max-width: 6rem; }
+        .campo-vigencia { max-width: 11rem; }
+    </style>
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="../../index.html">MoviPass - Admin</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-outline-light btn-sm">&larr; Volver al panel</a>
+                <button id="btnCerrarSesion" type="button" class="btn btn-light btn-sm">Cerrar sesión</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-4 flex-grow-1">
+        <h1 class="h3 mb-1">Publicidad</h1>
+        <p class="text-muted">Cupo de frecuencias destacadas de cada cooperativa y banners del carrusel de la portada.</p>
+
+        <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tabDestacadas" data-bs-toggle="tab" data-bs-target="#panelDestacadas"
+                        type="button" role="tab" aria-controls="panelDestacadas" aria-selected="true">Frecuencias destacadas</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tabBanners" data-bs-toggle="tab" data-bs-target="#panelBanners"
+                        type="button" role="tab" aria-controls="panelBanners" aria-selected="false">Banners</button>
+            </li>
+        </ul>
+
+        <div class="tab-content bg-white border border-top-0 rounded-bottom shadow-sm p-3">
+            <!-- Pestaña 1: cupo y vigencia -->
+            <section class="tab-pane fade show active" id="panelDestacadas" role="tabpanel" aria-labelledby="tabDestacadas">
+                <p class="small text-muted">
+                    El <strong>cupo</strong> es cuántas frecuencias puede destacar el gerente. La <strong>vigencia</strong> es el último día
+                    del periodo pagado (vacía = sin fecha de fin). No se puede bajar el cupo por debajo de las ya marcadas.
+                </p>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Cooperativa</th>
+                                <th>Estado</th>
+                                <th>Cupo *</th>
+                                <th>Usadas</th>
+                                <th>Vigente hasta</th>
+                                <th>Situación</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaCupos">
+                            <tr><td colspan="7" class="text-center py-3 text-muted">Cargando cooperativas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Pestaña 2: banners -->
+            <section class="tab-pane fade" id="panelBanners" role="tabpanel" aria-labelledby="tabBanners">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <p class="small text-muted mb-0">
+                        Se muestran en la portada los banners activos cuya fecha de hoy está entre su inicio y su fin, en el orden de la tabla.
+                    </p>
+                    <button id="btnNuevoBanner" type="button" class="btn btn-primary" disabled>+ Nuevo banner</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Orden</th>
+                                <th>Imagen</th>
+                                <th>Título</th>
+                                <th>Anunciante</th>
+                                <th>Fechas</th>
+                                <th>Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaBanners">
+                            <tr><td colspan="7" class="text-center py-3 text-muted">Cargando banners...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Formulario de banner -->
+    <div class="modal fade" id="modalBanner" tabindex="-1" aria-labelledby="modalBannerLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <form id="formBanner" novalidate>
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="modalBannerLabel">Nuevo banner</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="errorBanner" class="alert alert-danger d-none" role="alert"></div>
+                        <input type="hidden" id="bannerId">
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="titulo" class="form-label">Título *</label>
+                                <input type="text" id="titulo" class="form-control" maxlength="120" required autocomplete="off"
+                                       placeholder="Ej. Viaja en feriado con 10% de descuento">
+                                <div class="invalid-feedback" data-error="titulo"></div>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="imagen" class="form-label">Imagen *</label>
+                                <input type="file" id="imagen" class="form-control" accept="image/jpeg,image/png,image/webp"
+                                       aria-describedby="ayudaImagen">
+                                <div class="invalid-feedback" data-error="imagen"></div>
+                                <div id="ayudaImagen" class="form-text">JPG, PNG o WEBP, hasta 2 MB. Se recomienda 1200×400 px.</div>
+                                <div id="avisoMedidas" class="form-text text-warning-emphasis"></div>
+                                <img id="vistaPrevia" class="vista-previa-banner mt-2 d-none" alt="Vista previa del banner">
+                            </div>
+
+                            <div class="col-12">
+                                <label for="enlace" class="form-label">Enlace (opcional)</label>
+                                <input type="url" id="enlace" class="form-control" maxlength="500" placeholder="https://..." autocomplete="off">
+                                <div class="invalid-feedback" data-error="enlace"></div>
+                                <div class="form-text">Al pulsar el banner se abre esta página. Debe empezar con https://.</div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label for="anunciante" class="form-label">Anunciante (opcional)</label>
+                                <select id="anunciante" class="form-select"></select>
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <label for="orden" class="form-label">Orden</label>
+                                <input type="number" id="orden" class="form-control" min="0" max="999" step="1">
+                                <div class="invalid-feedback" data-error="orden"></div>
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <label for="activo" class="form-label">Estado *</label>
+                                <select id="activo" class="form-select" required>
+                                    <option value="true">Activo</option>
+                                    <option value="false">Inactivo</option>
+                                </select>
+                            </div>
+
+                            <div class="col-6">
+                                <label for="fechaInicio" class="form-label">Fecha de inicio *</label>
+                                <input type="date" id="fechaInicio" class="form-control" required>
+                                <div class="invalid-feedback" data-error="fechaInicio"></div>
+                            </div>
+
+                            <div class="col-6">
+                                <label for="fechaFin" class="form-label">Fecha de fin *</label>
+                                <input type="date" id="fechaFin" class="form-control" required>
+                                <div class="invalid-feedback" data-error="fechaFin"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success" id="btnGuardarBanner">Guardar banner</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-secondary text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 MoviPass. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="../../js/publicidad.js"></script>
+</body>
+</html>

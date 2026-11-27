@@ -20,8 +20,9 @@ import {
     revisarFrecuencia,
     textoTipo
 } from '../../js/frecuenciasForm.js';
+import { contarUsadas, estadoCupo, fechaHoyEcuador, puedeDestacar } from '../../js/destacadas.js';
 
-const COLUMNAS = 9;
+const COLUMNAS = 10;
 const $ = id => document.getElementById(id);
 
 const tbody = $('tablaFrecuencias');
@@ -49,6 +50,7 @@ const campo = {
 
 let rol = null;
 let cooperativas = [];
+let cupos = new Map(); // cooperativa_id -> { nombre, estado, cupo_destacadas, destacadas_hasta }
 let frecuencias = [];
 let provincias = null;
 let cantones = null;
@@ -105,7 +107,7 @@ function mensajeError(error) {
 async function cargarFrecuencias() {
     let consulta = supabase
         .from('frecuencias')
-        .select(`id, origen, destino, origen_canton_id, destino_canton_id, hora, tipo, activa, precio_base,
+        .select(`id, origen, destino, origen_canton_id, destino_canton_id, hora, tipo, activa, destacada, precio_base,
                  numero_resolucion, cooperativa_id, grupo_id, orden_hoja_ruta,
                  cooperativas ( nombre ), grupos_bus ( nombre ),
                  paradas ( id, canton_id, nombre, hora_estimada, orden )`);
@@ -118,6 +120,109 @@ async function cargarFrecuencias() {
 
     frecuencias = data ?? [];
     dibujarTabla();
+}
+
+/* ---------- Frecuencias destacadas (cambio 5) ---------- */
+
+/** Cupo y vigencia de las cooperativas del gerente u oficinista (el administrador no los necesita aquí). */
+async function cargarCupos() {
+    if (rol === 'administrador') return;
+
+    const { data, error } = await supabase
+        .from('cooperativas')
+        .select('id, nombre, estado, cupo_destacadas, destacadas_hasta')
+        .in('id', cooperativas.map(c => c.id));
+
+    if (error) throw error;
+    cupos = new Map((data ?? []).map(c => [c.id, c]));
+}
+
+function estadoDe(cooperativaId) {
+    return estadoCupo(cupos.get(cooperativaId), contarUsadas(frecuencias, cooperativaId), fechaHoyEcuador());
+}
+
+/** Contador "Destacadas: 2 de 3" con su aviso, uno por cooperativa. */
+function dibujarPanelDestacadas() {
+    const panel = $('panelDestacadas');
+    panel.replaceChildren();
+    panel.classList.toggle('d-none', rol === 'administrador' || cupos.size === 0);
+    if (rol === 'administrador') return;
+
+    cupos.forEach((cooperativa, id) => {
+        const estado = estadoDe(id);
+        const caja = document.createElement('div');
+        caja.className = `alert ${estado.aviso ? 'alert-warning' : 'alert-light border'} py-2 mb-2`;
+
+        const titulo = document.createElement('strong');
+        titulo.textContent = `★ ${estado.texto}`;
+        caja.appendChild(titulo);
+        if (cupos.size > 1) caja.append(` · ${cooperativa.nombre}`);
+        caja.append(` · ${estado.vigencia}`);
+
+        const notas = [estado.aviso];
+        if (rol === 'oficinista') notas.push('Solo el gerente puede marcar o desmarcar las frecuencias destacadas.');
+        notas.filter(Boolean).forEach(texto => {
+            caja.appendChild(Object.assign(document.createElement('div'), { className: 'small mt-1', textContent: texto }));
+        });
+
+        panel.appendChild(caja);
+    });
+}
+
+function celdaDestacada(f) {
+    const td = celda('', 'text-center');
+    const permiso = puedeDestacar({
+        rol,
+        frecuencia: f,
+        cooperativa: cupos.get(f.cooperativa_id),
+        usadas: contarUsadas(frecuencias, f.cooperativa_id),
+        hoy: fechaHoyEcuador()
+    });
+
+    const etiqueta = `${f.destacada ? 'Quitar de destacadas' : 'Destacar'}: ${ruta(f)} ${hora(f.hora)}`;
+    const estrella = boton(f.destacada ? '★' : '☆', f.destacada ? 'btn-warning' : 'btn-outline-warning',
+        () => void cambiarDestacada(f), etiqueta);
+    estrella.setAttribute('aria-pressed', String(Boolean(f.destacada)));
+    estrella.disabled = !permiso.permitido;
+
+    // Un botón deshabilitado no muestra su title: el motivo va en el contenedor.
+    const contenedor = document.createElement('span');
+    contenedor.className = 'd-inline-block';
+    contenedor.tabIndex = permiso.permitido ? -1 : 0;
+    contenedor.title = permiso.permitido ? etiqueta : permiso.motivo;
+    if (!permiso.permitido) contenedor.setAttribute('aria-label', `${f.destacada ? 'Destacada' : 'No destacada'}. ${permiso.motivo}`);
+    contenedor.appendChild(estrella);
+    td.appendChild(contenedor);
+    return td;
+}
+
+async function cambiarDestacada(f) {
+    if (ocupado) return;
+    ocupado = true;
+
+    try {
+        const { data, error } = await supabase.rpc('marcar_frecuencia_destacada', {
+            p_frecuencia_id: f.id,
+            p_destacada: !f.destacada
+        });
+        if (error) throw error;
+
+        const resultado = Array.isArray(data) ? data[0] : data;
+        if (resultado && cupos.has(f.cooperativa_id)) {
+            cupos.get(f.cooperativa_id).cupo_destacadas = resultado.cupo;
+        }
+
+        await cargarFrecuencias();
+        const contador = resultado ? ` (Destacadas: ${resultado.usadas} de ${resultado.cupo})` : '';
+        mostrarAlerta(`${f.destacada ? 'La frecuencia ya no está destacada' : 'Frecuencia destacada'}${contador}.`, 'success');
+    } catch (error) {
+        console.error('No se pudo cambiar la frecuencia destacada:', error);
+        mostrarAlerta(mensajeError(error), 'danger');
+        // El cupo o la vigencia pudieron cambiar: se vuelven a leer.
+        try { await cargarCupos(); await cargarFrecuencias(); } catch { /* ya se mostró el error */ }
+    } finally {
+        ocupado = false;
+    }
 }
 
 /** Por cooperativa, por grupo (los sin grupo al final) y en el orden de la hoja de ruta. */
@@ -138,6 +243,8 @@ function frecuenciasOrdenadas() {
 }
 
 function dibujarTabla() {
+    dibujarPanelDestacadas();
+
     if (frecuencias.length === 0) {
         filaInformativa('No hay frecuencias registradas. Pulsa «+ Nueva frecuencia».');
         return;
@@ -198,6 +305,7 @@ function dibujarTabla() {
             celda(f.numero_resolucion ?? '—'),
             celda('$' + Number(f.precio_base).toFixed(2)),
             tdEstado,
+            celdaDestacada(f),
             tdAcciones
         );
         tbody.appendChild(tr);
@@ -506,7 +614,13 @@ async function cambiarEstado(f) {
         if (error) throw error;
 
         await cargarFrecuencias();
-        mostrarAlerta(f.activa ? 'Frecuencia desactivada.' : 'Frecuencia activada.', 'success');
+        // La base quita el destacado al desactivar (trigger frecuencias_destacada).
+        mostrarAlerta(
+            f.activa
+                ? (f.destacada ? 'Frecuencia desactivada. También dejó de estar destacada.' : 'Frecuencia desactivada.')
+                : 'Frecuencia activada.',
+            'success'
+        );
     } catch (error) {
         mostrarAlerta(mensajeError(error), 'danger');
     } finally {
@@ -557,6 +671,7 @@ async function iniciar() {
         }
 
         btnNueva.disabled = false;
+        await cargarCupos();
         await cargarFrecuencias();
     } catch (error) {
         console.error('Error al cargar las frecuencias:', error);
