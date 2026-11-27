@@ -32,11 +32,11 @@
         <div class="row g-4 mb-5">
             
             <!-- Tarjeta 1: Validar Pagos -->
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-4">
                 <div class="card shadow-sm h-100 border-0">
                     <div class="card-body text-center">
                         <h1 class="display-5 mb-3 text-primary">💳</h1>
-                        <h5 class="card-title">Validar Pagos</h5>
+                        <h5 class="card-title">Validar Pagos <span id="badgePendientes" class="badge rounded-pill text-bg-danger d-none" aria-live="polite"></span></h5>
                         <p class="card-text text-muted small">Revisa y aprueba los comprobantes de transferencia subidos por los clientes.</p>
                         <a href="validar-pagos.html" class="btn btn-primary w-100">Ir a Validar Pagos</a>
                     </div>
@@ -44,7 +44,7 @@
             </div>
 
             <!-- Tarjeta 2: Vender Boletos -->
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-4">
                 <div class="card shadow-sm h-100 border-0">
                     <div class="card-body text-center">
                         <h1 class="display-5 mb-3 text-success">🎫</h1>
@@ -56,7 +56,7 @@
             </div>
 
             <!-- Tarjeta 3: Historial -->
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-4">
                 <div class="card shadow-sm h-100 border-0">
                     <div class="card-body text-center">
                         <h1 class="display-5 mb-3 text-info">📊</h1>
@@ -67,14 +67,48 @@
                 </div>
             </div>
 
+            <!-- Tarjeta: Despacho del día (cambio 4) -->
+            <div class="col-md-6 col-xl-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-danger">🚌</h1>
+                        <h5 class="card-title">Despacho del día</h5>
+                        <p class="card-text text-muted small">Habilita los viajes de hoy a cada usuario bus (chofer, controlador o dueño).</p>
+                        <a href="despacho.html" class="btn btn-danger w-100">Ir al Despacho</a>
+                    </div>
+                </div>
+            </div>
+            <!-- Tarjeta: Frecuencias (cambio 4: el oficinista también las gestiona) -->
+            <div class="col-md-6 col-xl-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-secondary">🛣️</h1>
+                        <h5 class="card-title">Frecuencias</h5>
+                        <p class="card-text text-muted small">Crea, edita, ordena, activa o desactiva las frecuencias de tu cooperativa.</p>
+                        <a href="../frecuencias/gestor-frecuencias.html" class="btn btn-secondary w-100">Ir a Frecuencias</a>
+                    </div>
+                </div>
+            </div>
             <!-- Tarjeta 4: Hoja de ruta (cambio 7) -->
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-4">
                 <div class="card shadow-sm h-100 border-0">
                     <div class="card-body text-center">
                         <h1 class="display-5 mb-3 text-warning">🗓️</h1>
                         <h5 class="card-title">Hoja de ruta</h5>
                         <p class="card-text text-muted small">Genera la rotación de buses de cada grupo y usa el bus de retén cuando haga falta.</p>
                         <a href="../frecuencias/hoja-ruta.html" class="btn btn-warning w-100">Ir a la Hoja de ruta</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tarjeta 5: Recaudación en ruta (cambio 4, parte 4.3) -->
+            <div class="col-md-6 col-xl-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body text-center">
+                        <h1 class="display-5 mb-3 text-dark">💵</h1>
+                        <h5 class="card-title">Recaudación en ruta</h5>
+                        <p class="card-text text-muted small">Lo que cobró cada usuario bus a los pasajeros que subieron en el camino, por viaje y en PDF.</p>
+                        <a href="recaudacion-ruta.html" class="btn btn-dark w-100">Ver recaudación</a>
                     </div>
                 </div>
             </div>
@@ -86,7 +120,7 @@
             <h5 class="alert-heading">ℹ️ Nota sobre tus funciones</h5>
             <p class="mb-0">
                 Como <strong>Oficinista</strong>, tu función principal es atender a los clientes en la oficina. 
-                Puedes vender boletos en efectivo y validar los pagos por transferencia que los clientes suban desde la aplicación.
+                Puedes vender boletos en efectivo, validar los pagos por transferencia que los clientes suban desde la aplicación y habilitar los viajes de hoy a los usuarios bus.
             </p>
         </div>
     </main>
@@ -101,6 +135,23 @@
     <script type="module">
         import { exigirRoles } from '../../js/guardas.js';
         import { obtenerContextoGestion } from '../../js/contextoUsuario.js';
+        import { supabase } from '../../js/supabaseClient.js';
+        import { textoPendientes } from '../../js/reglasOperacion.js';
+
+        // Comprobantes por revisar (cambio 4).
+        async function contarPendientes(ids) {
+            if (ids.length === 0) return;
+            const { count, error } = await supabase
+                .from('compras')
+                .select('id', { count: 'exact', head: true })
+                .eq('estado', 'pendiente_validacion')
+                .in('cooperativa_id', ids);
+            if (error) throw error;
+            const badge = document.getElementById('badgePendientes');
+            badge.textContent = String(count ?? 0);
+            badge.title = textoPendientes(count);
+            badge.classList.toggle('d-none', !count);
+        }
 
         async function iniciar() {
             // Solo el oficinista puede ver esta página.
@@ -115,6 +166,7 @@
                 if (cooperativa?.nombre) {
                     document.getElementById('nombreCoop').textContent = cooperativa.nombre;
                 }
+                await contarPendientes(cooperativas.map((c) => c.id));
             } catch (error) {
                 console.error('No se pudo cargar la cooperativa del oficinista:', error);
                 // La página sigue funcionando; cada módulo mostrará su propio aviso.

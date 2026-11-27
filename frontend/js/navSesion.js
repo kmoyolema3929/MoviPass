@@ -10,7 +10,7 @@ const PANEL_POR_ROL = {
     cooperativa: new URL('../pages/cooperativa/index.html', import.meta.url).href,
     oficinista: new URL('../pages/oficinista/index.html', import.meta.url).href,
     cliente: new URL('../pages/cliente/index.html', import.meta.url).href,
-    bus: new URL('../pages/bus/buses.html', import.meta.url).href,
+    bus: new URL('../pages/usuario-bus/index.html', import.meta.url).href,
 };
 
 const RUTA_INICIO = new URL('../index.html', import.meta.url).href;
