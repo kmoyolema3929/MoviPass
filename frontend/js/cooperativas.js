@@ -1,5 +1,9 @@
 import { supabase } from "./supabaseClient.js";
 import { cerrarSesion } from "./auth.js";
+import { cooperativaParaGuardar, revisarCooperativa } from "./reglasCooperativa.js";
+import { limpiarCorreo, mensajeErrorAuth, revisarCorreo } from "./reglasCuenta.js";
+import { mensajeErrorBase } from "./erroresBase.js";
+import { limpiarAlEscribir, mostrarErrores as marcarErrores } from "./formularios.js";
 
 const tabla = document.getElementById("tablaCooperativas");
 const formulario = document.getElementById("formCooperativa");
@@ -29,7 +33,6 @@ const btnNueva = document.getElementById("btnNuevaCooperativa");
 const btnActualizar = document.getElementById("btnActualizar");
 const btnCerrarSesion = document.getElementById("btnCerrarSesion");
 
-const campos = [nombre, ruc, direccion, telefono];
 
 // ¡AQUÍ ESTÁ LA CORRECCIÓN! Se agregó "estado" a las columnas
 const columnas = "id, nombre, ruc, direccion, telefono, estado";
@@ -46,22 +49,17 @@ function ocultarMensaje() {
     mensaje.classList.add("d-none");
 }
 
+/** Mensaje claro para los errores de la base (sin textos técnicos). */
+function textoErrorCooperativa(error) {
+    if (error?.code === "23505") return "Ya existe una cooperativa con ese RUC.";
+    if (error?.code === "23503") return "La cooperativa tiene registros relacionados y no se puede eliminar.";
+    if (error?.code === "PGRST116") return "No se encontró el registro o no tienes permiso para modificarlo.";
+
+    return mensajeErrorBase(error);
+}
+
 function mostrarError(error) {
-    let texto = "No se pudo completar la operación.";
-
-    if (error.code === "23505") {
-        texto = "Ya existe una cooperativa con ese RUC.";
-    } else if (error.code === "23503") {
-        texto = "La cooperativa tiene registros relacionados y no se puede eliminar.";
-    } else if (error.code === "42501") {
-        texto = "Tu cuenta no tiene permiso para realizar esta operación.";
-    } else if (error.code === "PGRST116") {
-        texto = "No se encontró el registro o no tienes permiso para modificarlo.";
-    } else if (error.message) {
-        texto += " " + error.message;
-    }
-
-    mostrarMensaje(texto, "danger");
+    mostrarMensaje(textoErrorCooperativa(error), "danger");
 }
 
 function cambiarEstado(valor) {
@@ -213,10 +211,7 @@ async function listarCooperativas() {
 function limpiarFormulario() {
     formulario.reset();
     campoId.value = "";
-
-    campos.forEach(function (campo) {
-        campo.setCustomValidity("");
-    });
+    marcarErrores(formulario, {});
 }
 
 function editarCooperativa(id) {
@@ -251,26 +246,19 @@ async function guardarCooperativa(evento) {
         return;
     }
 
-    campos.forEach(function (campo) {
-        campo.value = campo.value.trim();
-
-        campo.setCustomValidity(
-            campo.value === "" ? "Completa este campo." : ""
-        );
-    });
-
-    if (!formulario.reportValidity()) {
-        return;
-    }
-
-    const id = campoId.value;
-
-    const datos = {
+    const escrito = {
         nombre: nombre.value,
         ruc: ruc.value,
         direccion: direccion.value,
         telefono: telefono.value
     };
+
+    if (!marcarErrores(formulario, revisarCooperativa(escrito))) {
+        return;
+    }
+
+    const id = campoId.value;
+    const datos = cooperativaParaGuardar(escrito);
 
     cambiarEstado(true);
 
@@ -317,10 +305,28 @@ async function guardarCooperativa(evento) {
                 : "Cooperativa actualizada correctamente."
         );
     } catch (error) {
-        mostrarError(error);
+        // RUC repetido: el mensaje va junto al campo (el modal sigue abierto).
+        if (error?.code === "23505") {
+            marcarErrores(formulario, { ruc: textoErrorCooperativa(error) });
+        } else if (["23514", "P0001"].includes(error?.code)) {
+            marcarErrores(formulario, campoDelError(error));
+        } else {
+            mostrarError(error);
+        }
     } finally {
         cambiarEstado(false);
     }
+}
+
+/** El disparador validar_cooperativa dice en su mensaje qué campo falló. */
+function campoDelError(error) {
+    const texto = mensajeErrorBase(error);
+    const campo = /RUC/i.test(texto) ? "ruc"
+        : /dirección/i.test(texto) ? "direccion"
+            : /teléfono/i.test(texto) ? "telefono"
+                : "nombre";
+
+    return { [campo]: texto };
 }
 
 async function eliminarCooperativa(id) {
@@ -436,17 +442,26 @@ window.addEventListener("pageshow", function (evento) {
 formAcceso.addEventListener("submit", async function (evento) {
     evento.preventDefault();
 
+    if (btnIngresar.disabled) return;
+
+    const errores = {
+        correo: revisarCorreo(correo.value),
+        clave: clave.value ? "" : "Escribe tu contraseña."
+    };
+    if (!marcarErrores(formAcceso, errores)) return;
+
     btnIngresar.disabled = true;
     btnIngresar.textContent = "Ingresando...";
 
     try {
         const { error } = await supabase.auth.signInWithPassword({
-            email: correo.value.trim(),
+            email: limpiarCorreo(correo.value),
             password: clave.value
         });
 
         if (error) {
-            throw error;
+            mostrarMensaje(mensajeErrorAuth(error), "danger");
+            return;
         }
 
         clave.value = "";
@@ -493,10 +508,11 @@ btnActualizar.addEventListener("click", async function () {
     }
 });
 
-campos.forEach(function (campo) {
-    campo.addEventListener("input", function () {
-        campo.setCustomValidity("");
-    });
+limpiarAlEscribir(formulario);
+limpiarAlEscribir(formAcceso);
+ruc.addEventListener("input", function () {
+    const limpio = ruc.value.replace(/\D/g, "");
+    if (limpio !== ruc.value) ruc.value = limpio;
 });
 
 formulario.addEventListener("submit", guardarCooperativa);
