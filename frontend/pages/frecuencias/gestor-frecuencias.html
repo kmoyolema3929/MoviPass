@@ -35,6 +35,8 @@
 
         <div id="alertContainer" role="alert" aria-live="polite"></div>
         <div id="avisoCorregir" class="alert alert-warning d-none" role="status"></div>
+        <!-- Cambio 5: contador de frecuencias destacadas (gerente y oficinista) -->
+        <div id="panelDestacadas" class="d-none mb-3" aria-live="polite"></div>
 
         <div class="card shadow-sm">
             <div class="card-body p-0">
@@ -50,11 +52,12 @@
                                 <th>Resolución ANT</th>
                                 <th>Precio base</th>
                                 <th>Estado</th>
+                                <th class="text-center" title="Sale en «Viajes destacados» de la portada">Destacada</th>
                                 <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tablaFrecuencias">
-                            <tr><td colspan="9" class="text-center py-3 text-muted">Cargando frecuencias...</td></tr>
+                            <tr><td colspan="10" class="text-center py-3 text-muted">Cargando frecuencias...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -65,6 +68,8 @@
             así que pon la vuelta justo debajo de su ida (Ambato → Loja 19:00 y luego Loja → Ambato 20:00).
             Si no lo ordenas, se usa la hora de salida.
             Una frecuencia con boletos vendidos no se puede eliminar: desactívala.
+            La <strong>estrella ★</strong> muestra la frecuencia en «Viajes destacados» de la portada; solo el gerente
+            la marca, dentro del cupo que da el administrador. Una frecuencia inactiva deja de estar destacada.
         </p>
     </main>
 
